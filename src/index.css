@@ -1,0 +1,85 @@
+:root {
+  /* Layout variables */
+  --lane-height-basic: 40px;
+  --lane-height-icon: 28px;
+  --lane-height-humidity: 35px;
+  --lane-height-temp: 110px;
+  --lane-height-clouds: 150px;
+  --lane-height-precip-prob: 25px;
+  --lane-height-wind: 80px;
+  --lane-height-uv: 25px;
+  --lane-height-pressure: 45px;
+  --lane-height-cape: 30px;
+  --lane-height-aqi: 60px;
+  
+  --col-width-hour: 22px;
+  --legend-width: 48px;
+  
+  /* Color Palette - adapted for Windy-like theme */
+  --bg-dark: #202020;
+  --bg-main: #dfdfdf;
+  --bg-clouds: #c0c0c0;
+  
+  --text-main: #333333;
+  --text-light: #666666;
+  --text-inverse: #ffffff;
+  
+  /* Temperature chart curve colors */
+  --color-temp-line: #d32f2f;
+  
+  /* Wind Beaufort Colors */
+  --wind-0: #888888;
+  --wind-1: #a4d2e8;
+  --wind-2: #84d8a5;
+  --wind-3: #58d86f;
+  --wind-4: #3ae82f;
+  --wind-5: #b9e82f;
+  --wind-6: #e8d02f;
+  --wind-7: #e8952f;
+  --wind-8: #e8532f;
+  --wind-9: #e82f2f;
+  
+  /* AQI US Colors */
+  --aqi-good: #00e400;
+  --aqi-moderate: #ffff00;
+  --aqi-sg: #ff7e00;
+  --aqi-unhealthy: #ff0000;
+  --aqi-vu: #8f3f97;
+  --aqi-hazardous: #7e0023;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  background-color: var(--bg-dark); /* dark outside the dashboard */
+  color: var(--text-main);
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}

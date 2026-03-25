@@ -1,0 +1,109 @@
+.dashboard-wrapper {
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.legend-sidebar {
+  width: var(--legend-width);
+  flex-shrink: 0;
+  background-color: #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+  z-index: 50;
+}
+
+.legend-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #555;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  box-sizing: border-box;
+  text-align: center;
+  position: relative;
+}
+
+.timeline-scroller {
+  flex-grow: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background-color: #ededed;
+}
+
+.lanes-container {
+  display: flex;
+  flex-direction: column;
+  /* Width will be set inline based on items count */
+  min-height: min-content;
+  position: relative;
+}
+
+.loading-state, .error-state {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 1.5rem;
+}
+
+/* Base styles for all lanes */
+.lane {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.lane-legend {
+  position: sticky;
+  left: 0;
+  width: var(--legend-width);
+  flex-shrink: 0;
+  background-color: #e8e8e8;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #555;
+  border-right: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+}
+
+.lane-data {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+}
+
+.lane-cell {
+  width: var(--col-width-hour);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Day/Night alternating background stripes */
+.cell-day {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+.cell-night {
+  background-color: rgba(200, 205, 220, 0.5);
+}
