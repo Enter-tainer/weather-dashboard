@@ -1,5 +1,7 @@
 # 🌤️ Windy-Style Pro Weather Dashboard
 
+![Dashboard Screenshot](./demo.jpg)
+
 > A high-density, professional-grade meteorological dashboard built with React and HTML5 Canvas, deeply integrated with the [Open-Meteo API](https://open-meteo.com/).
 
 This project moves beyond standard consumer weather apps, rendering high-fidelity meteorological data with advanced visualizations like **Ensemble Spaghetti Plots**, **CAPE Heatmaps**, and **Precise Sun Event Shading**, inspired by industry leaders like [Windy.com](https://www.windy.com/).
