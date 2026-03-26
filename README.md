@@ -21,7 +21,7 @@ This project moves beyond standard consumer weather apps, rendering high-fidelit
 
 ## 🚀 Tech Stack
 
-- **React 18** + **Vite**: Ultra-fast frontend component architecture.
+- **React 19** + **Vite**: Ultra-fast frontend component architecture.
 - **HTML Canvas 2D**: Performance-critical ensemble line rendering for hundreds of overlapping transparent members.
 - **Vanilla CSS Flexbox**: Strict flex-layout arrays controlling variable lane heights, ensuring zero horizontal misalignment across diverse data sources.
 - **Lucide React**: Crisp iconography for sun events and wind vectors.
@@ -32,12 +32,12 @@ This project moves beyond standard consumer weather apps, rendering high-fidelit
 
 1. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. Start the Vite development server:
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 3. Open your browser exactly to the printed local port (usually `localhost:5174`). Modify the URL query block (`?route=Shanghai:2026-03-26`) to instantly fetch new locations!
@@ -45,7 +45,7 @@ This project moves beyond standard consumer weather apps, rendering high-fidelit
 ### Build for Production
 
 ```bash
-npm run build
+pnpm build
 ```
 The output will reside in the `/dist` directory, completely static and ready to be dragged and dropped onto generic hosts.
 
@@ -54,7 +54,7 @@ The output will reside in the `/dist` directory, completely static and ready to 
 Because the app operates 100% on the client-side and interacts autonomously with the open-access Open-Meteo endpoint (no API keys required), it is exquisitely structured for static edge networks.
 
 - **Vercel**: Import the repository and set the framework preset to `Vite`.
-- **Netlify**: Same configuration. Build command: `npm run build`, Publish directory: `dist`.
+- **Netlify**: Same configuration. Build command: `pnpm build`, Publish directory: `dist`.
 - **GitHub Pages**: You can wrap the build out via GitHub Actions.
 
 ---
