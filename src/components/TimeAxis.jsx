@@ -62,7 +62,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                   {group.cityName}
                   {isSwitchable && (
                     <span style={{ fontSize: '9px', color: '#999', marginLeft: '4px' }}>
-                      {slot.activeIndex + 1}/{slot.cities.length}
+                      {slot.activeIndex + 1}/{slot.entries.length}
                     </span>
                   )}
                 </div>
