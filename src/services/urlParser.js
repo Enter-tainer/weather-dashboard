@@ -20,6 +20,49 @@ export async function parseRoute() {
   });
 }
 
+// Parse route entries and group by date.
+// Returns { dateSlots: [{date, cities: [name, ...], activeIndex}], allCities: [...] }
+// where dateSlots with multiple cities support switching.
+export function parseSwitchableRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const routeStr = params.get('route');
+  if (!routeStr) return null;
+
+  const entries = routeStr.split(',').map(part => {
+    const [city, date] = part.split(':');
+    return { city, date };
+  });
+
+  // Group by date
+  const dateMap = new Map();
+  for (const { city, date } of entries) {
+    if (!dateMap.has(date)) dateMap.set(date, []);
+    dateMap.get(date).push(city);
+  }
+
+  // Check if any date has multiple cities
+  let hasSwitchable = false;
+  for (const cities of dateMap.values()) {
+    if (cities.length > 1) { hasSwitchable = true; break; }
+  }
+  if (!hasSwitchable) return null;
+
+  const dateSlots = [];
+  for (const [date, cities] of dateMap) {
+    dateSlots.push({ date, cities, activeIndex: 0 });
+  }
+  return { dateSlots };
+}
+
+// Build route for specific active selections: [{date, city}, ...]
+export function buildRouteForSelections(dateSlots) {
+  return dateSlots.map(slot => ({
+    city: slot.cities[slot.activeIndex],
+    date: slot.date,
+    originalName: slot.cities[slot.activeIndex],
+  }));
+}
+
 function generate7Days(city, _unused, originalName, lat, lon) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
