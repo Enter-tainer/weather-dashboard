@@ -179,11 +179,11 @@ export default function Dashboard() {
         <div className="legend-cell" style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}>
           <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>云<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>m</span></span>
           <span style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '8px', color: '#aaa' }}>10k</span>
-          <span style={{ position: 'absolute', top: '27px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
-          <span style={{ position: 'absolute', top: '57px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
-          <span style={{ position: 'absolute', top: '72px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
-          <span style={{ position: 'absolute', top: '102px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
-          <span style={{ position: 'absolute', bottom: '18px', right: '2px', fontSize: '8px', color: '#aaa' }}>0</span>
+          <span style={{ position: 'absolute', top: '26px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
+          <span style={{ position: 'absolute', top: '56px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
+          <span style={{ position: 'absolute', top: '86px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
+          <span style={{ position: 'absolute', top: '116px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
+          <span style={{ position: 'absolute', top: '146px', right: '2px', fontSize: '8px', color: '#aaa' }}>0</span>
           <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '10px', color: '#0d47a1' }}>降水<span style={{fontSize: '8px', opacity: 0.7, marginLeft: '1px'}}>mm</span></div>
         </div>
 
