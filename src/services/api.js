@@ -52,7 +52,7 @@ export async function fetchCityDataForDate(cityObj) {
   const geopotentialParams = pressureLevels.map(p => `geopotential_height_${p}hPa`).join(',');
 
   // Forecast API
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,${cloudPressureParams},${geopotentialParams}&daily=sunrise,sunset${tzParams}`;
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,${cloudPressureParams},${geopotentialParams}${tzParams}`;
 
   // Ensemble API
   const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure&models=${ensembleModel}${tzParams}`;
@@ -189,17 +189,14 @@ export async function fetchCityDataForDate(cityObj) {
     });
   }
 
-  const sunEvents = [];
-  if (forecastRes.daily && forecastRes.daily.sunrise) {
-    forecastRes.daily.sunrise.forEach(s => { if (s) sunEvents.push({ type: 'sunrise', time: new Date(s) }) });
-  }
-  if (forecastRes.daily && forecastRes.daily.sunset) {
-    forecastRes.daily.sunset.forEach(s => { if (s) sunEvents.push({ type: 'sunset', time: new Date(s) }) });
-  }
-
-  // Moon events via SunCalc
-  const moonEvents = [];
+  // Sun & moon events via SunCalc
   const dateObj = new Date(date + 'T12:00:00');
+  const sunEvents = [];
+  const sunTimes = SunCalc.getTimes(dateObj, latitude, longitude);
+  if (sunTimes.sunrise) sunEvents.push({ type: 'sunrise', time: sunTimes.sunrise });
+  if (sunTimes.sunset) sunEvents.push({ type: 'sunset', time: sunTimes.sunset });
+
+  const moonEvents = [];
   const moonTimes = SunCalc.getMoonTimes(dateObj, latitude, longitude);
   const moonIllum = SunCalc.getMoonIllumination(dateObj);
   if (moonTimes.rise) moonEvents.push({ type: 'moonrise', time: moonTimes.rise, phase: moonIllum.phase, fraction: moonIllum.fraction });
