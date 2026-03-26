@@ -1,11 +1,18 @@
 import { parseRoute } from './urlParser.js';
+import { getCached, setCache, cachedFetch, TTL_GEO, TTL_WEATHER } from './cache.js';
 
 export async function getCityDetails(cityName) {
+  const cacheKey = `geo:${cityName}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cityName}&count=1&format=json`);
   const data = await res.json();
   if (data.results && data.results.length > 0) {
     const { latitude, longitude, timezone, name } = data.results[0];
-    return { latitude, longitude, timezone: timezone || 'auto', name };
+    const result = { latitude, longitude, timezone: timezone || 'auto', name };
+    setCache(cacheKey, result, TTL_GEO);
+    return result;
   }
   throw new Error(`City not found: ${cityName}`);
 }
@@ -48,9 +55,9 @@ export async function fetchCityDataForDate(cityObj) {
   const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,dust${tzParams}`;
 
   let [forecastRes, ensembleRes, aqRes] = await Promise.all([
-    fetch(forecastUrl).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(ensembleUrl).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(aqUrl).then(r => r.ok ? r.json() : null).catch(() => null)
+    cachedFetch(forecastUrl, TTL_WEATHER).catch(() => null),
+    cachedFetch(ensembleUrl, TTL_WEATHER).catch(() => null),
+    cachedFetch(aqUrl, TTL_WEATHER).catch(() => null)
   ]);
 
   // 2. 如果常规预报由于超期（>16天）无法拿到，或返回了 error，则使用 Ensemble 数据替代主线
@@ -181,28 +188,20 @@ export async function fetchCityDataForDate(cityObj) {
   return combined;
 }
 
-export async function fetchFullTimeline() {
-  const route = await parseRoute();
-  const allDataPromises = route.map(cityObj => fetchCityDataForDate(cityObj).catch(e => {
-    console.error(e);
-    return [];
-  }));
-
-  const results = await Promise.all(allDataPromises);
-  
+function assembleTimeline(results) {
   const flatData = [];
   const globalSunEvents = [];
   const globalNightBands = [];
-  
+
   let currentOffset = 0;
   for (const res of results) {
      if (!res || res.length === 0) continue;
      flatData.push(...res);
-     
+
      if (res.sunEvents) {
         const cityStartTimeMs = new Date(res[0].time).getTime();
         const validSunEvents = [];
-        
+
         res.sunEvents.forEach(ev => {
            const diffHours = (ev.time.getTime() - cityStartTimeMs) / 3600000;
            if (diffHours >= 0 && diffHours <= res.length) {
@@ -211,15 +210,14 @@ export async function fetchFullTimeline() {
               globalSunEvents.push({ ...ev, absoluteIndex: absIdx });
            }
         });
-        
+
         validSunEvents.sort((a,b) => a.absoluteIndex - b.absoluteIndex);
-        
+
         let currentNightStart = null;
         if (validSunEvents.length > 0 && validSunEvents[0].type === 'sunrise') {
-           // -0.5 acts as the true left edge of the column block
-           currentNightStart = currentOffset - 0.5; 
+           currentNightStart = currentOffset - 0.5;
         }
-        
+
         validSunEvents.forEach(ev => {
            if (ev.type === 'sunrise') {
               if (currentNightStart !== null) {
@@ -230,17 +228,36 @@ export async function fetchFullTimeline() {
               currentNightStart = ev.absoluteIndex;
            }
         });
-        
+
         if (currentNightStart !== null) {
            globalNightBands.push({ left: currentNightStart, right: currentOffset + res.length - 0.5 });
         }
      }
-     
+
      currentOffset += res.length;
   }
-  
+
   flatData.sunEvents = globalSunEvents;
   flatData.nightBands = globalNightBands;
-  
+
   return flatData;
+}
+
+async function fetchAndAssemble(route) {
+  const results = await Promise.all(
+    route.map(cityObj => fetchCityDataForDate(cityObj).catch(e => {
+      console.error(e);
+      return [];
+    }))
+  );
+  return assembleTimeline(results);
+}
+
+export async function fetchFullTimeline() {
+  const route = await parseRoute();
+  return fetchAndAssemble(route);
+}
+
+export async function fetchTimelineForRoute(route) {
+  return fetchAndAssemble(route);
 }
