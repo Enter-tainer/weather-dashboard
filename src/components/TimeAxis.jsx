@@ -4,14 +4,15 @@ import './Dashboard.css';
 export default function TimeAxis({ data, switchInfo, onCityClick }) {
   const COL_WIDTH = 22;
 
-  // Pre-compute city label positions (first hour index of each city block)
-  const cityLabels = [];
+  // Group data items by city block
+  const cityGroups = [];
+  let currentGroup = null;
   for (let i = 0; i < data.length; i++) {
-    const isFirstOfCity = i === 0 || data[i-1].cityName !== data[i].cityName;
-    if (isFirstOfCity) {
-      const slot = switchInfo && switchInfo[data[i].cityName];
-      cityLabels.push({ index: i, cityName: data[i].cityName, slot });
+    if (i === 0 || data[i].cityName !== data[i - 1].cityName) {
+      currentGroup = { cityName: data[i].cityName, startIndex: i, items: [] };
+      cityGroups.push(currentGroup);
     }
+    currentGroup.items.push({ item: data[i], index: i });
   }
 
   return (
@@ -26,57 +27,55 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
            );
         })}
 
-        {data.map((item, index) => {
-        const isFirstOfCity = index === 0 || data[index-1].cityName !== item.cityName;
-        const isDateLabel = item.hour === 0 || isFirstOfCity;
-
-        const dateObj = new Date(item.time);
-        const dayStr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()];
-        const dateStr = `${dayStr} ${dateObj.getDate()}`;
-
-        return (
-          <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
-            {/* Date label */}
-            {isDateLabel && (
-              <div style={{ position: 'absolute', top: '22px', left: '4px', fontSize: '12px', color: '#555', whiteSpace: 'nowrap', zIndex: 5 }}>
-                {dateStr}
-              </div>
-            )}
-
-            {/* Hour marker */}
-            <div style={{ fontSize: '12px', color: '#888', marginTop: 'auto' }}>
-              {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
-            </div>
-            {/* Grid line separator */}
-            <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }} />
-          </div>
-        );
-      })}
-
-        {/* City labels - rendered outside lane-cells to avoid stacking context issues */}
-        {cityLabels.map(({ index, cityName, slot }) => {
+        {/* City blocks - each wraps its cells so the label can be CSS sticky */}
+        {cityGroups.map((group) => {
+          const slot = switchInfo && switchInfo[group.cityName];
           const isSwitchable = !!slot;
-          const leftPx = index * COL_WIDTH;
           return (
-            <div
-              key={`city-${index}`}
-              onClick={isSwitchable ? () => onCityClick(cityName) : undefined}
-              style={{
-                position: 'absolute', top: 0, left: `${leftPx}px`, padding: '2px 8px',
-                backgroundColor: '#e8e8e8', fontWeight: 'bold', fontSize: '12px',
-                zIndex: 15, whiteSpace: 'nowrap', borderRight: '1px solid #ccc',
-                borderBottom: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: '3px',
-                cursor: isSwitchable ? 'pointer' : 'default',
-                userSelect: 'none',
-              }}
-            >
-              <MapPin size={12} color="#d32f2f" />
-              {cityName}
-              {isSwitchable && (
-                <span style={{ fontSize: '9px', color: '#999', marginLeft: '4px' }}>
-                  {slot.activeIndex + 1}/{slot.cities.length}
-                </span>
-              )}
+            <div key={`block-${group.startIndex}`} style={{ display: 'flex', position: 'relative' }}>
+              {/* Sticky label anchor - zero width so it doesn't affect cell layout */}
+              <div style={{ position: 'sticky', left: 0, width: 0, zIndex: 15, flexShrink: 0 }}>
+                <div
+                  onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}
+                  style={{
+                    position: 'absolute', top: 0, left: 0, padding: '2px 8px',
+                    backgroundColor: '#e8e8e8', fontWeight: 'bold', fontSize: '12px',
+                    whiteSpace: 'nowrap', borderRight: '1px solid #ccc',
+                    borderBottom: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: '3px',
+                    cursor: isSwitchable ? 'pointer' : 'default',
+                    userSelect: 'none',
+                  }}
+                >
+                  <MapPin size={12} color="#d32f2f" />
+                  {group.cityName}
+                  {isSwitchable && (
+                    <span style={{ fontSize: '9px', color: '#999', marginLeft: '4px' }}>
+                      {slot.activeIndex + 1}/{slot.cities.length}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Lane cells for this city */}
+              {group.items.map(({ item, index }) => {
+                const isFirstOfCity = index === group.startIndex;
+                const isDateLabel = item.hour === 0 || isFirstOfCity;
+                const dateObj = new Date(item.time);
+                const dayStr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()];
+                const dateStr = `${dayStr} ${dateObj.getDate()}`;
+                return (
+                  <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
+                    {isDateLabel && (
+                      <div style={{ position: 'absolute', top: '22px', left: '4px', fontSize: '12px', color: '#555', whiteSpace: 'nowrap', zIndex: 5 }}>
+                        {dateStr}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '12px', color: '#888', marginTop: 'auto' }}>
+                      {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
+                    </div>
+                    <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }} />
+                  </div>
+                );
+              })}
             </div>
           );
         })}
