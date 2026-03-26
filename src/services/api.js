@@ -2,6 +2,16 @@ import { parseRoute } from './urlParser.js';
 import { getCached, setCache, cachedFetch, TTL_GEO, TTL_WEATHER } from './cache.js';
 import SunCalc from 'suncalc';
 
+// Open-Meteo returns local times without offset (e.g. "2026-03-26T00:00").
+// JS Date parses these as UTC. This computes the offset to correct for SunCalc.
+function getTimezoneOffsetMs(timezone, dateStr) {
+  if (timezone === 'auto') return 0;
+  const refUtc = new Date(dateStr + 'T12:00:00Z');
+  const localStr = refUtc.toLocaleString('en-US', { timeZone: timezone });
+  const localAsUtc = new Date(localStr);
+  return refUtc.getTime() - localAsUtc.getTime();
+}
+
 export async function getCityDetails(cityName) {
   const cacheKey = `geo:${cityName}`;
   const cached = getCached(cacheKey);
@@ -189,12 +199,24 @@ export async function fetchCityDataForDate(cityObj) {
     });
   }
 
-  // Sun & moon events via SunCalc
-  const dateObj = new Date(date + 'T12:00:00');
-  const sunEvents = [];
+  // Compute timezone offset: API returns local times without offset,
+  // but JS Date parses them as UTC. We need to adjust for SunCalc.
+  const tzOffsetMs = getTimezoneOffsetMs(timezone, date);
+  const toUtc = (localStr) => new Date(new Date(localStr).getTime() + tzOffsetMs);
+
+  // Sun, moon & twilight events via SunCalc
+  const dateObj = toUtc(date + 'T12:00:00');
   const sunTimes = SunCalc.getTimes(dateObj, latitude, longitude);
+
+  const sunEvents = [];
   if (sunTimes.sunrise) sunEvents.push({ type: 'sunrise', time: sunTimes.sunrise });
   if (sunTimes.sunset) sunEvents.push({ type: 'sunset', time: sunTimes.sunset });
+
+  // Compute sun altitude for each hour (for twilight gradient lane)
+  for (const item of combined) {
+    const pos = SunCalc.getPosition(toUtc(item.time), latitude, longitude);
+    item.sunAltitude = pos.altitude * (180 / Math.PI); // radians to degrees
+  }
 
   const moonEvents = [];
   const moonTimes = SunCalc.getMoonTimes(dateObj, latitude, longitude);
@@ -204,7 +226,7 @@ export async function fetchCityDataForDate(cityObj) {
 
   // Add moon phase + fraction to each hourly data point
   for (const item of combined) {
-    const illum = SunCalc.getMoonIllumination(new Date(item.time));
+    const illum = SunCalc.getMoonIllumination(toUtc(item.time));
     item.moonPhase = illum.phase;
     item.moonFraction = illum.fraction;
   }

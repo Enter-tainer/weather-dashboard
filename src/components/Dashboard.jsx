@@ -15,6 +15,7 @@ import CapeLane from './CapeLane';
 import WindLane, { getBeaufort } from './WindLane';
 import AirQualityLane from './AirQualityLane';
 import DashboardBackground from './DashboardBackground';
+import TwilightLane from './TwilightLane';
 
 import './Dashboard.css';
 
@@ -142,6 +143,7 @@ export default function Dashboard() {
           <div>星期</div>
           <div style={{ marginTop: '2px' }}>小时</div>
         </div>
+        <div className="legend-cell" style={{ height: '12px', fontSize: '9px', color: '#888' }}>曙暮</div>
         <div className="legend-cell" style={{ height: 'var(--lane-height-icon)', fontSize: '11px', color: '#555' }}>天气</div>
 
         <div className="legend-cell" style={{ height: 'var(--lane-height-uv)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
@@ -225,6 +227,7 @@ export default function Dashboard() {
         <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
           <DashboardBackground data={data} />
           <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
+          <TwilightLane data={data} />
           <WeatherIconLane data={data} />
           <UVLane data={data} />
           <HumidityLane data={data} />
