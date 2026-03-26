@@ -4,10 +4,11 @@ const COL_WIDTH = 22;
 
 // Map sun altitude (degrees) to a sky color
 function altitudeToColor(alt) {
-  if (alt >= 6) return '#ffffff';                    // day
-  if (alt >= 0) return lerpColor('#ffb74d', '#ffffff', alt / 6);   // golden hour (0°→6°)
-  if (alt >= -6) return lerpColor('#5c6bc0', '#ffb74d', (alt + 6) / 6);  // blue hour (-6°→0°)
-  if (alt >= -12) return lerpColor('#1a237e', '#5c6bc0', (alt + 12) / 6); // nautical (-12°→-6°)
+  if (alt >= 10) return '#ffffff';                    // full daylight
+  if (alt >= 6) return lerpColor('#ffe0b2', '#ffffff', (alt - 6) / 4);   // warm daylight (6°→10°)
+  if (alt >= -4) return lerpColor('#ff9800', '#ffe0b2', (alt + 4) / 10); // golden hour (-4°→6°)
+  if (alt >= -6) return lerpColor('#3949ab', '#ff9800', (alt + 6) / 2);  // blue hour (-6°→-4°)
+  if (alt >= -12) return lerpColor('#1a237e', '#3949ab', (alt + 12) / 6); // nautical (-12°→-6°)
   if (alt >= -18) return lerpColor('#0d0d1a', '#1a237e', (alt + 18) / 6); // astronomical (-18°→-12°)
   return '#0d0d1a';                                  // night
 }
