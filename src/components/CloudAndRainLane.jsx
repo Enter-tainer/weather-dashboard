@@ -19,11 +19,11 @@ function altToY(alt) {
 // Interpolate color: higher clouds are lighter/bluer, lower clouds are darker/grayer
 function cloudColor(alt, cover) {
   const t = Math.min(alt / MAX_ALT, 1); // 0 = ground, 1 = high
-  // Low clouds: dark gray-blue. High clouds: light silver-blue.
-  const r = Math.round(120 + t * 60);   // 120 → 180
-  const g = Math.round(120 + t * 60);   // 120 → 180
-  const b = Math.round(140 + t * 50);   // 140 → 190
-  const alpha = (cover / 100) * (0.85 - t * 0.3); // lower clouds more opaque
+  // Low clouds: dark gray. High clouds: steel blue-gray.
+  const r = Math.round(70 + t * 80);    // 70 → 150
+  const g = Math.round(70 + t * 80);    // 70 → 150
+  const b = Math.round(85 + t * 70);    // 85 → 155
+  const alpha = (cover / 100) * (0.9 - t * 0.15); // strong opacity, slight fade for high clouds
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
@@ -81,7 +81,7 @@ export default function CloudAndRainLane({ data }) {
           // Soft watercolor gradient: peak opacity in center, fading at edges
           const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
           const baseColor = cloudColor(midAlt, cover);
-          const fadeColor = cloudColor(midAlt, cover * 0.2);
+          const fadeColor = cloudColor(midAlt, cover * 0.4);
           grad.addColorStop(0, fadeColor);
           grad.addColorStop(0.3, baseColor);
           grad.addColorStop(0.7, baseColor);
