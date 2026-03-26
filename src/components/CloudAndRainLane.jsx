@@ -11,20 +11,26 @@ const FALLBACK_ALT = {
   600: 4200, 500: 5500, 400: 7200, 300: 9000,
 };
 
+// Pressure level labels shown on chart (Windy-style)
+const LEVEL_LABELS = [
+  { pressure: 300, label: '300h 9km' },
+  { pressure: 500, label: '500h 5km' },
+  { pressure: 700, label: '700h 3km' },
+  { pressure: 850, label: '850h 1.5km' },
+];
+
 // Map altitude (meters) to Y pixel (top = MAX_ALT, bottom = 0)
 function altToY(alt) {
-  return LANE_HEIGHT * (1 - alt / MAX_ALT);
+  return LANE_HEIGHT * (1 - Math.min(alt, MAX_ALT) / MAX_ALT);
 }
 
-// Interpolate color: higher clouds are lighter/bluer, lower clouds are darker/grayer
+// Windy-style cloud color: dense grays, high contrast
 function cloudColor(alt, cover) {
-  const t = Math.min(alt / MAX_ALT, 1); // 0 = ground, 1 = high
-  // Low clouds: dark gray. High clouds: steel blue-gray.
-  const r = Math.round(70 + t * 80);    // 70 → 150
-  const g = Math.round(70 + t * 80);    // 70 → 150
-  const b = Math.round(85 + t * 70);    // 85 → 155
-  const alpha = (cover / 100) * (0.9 - t * 0.15); // strong opacity, slight fade for high clouds
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const t = Math.min(alt / MAX_ALT, 1);
+  // Low clouds: very dark gray. High clouds: medium gray.
+  const v = Math.round(60 + t * 70); // 60 → 130
+  const alpha = (cover / 100) * (0.95 - t * 0.1);
+  return `rgba(${v}, ${v}, ${v + 10}, ${alpha})`;
 }
 
 export default function CloudAndRainLane({ data }) {
@@ -43,16 +49,25 @@ export default function CloudAndRainLane({ data }) {
 
     ctx.clearRect(0, 0, width, height);
 
-    // Altitude grid lines
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    // Light background tint for the cloud area
+    ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
+    ctx.fillRect(0, 0, width, height);
+
+    // Altitude grid lines with pressure level labels (Windy-style)
+    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 0.5;
-    for (const alt of [2000, 4000, 6000, 8000]) {
+    for (const { pressure, label } of LEVEL_LABELS) {
+      const alt = FALLBACK_ALT[pressure];
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
       ctx.stroke();
+      // Draw label at left edge
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.font = '8px sans-serif';
+      ctx.fillText(label, 3, y - 2);
     }
     ctx.setLineDash([]);
 
@@ -67,10 +82,10 @@ export default function CloudAndRainLane({ data }) {
           const lower = d.cloudByLevel[li];
           const upper = d.cloudByLevel[li + 1];
           const cover = Math.max(lower.cover, upper.cover);
-          if (cover < 3) continue; // skip negligible coverage
+          if (cover < 3) continue;
 
-          const altLow = Math.min(lower.altitude ?? FALLBACK_ALT[lower.pressure], MAX_ALT);
-          const altHigh = Math.min(upper.altitude ?? FALLBACK_ALT[upper.pressure], MAX_ALT);
+          const altLow = lower.altitude ?? FALLBACK_ALT[lower.pressure];
+          const altHigh = upper.altitude ?? FALLBACK_ALT[upper.pressure];
           const midAlt = (altLow + altHigh) / 2;
 
           const yTop = altToY(altHigh);
@@ -78,21 +93,20 @@ export default function CloudAndRainLane({ data }) {
           const layerH = yBot - yTop;
           if (layerH <= 0) continue;
 
-          // Soft watercolor gradient: peak opacity in center, fading at edges
+          // Windy-style: dense fill with soft edge fade
           const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
           const baseColor = cloudColor(midAlt, cover);
-          const fadeColor = cloudColor(midAlt, cover * 0.4);
-          grad.addColorStop(0, fadeColor);
-          grad.addColorStop(0.3, baseColor);
-          grad.addColorStop(0.7, baseColor);
-          grad.addColorStop(1, fadeColor);
+          const edgeColor = cloudColor(midAlt, cover * 0.5);
+          grad.addColorStop(0, edgeColor);
+          grad.addColorStop(0.2, baseColor);
+          grad.addColorStop(0.8, baseColor);
+          grad.addColorStop(1, edgeColor);
 
           ctx.fillStyle = grad;
-          // Extend 1px right for seamless columns
           ctx.fillRect(x, yTop, COL_WIDTH + 1, layerH);
         }
       } else {
-        // Fallback: use low/mid/high cloud cover with standard altitude ranges
+        // Fallback: use low/mid/high cloud cover
         const layers = [
           { cover: d.cloudLow, altLow: 0, altHigh: 2000 },
           { cover: d.cloudMid, altLow: 2000, altHigh: 6000 },
@@ -106,11 +120,11 @@ export default function CloudAndRainLane({ data }) {
 
           const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
           const baseColor = cloudColor(midAlt, layer.cover);
-          const fadeColor = cloudColor(midAlt, layer.cover * 0.2);
-          grad.addColorStop(0, fadeColor);
-          grad.addColorStop(0.3, baseColor);
-          grad.addColorStop(0.7, baseColor);
-          grad.addColorStop(1, fadeColor);
+          const edgeColor = cloudColor(midAlt, layer.cover * 0.5);
+          grad.addColorStop(0, edgeColor);
+          grad.addColorStop(0.2, baseColor);
+          grad.addColorStop(0.8, baseColor);
+          grad.addColorStop(1, edgeColor);
 
           ctx.fillStyle = grad;
           ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
@@ -131,7 +145,7 @@ export default function CloudAndRainLane({ data }) {
       // Main precipitation bar
       if (d.precipitation > 0) {
         const barHeight = Math.min(40, d.precipitation * 4);
-        ctx.fillStyle = 'rgba(13, 71, 161, 0.4)';
+        ctx.fillStyle = 'rgba(13, 71, 161, 0.5)';
         ctx.fillRect(x + COL_WIDTH / 2 - 4, height - barHeight, 8, barHeight);
       }
     }
