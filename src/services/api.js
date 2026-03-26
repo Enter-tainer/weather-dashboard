@@ -45,8 +45,13 @@ export async function fetchCityDataForDate(cityObj) {
     ensembleModel = 'ecmwf_ifs04';
   }
 
+  // Pressure levels for altitude-based cloud visualization
+  const pressureLevels = [1000, 925, 850, 700, 600, 500, 400, 300];
+  const cloudPressureParams = pressureLevels.map(p => `cloud_cover_${p}hPa`).join(',');
+  const geopotentialParams = pressureLevels.map(p => `geopotential_height_${p}hPa`).join(',');
+
   // Forecast API
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape&daily=sunrise,sunset${tzParams}`;
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,${cloudPressureParams},${geopotentialParams}&daily=sunrise,sunset${tzParams}`;
 
   // Ensemble API
   const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure&models=${ensembleModel}${tzParams}`;
@@ -158,6 +163,13 @@ export async function fetchCityDataForDate(cityObj) {
       cloudLow: forecastRes.hourly.cloud_cover_low[i],
       cloudMid: forecastRes.hourly.cloud_cover_mid[i],
       cloudHigh: forecastRes.hourly.cloud_cover_high[i],
+
+      // Pressure-level cloud cover and geopotential heights for altitude visualization
+      cloudByLevel: pressureLevels.map(p => ({
+        pressure: p,
+        cover: forecastRes.hourly[`cloud_cover_${p}hPa`]?.[i] || 0,
+        altitude: forecastRes.hourly[`geopotential_height_${p}hPa`]?.[i] || null,
+      })),
 
       tempMembers,
       precipMembers,
