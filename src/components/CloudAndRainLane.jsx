@@ -103,6 +103,30 @@ export default function CloudAndRainLane({ data }) {
         }
       }
 
+      // Cloud base line (Espy formula)
+      if (d.cloudBase != null && d.cloudBase >= 0 && d.cloudBase <= MAX_ALT) {
+        const yBase = altToY(d.cloudBase);
+        ctx.strokeStyle = 'rgba(180, 80, 40, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x, yBase);
+        ctx.lineTo(x + COL_WIDTH, yBase);
+        ctx.stroke();
+      }
+
+      // Cloud top line (from pressure-level data)
+      if (d.cloudTop != null && d.cloudTop >= 0 && d.cloudTop <= MAX_ALT) {
+        const yTop = altToY(d.cloudTop);
+        ctx.strokeStyle = 'rgba(40, 80, 180, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x, yTop);
+        ctx.lineTo(x + COL_WIDTH, yTop);
+        ctx.stroke();
+      }
+
       // Ensemble precipitation (background)
       if (d.precipMembers && d.precipMembers.length > 0) {
         ctx.fillStyle = 'rgba(33, 150, 243, 0.05)';

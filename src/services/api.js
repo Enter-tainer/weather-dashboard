@@ -1,5 +1,6 @@
 import { parseRoute } from './urlParser.js';
 import { getCached, setCache, cachedFetch, TTL_GEO, TTL_WEATHER } from './cache.js';
+import SunCalc from 'suncalc';
 
 export async function getCityDetails(cityName) {
   const cacheKey = `geo:${cityName}`;
@@ -171,6 +172,20 @@ export async function fetchCityDataForDate(cityObj) {
         altitude: forecastRes.hourly[`geopotential_height_${p}hPa`]?.[i] || null,
       })),
 
+      // Cloud base (Espy formula) and cloud top (from pressure-level data)
+      cloudBase: forecastRes.hourly.cloud_cover[i] > 5
+        ? Math.round(125 * (forecastRes.hourly.temperature_2m[i] - forecastRes.hourly.dew_point_2m[i]))
+        : null,
+      cloudTop: (() => {
+        const FALLBACK = { 1000: 100, 925: 750, 850: 1500, 700: 3000, 600: 4200, 500: 5500, 400: 7200, 300: 9000 };
+        for (let pi = pressureLevels.length - 1; pi >= 0; pi--) {
+          const p = pressureLevels[pi];
+          const cover = forecastRes.hourly[`cloud_cover_${p}hPa`]?.[i] || 0;
+          if (cover >= 10) return forecastRes.hourly[`geopotential_height_${p}hPa`]?.[i] || FALLBACK[p];
+        }
+        return null;
+      })(),
+
       tempMembers,
       precipMembers,
       windMembers,
@@ -195,8 +210,24 @@ export async function fetchCityDataForDate(cityObj) {
   if (forecastRes.daily && forecastRes.daily.sunset) {
     forecastRes.daily.sunset.forEach(s => { if (s) sunEvents.push({ type: 'sunset', time: new Date(s) }) });
   }
-  
+
+  // Moon events via SunCalc
+  const moonEvents = [];
+  const dateObj = new Date(date + 'T12:00:00');
+  const moonTimes = SunCalc.getMoonTimes(dateObj, latitude, longitude);
+  const moonIllum = SunCalc.getMoonIllumination(dateObj);
+  if (moonTimes.rise) moonEvents.push({ type: 'moonrise', time: moonTimes.rise, phase: moonIllum.phase, fraction: moonIllum.fraction });
+  if (moonTimes.set) moonEvents.push({ type: 'moonset', time: moonTimes.set, phase: moonIllum.phase, fraction: moonIllum.fraction });
+
+  // Add moon phase + fraction to each hourly data point
+  for (const item of combined) {
+    const illum = SunCalc.getMoonIllumination(new Date(item.time));
+    item.moonPhase = illum.phase;
+    item.moonFraction = illum.fraction;
+  }
+
   combined.sunEvents = sunEvents;
+  combined.moonEvents = moonEvents;
   return combined;
 }
 
@@ -204,6 +235,7 @@ function assembleTimeline(results) {
   const flatData = [];
   const globalSunEvents = [];
   const globalNightBands = [];
+  const globalMoonEvents = [];
 
   let currentOffset = 0;
   for (const res of results) {
@@ -246,11 +278,25 @@ function assembleTimeline(results) {
         }
      }
 
+     if (res.moonEvents) {
+        const cityStartTimeMs = new Date(res[0].time).getTime();
+        res.moonEvents.forEach(ev => {
+           const diffHours = (ev.time.getTime() - cityStartTimeMs) / 3600000;
+           if (diffHours >= 0 && diffHours <= res.length) {
+              globalMoonEvents.push({ ...ev, absoluteIndex: currentOffset + diffHours });
+           }
+        });
+        // Attach phase info to the city's range
+        globalMoonEvents.phase = globalMoonEvents.phase ?? res.moonEvents.phase;
+        globalMoonEvents.fraction = globalMoonEvents.fraction ?? res.moonEvents.fraction;
+     }
+
      currentOffset += res.length;
   }
 
   flatData.sunEvents = globalSunEvents;
   flatData.nightBands = globalNightBands;
+  flatData.moonEvents = globalMoonEvents;
 
   return flatData;
 }

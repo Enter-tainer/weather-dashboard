@@ -14,6 +14,7 @@ import PressureLane from './PressureLane';
 import CapeLane from './CapeLane';
 import WindLane, { getBeaufort } from './WindLane';
 import AirQualityLane from './AirQualityLane';
+import MoonLane from './MoonLane';
 import DashboardBackground from './DashboardBackground';
 
 import './Dashboard.css';
@@ -142,6 +143,7 @@ export default function Dashboard() {
           <div>星期</div>
           <div style={{ marginTop: '2px' }}>小时</div>
         </div>
+        <div className="legend-cell" style={{ height: '28px', fontSize: '11px', color: '#555' }}>月相</div>
         <div className="legend-cell" style={{ height: 'var(--lane-height-icon)', fontSize: '11px', color: '#555' }}>天气</div>
 
         <div className="legend-cell" style={{ height: 'var(--lane-height-uv)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
@@ -184,6 +186,10 @@ export default function Dashboard() {
           <span style={{ position: 'absolute', top: '72px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
           <span style={{ position: 'absolute', top: '102px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
           <span style={{ position: 'absolute', bottom: '18px', right: '2px', fontSize: '8px', color: '#aaa' }}>0</span>
+          <div style={{ position: 'absolute', bottom: '24px', left: '2px', fontSize: '7px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '2px', backgroundColor: 'rgba(180,80,40,0.6)' }}></span><span style={{ color: '#b45028' }}>底</span>
+            <span style={{ display: 'inline-block', width: '8px', height: '2px', backgroundColor: 'rgba(40,80,180,0.6)' }}></span><span style={{ color: '#2850b4' }}>顶</span>
+          </div>
           <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '10px', color: '#0d47a1' }}>降水<span style={{fontSize: '8px', opacity: 0.7, marginLeft: '1px'}}>mm</span></div>
         </div>
 
@@ -225,6 +231,7 @@ export default function Dashboard() {
         <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
           <DashboardBackground data={data} />
           <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
+          <MoonLane data={data} />
           <WeatherIconLane data={data} />
           <UVLane data={data} />
           <HumidityLane data={data} />
