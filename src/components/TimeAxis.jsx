@@ -1,6 +1,18 @@
 import { Sunrise, Sunset, Moon, MapPin } from 'lucide-react';
 import './Dashboard.css';
 
+function getMoonPhaseName(phase) {
+  if (phase < 0.0625) return '新月';
+  if (phase < 0.1875) return '蛾眉月';
+  if (phase < 0.3125) return '上弦月';
+  if (phase < 0.4375) return '盈凸月';
+  if (phase < 0.5625) return '满月';
+  if (phase < 0.6875) return '亏凸月';
+  if (phase < 0.8125) return '下弦月';
+  if (phase < 0.9375) return '残月';
+  return '新月';
+}
+
 export default function TimeAxis({ data, switchInfo, onCityClick }) {
   const COL_WIDTH = 22;
 
@@ -34,7 +46,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
           return (
             <div key={`block-${group.startIndex}`} style={{ display: 'flex', position: 'relative' }}>
               {/* Sticky label anchor - zero width so it doesn't affect cell layout */}
-              <div style={{ position: 'sticky', left: 0, width: 0, zIndex: 15, flexShrink: 0 }}>
+              <div style={{ position: 'sticky', left: 0, width: 0, zIndex: 100, flexShrink: 0 }}>
                 <div
                   onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}
                   style={{
@@ -116,6 +128,8 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
            const hh = ev.time.getHours().toString().padStart(2, '0');
            const isRise = ev.type === 'moonrise';
            const color = isRise ? '#5c6bc0' : '#37474f';
+           const arrow = isRise ? '↑' : '↓';
+           const phaseName = getMoonPhaseName(ev.phase);
 
            return (
              <div key={`moon-${i}`} style={{
@@ -126,9 +140,10 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
              }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', background: 'rgba(255,255,255,0.85)', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>
-                   <Moon size={10} color={color} /> {hh}:{mm}
+                   <Moon size={10} color={color} />{arrow}{hh}:{mm}
                 </div>
-                <div style={{ height: '17px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.6 }} />
+                <div style={{ fontSize: '8px', color: color, opacity: 0.7, marginTop: '1px' }}>{phaseName}</div>
+                <div style={{ height: '10px', width: '1px', backgroundColor: color, marginTop: '1px', opacity: 0.6 }} />
              </div>
            );
         })}
