@@ -142,7 +142,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', background: 'rgba(255,255,255,0.85)', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>
                    <Moon size={10} color={color} />{arrow}{hh}:{mm}
                 </div>
-                <div style={{ fontSize: '8px', color: color, opacity: 0.7, marginTop: '1px' }}>{phaseName}</div>
+                <div style={{ fontSize: '8px', color: color, opacity: 0.7, marginTop: '1px' }}>{phaseName} {Math.round(ev.fraction * 100)}%</div>
                 <div style={{ height: '10px', width: '1px', backgroundColor: color, marginTop: '1px', opacity: 0.6 }} />
              </div>
            );
