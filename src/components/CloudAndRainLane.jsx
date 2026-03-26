@@ -125,32 +125,29 @@ export default function CloudAndRainLane({ data }) {
 
   return (
     <div className="lane cloud-rain-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
-      <div className="lane-data" style={{ position: 'relative' }}>
-        <canvas
-          ref={canvasRef}
-          style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }}
-        />
-        {/* Sticky pressure level labels */}
+      {/* Sticky pressure level labels — must be direct children of .lane for sticky to work */}
+      <div style={{ position: 'sticky', left: 0, width: 0, height: 0, zIndex: 10, pointerEvents: 'none', flexShrink: 0 }}>
         {LEVEL_LABELS.map(({ pressure, label }) => {
           const y = altToY(FALLBACK_ALT[pressure]);
           return (
             <div
               key={pressure}
               style={{
-                position: 'sticky', left: 0, width: 0, height: 0,
-                zIndex: 10, pointerEvents: 'none',
-              }}
-            >
-              <div style={{
                 position: 'absolute', top: `${y - 11}px`, left: '2px',
                 fontSize: '8px', color: 'rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
                 fontFamily: 'sans-serif',
-              }}>
-                {label}
-              </div>
+              }}
+            >
+              {label}
             </div>
           );
         })}
+      </div>
+      <div className="lane-data" style={{ position: 'relative' }}>
+        <canvas
+          ref={canvasRef}
+          style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }}
+        />
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
           {data.map((item, index) => (
             <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '45px' }}>
