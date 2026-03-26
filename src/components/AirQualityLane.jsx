@@ -44,7 +44,7 @@ export default function AirQualityLane({ data }) {
             const bgColor = getVisibilityColor(visKm !== '-' ? parseFloat(visKm) : null);
             
             return (
-              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, borderRight: '1px solid rgba(0,0,0,0.05)', color: '#444' }}>
+              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, color: '#444' }}>
                 {index % 3 === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
               </div>
             );

@@ -149,15 +149,23 @@ export default function CloudAndRainLane({ data }) {
           style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }}
         />
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
-          {data.map((item, index) => (
-            <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '45px' }}>
-               {item.precipitation > 0 && (
-                  <span style={{ color: '#0d47a1', fontSize: '9px', fontWeight: 'bold' }}>
-                    {item.precipitation.toFixed(1)}
-                  </span>
-               )}
-            </div>
-          ))}
+          {data.map((item, index) => {
+            const barHeight = item.precipitation > 0 ? Math.min(40, item.precipitation * 4) : 0;
+            return (
+              <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: `${barHeight + 2}px` }}>
+                 {item.precipitation > 0 && (
+                    <span style={{ 
+                      color: '#0d47a1', 
+                      fontSize: '9px', 
+                      fontWeight: 'bold',
+                      textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 0px 4px rgba(255,255,255,0.8)'
+                    }}>
+                      {item.precipitation.toFixed(1)}
+                    </span>
+                 )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
