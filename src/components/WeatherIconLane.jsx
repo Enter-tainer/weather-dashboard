@@ -1,13 +1,13 @@
 import './Dashboard.css';
-import { Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning, HelpCircle } from 'lucide-react';
+import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning, HelpCircle } from 'lucide-react';
 
-function getWeatherIcon(code) {
+function getWeatherIcon(code, isNight) {
   const props = { size: 18, color: '#444' };
   
-  if (code === 0) return <Sun {...props} color="#e69c00" />; // Clear sky
-  if (code === 1) return <CloudSun {...props} color="#deba37" />; // Mainly clear
-  if (code === 2) return <Cloud {...props} color="#888" />; // Partly cloudy
-  if (code === 3) return <Cloud {...props} color="#666" />; // Overcast
+  if (code === 0) return isNight ? <Moon {...props} color="#64748b" /> : <Sun {...props} color="#e69c00" />; // Clear sky
+  if (code === 1) return isNight ? <CloudMoon {...props} color="#64748b" /> : <CloudSun {...props} color="#deba37" />; // Mainly clear
+  if (code === 2) return <Cloud {...props} color={isNight ? "#64748b" : "#888"} />; // Partly cloudy
+  if (code === 3) return <Cloud {...props} color={isNight ? "#475569" : "#666"} />; // Overcast
   if ([45, 48].includes(code)) return <CloudFog {...props} />; // Fog
   if ([51, 53, 55].includes(code)) return <CloudDrizzle {...props} color="#3b82f6" />; // Drizzle
   if ([56, 57].includes(code)) return <CloudDrizzle {...props} color="#3b82f6" />; // Freezing Drizzle
@@ -32,7 +32,7 @@ export default function WeatherIconLane({ data }) {
 
           return (
             <div key={index} className="lane-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               {showIcon ? getWeatherIcon(item.weatherCode) : ''}
+               {showIcon ? getWeatherIcon(item.weatherCode, item.sunAltitude < 0) : ''}
             </div>
           );
         })}

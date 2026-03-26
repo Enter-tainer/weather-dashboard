@@ -1,6 +1,6 @@
 :root {
   /* Layout variables */
-  --lane-height-basic: 40px;
+  --lane-height-basic: 50px;
   --lane-height-icon: 28px;
   --lane-height-humidity: 35px;
   --lane-height-temp: 110px;

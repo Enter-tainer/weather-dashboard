@@ -45,28 +45,6 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
           const isSwitchable = !!slot;
           return (
             <div key={`block-${group.startIndex}`} style={{ display: 'flex', position: 'relative' }}>
-              {/* Sticky label anchor - zero width so it doesn't affect cell layout */}
-              <div style={{ position: 'sticky', left: 0, width: 0, zIndex: 100, flexShrink: 0 }}>
-                <div
-                  onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}
-                  style={{
-                    position: 'absolute', top: 0, left: 0, padding: '2px 8px',
-                    backgroundColor: 'rgba(232, 232, 232, 0.75)', fontWeight: 'bold', fontSize: '12px',
-                    whiteSpace: 'nowrap', borderRight: '1px solid #ccc',
-                    borderBottom: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: '3px',
-                    cursor: isSwitchable ? 'pointer' : 'default',
-                    userSelect: 'none',
-                  }}
-                >
-                  <MapPin size={12} color="#d32f2f" />
-                  {group.cityName}
-                  {isSwitchable && (
-                    <span style={{ fontSize: '9px', color: '#999', marginLeft: '4px' }}>
-                      {slot.activeIndex + 1}/{slot.entries.length}
-                    </span>
-                  )}
-                </div>
-              </div>
               {/* Lane cells for this city */}
               {group.items.map(({ item, index }) => {
                 const isFirstOfCity = index === group.startIndex;
@@ -74,12 +52,20 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                 const dateObj = new Date(item.time);
                 const dayStr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()];
                 const dateStr = `${dayStr} ${dateObj.getDate()}`;
+                
                 return (
                   <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
                     {isDateLabel && (
-                      <div style={{ position: 'absolute', top: '22px', left: '4px', fontSize: '12px', color: '#555', whiteSpace: 'nowrap', zIndex: 5 }}>
-                        {dateStr}
-                      </div>
+                      <>
+                        <div style={{ position: 'absolute', top: '2px', left: '4px', zIndex: 5, fontSize: '11px', color: '#333', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                          {dateStr}
+                        </div>
+                        {item.moonPhase != null && (
+                          <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: '#777', whiteSpace: 'nowrap', zIndex: 5 }}>
+                            {getMoonPhaseName(item.moonPhase)} {Math.round(item.moonFraction * 100)}%
+                          </div>
+                        )}
+                      </>
                     )}
                     <div style={{ fontSize: '12px', color: '#888', marginTop: 'auto' }}>
                       {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
@@ -107,19 +93,19 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
              <div key={`sun-${i}`} style={{
                 position: 'absolute',
                 left: `${exactX}px`,
-                top: '11px',
+                top: '34px',
                 transform: 'translateX(-50%)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
+                display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 21
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', background: 'rgba(255,255,255,0.85)', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', textShadow: '0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.9)' }}>
                    <IconComp size={10} color={color} /> {hh}:{mm}
                 </div>
-                <div style={{ height: '17px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.6 }} />
+                <div style={{ height: '6px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />
              </div>
            );
         })}
 
-        {/* Moon Events Overlay — same style as sun events */}
+        {/* Moon Events Overlay */}
         {data.moonEvents && data.moonEvents.map((ev, i) => {
            const exactX = ev.absoluteIndex * COL_WIDTH + COL_WIDTH / 2;
            if (exactX < 0 || exactX > data.length * COL_WIDTH) return null;
@@ -129,21 +115,19 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
            const isRise = ev.type === 'moonrise';
            const color = isRise ? '#5c6bc0' : '#37474f';
            const arrow = isRise ? '↑' : '↓';
-           const phaseName = getMoonPhaseName(ev.phase);
 
            return (
              <div key={`moon-${i}`} style={{
                 position: 'absolute',
                 left: `${exactX}px`,
-                top: '11px',
+                top: '16px',
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', background: 'rgba(255,255,255,0.85)', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', textShadow: '0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.9)' }}>
                    <Moon size={10} color={color} />{arrow}{hh}:{mm}
                 </div>
-                <div style={{ fontSize: '8px', color: color, opacity: 0.7, marginTop: '1px' }}>{phaseName} {Math.round(ev.fraction * 100)}%</div>
-                <div style={{ height: '10px', width: '1px', backgroundColor: color, marginTop: '1px', opacity: 0.6 }} />
+                <div style={{ height: '18px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />
              </div>
            );
         })}
