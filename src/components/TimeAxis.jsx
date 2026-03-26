@@ -1,6 +1,18 @@
 import { Sunrise, Sunset, MapPin } from 'lucide-react';
 import './Dashboard.css';
 
+function getMoonEmoji(phase) {
+  if (phase < 0.0625) return '🌑';
+  if (phase < 0.1875) return '🌒';
+  if (phase < 0.3125) return '🌓';
+  if (phase < 0.4375) return '🌔';
+  if (phase < 0.5625) return '🌕';
+  if (phase < 0.6875) return '🌖';
+  if (phase < 0.8125) return '🌗';
+  if (phase < 0.9375) return '🌘';
+  return '🌑';
+}
+
 export default function TimeAxis({ data, switchInfo, onCityClick }) {
   const COL_WIDTH = 22;
 
@@ -103,6 +115,31 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                    <IconComp size={10} color={color} /> {hh}:{mm}
                 </div>
                 <div style={{ height: '17px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.6 }} />
+             </div>
+           );
+        })}
+
+        {/* Moon Events Overlay */}
+        {data.moonEvents && data.moonEvents.map((ev, i) => {
+           const exactX = ev.absoluteIndex * COL_WIDTH + COL_WIDTH / 2;
+           if (exactX < 0 || exactX > data.length * COL_WIDTH) return null;
+
+           const mm = ev.time.getMinutes().toString().padStart(2, '0');
+           const hh = ev.time.getHours().toString().padStart(2, '0');
+           const isRise = ev.type === 'moonrise';
+           const emoji = getMoonEmoji(ev.phase);
+
+           return (
+             <div key={`moon-${i}`} style={{
+                position: 'absolute',
+                left: `${exactX}px`,
+                bottom: '1px',
+                transform: 'translateX(-50%)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
+             }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: '#7b6cb5', whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.85)', padding: '1px 3px', borderRadius: '3px', lineHeight: 1 }}>
+                   <span style={{ fontSize: '10px' }}>{emoji}</span> {isRise ? '↑' : '↓'}{hh}:{mm}
+                </div>
              </div>
            );
         })}
