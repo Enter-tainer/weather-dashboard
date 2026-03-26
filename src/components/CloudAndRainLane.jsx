@@ -11,7 +11,7 @@ const FALLBACK_ALT = {
   600: 4200, 500: 5500, 400: 7200, 300: 9000,
 };
 
-// Pressure level labels shown on chart (Windy-style)
+// Pressure level labels shown as sticky overlays
 const LEVEL_LABELS = [
   { pressure: 300, label: '300h 9km' },
   { pressure: 500, label: '500h 5km' },
@@ -27,7 +27,6 @@ function altToY(alt) {
 // Windy-style cloud color: dense grays, high contrast
 function cloudColor(alt, cover) {
   const t = Math.min(alt / MAX_ALT, 1);
-  // Low clouds: very dark gray. High clouds: medium gray.
   const v = Math.round(60 + t * 70); // 60 → 130
   const alpha = (cover / 100) * (0.95 - t * 0.1);
   return `rgba(${v}, ${v}, ${v + 10}, ${alpha})`;
@@ -49,25 +48,21 @@ export default function CloudAndRainLane({ data }) {
 
     ctx.clearRect(0, 0, width, height);
 
-    // Light background tint for the cloud area
+    // Light background tint
     ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
     ctx.fillRect(0, 0, width, height);
 
-    // Altitude grid lines with pressure level labels (Windy-style)
+    // Altitude grid lines (no canvas labels — they're in the sticky DOM overlay)
     ctx.setLineDash([4, 6]);
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 0.5;
-    for (const { pressure, label } of LEVEL_LABELS) {
+    for (const { pressure } of LEVEL_LABELS) {
       const alt = FALLBACK_ALT[pressure];
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
       ctx.stroke();
-      // Draw label at left edge
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.font = '8px sans-serif';
-      ctx.fillText(label, 3, y - 2);
     }
     ctx.setLineDash([]);
 
@@ -77,7 +72,6 @@ export default function CloudAndRainLane({ data }) {
       const x = i * COL_WIDTH;
 
       if (d.cloudByLevel) {
-        // Use pressure-level data with actual altitudes
         for (let li = 0; li < d.cloudByLevel.length - 1; li++) {
           const lower = d.cloudByLevel[li];
           const upper = d.cloudByLevel[li + 1];
@@ -90,20 +84,11 @@ export default function CloudAndRainLane({ data }) {
 
           const yTop = altToY(altHigh);
           const yBot = altToY(altLow);
-          const layerH = yBot - yTop;
-          if (layerH <= 0) continue;
+          if (yBot - yTop <= 0) continue;
 
-          // Windy-style: dense fill with soft edge fade
-          const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
-          const baseColor = cloudColor(midAlt, cover);
-          const edgeColor = cloudColor(midAlt, cover * 0.5);
-          grad.addColorStop(0, edgeColor);
-          grad.addColorStop(0.2, baseColor);
-          grad.addColorStop(0.8, baseColor);
-          grad.addColorStop(1, edgeColor);
-
-          ctx.fillStyle = grad;
-          ctx.fillRect(x, yTop, COL_WIDTH + 1, layerH);
+          // Flat fill, no edge gradient
+          ctx.fillStyle = cloudColor(midAlt, cover);
+          ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
         }
       } else {
         // Fallback: use low/mid/high cloud cover
@@ -118,15 +103,7 @@ export default function CloudAndRainLane({ data }) {
           const yTop = altToY(layer.altHigh);
           const yBot = altToY(layer.altLow);
 
-          const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
-          const baseColor = cloudColor(midAlt, layer.cover);
-          const edgeColor = cloudColor(midAlt, layer.cover * 0.5);
-          grad.addColorStop(0, edgeColor);
-          grad.addColorStop(0.2, baseColor);
-          grad.addColorStop(0.8, baseColor);
-          grad.addColorStop(1, edgeColor);
-
-          ctx.fillStyle = grad;
+          ctx.fillStyle = cloudColor(midAlt, layer.cover);
           ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
         }
       }
@@ -153,11 +130,32 @@ export default function CloudAndRainLane({ data }) {
 
   return (
     <div className="lane cloud-rain-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
-      <div className="lane-data">
+      <div className="lane-data" style={{ position: 'relative' }}>
         <canvas
           ref={canvasRef}
           style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }}
         />
+        {/* Sticky pressure level labels */}
+        {LEVEL_LABELS.map(({ pressure, label }) => {
+          const y = altToY(FALLBACK_ALT[pressure]);
+          return (
+            <div
+              key={pressure}
+              style={{
+                position: 'sticky', left: 0, width: 0, height: 0,
+                zIndex: 10, pointerEvents: 'none',
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: `${y - 11}px`, left: '2px',
+                fontSize: '8px', color: 'rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
+                fontFamily: 'sans-serif',
+              }}>
+                {label}
+              </div>
+            </div>
+          );
+        })}
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
           {data.map((item, index) => (
             <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '45px' }}>
