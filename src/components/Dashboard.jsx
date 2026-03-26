@@ -177,10 +177,14 @@ export default function Dashboard() {
         </div>
 
         <div className="legend-cell" style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '10px', width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>高云</div>
-          <div style={{ position: 'absolute', top: '45px', width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>中云</div>
-          <div style={{ position: 'absolute', top: '85px', width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>低云</div>
-          <div style={{ position: 'absolute', bottom: '10px', width: '100%', textAlign: 'center', fontSize: '11px', color: '#0d47a1' }}>降水<span style={{fontSize: '9px', opacity: 0.7, marginLeft: '2px'}}>mm</span></div>
+          <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>云<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>m</span></span>
+          <span style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '8px', color: '#aaa' }}>10k</span>
+          <span style={{ position: 'absolute', top: '27px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
+          <span style={{ position: 'absolute', top: '57px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
+          <span style={{ position: 'absolute', top: '72px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
+          <span style={{ position: 'absolute', top: '102px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
+          <span style={{ position: 'absolute', bottom: '18px', right: '2px', fontSize: '8px', color: '#aaa' }}>0</span>
+          <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '10px', color: '#0d47a1' }}>降水<span style={{fontSize: '8px', opacity: 0.7, marginLeft: '1px'}}>mm</span></div>
         </div>
 
         <div className="legend-cell" style={{ height: 'var(--lane-height-precip-prob)', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555' }}>
