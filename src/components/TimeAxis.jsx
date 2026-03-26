@@ -51,7 +51,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                   onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}
                   style={{
                     position: 'absolute', top: 0, left: 0, padding: '2px 8px',
-                    backgroundColor: '#e8e8e8', fontWeight: 'bold', fontSize: '12px',
+                    backgroundColor: 'rgba(232, 232, 232, 0.75)', fontWeight: 'bold', fontSize: '12px',
                     whiteSpace: 'nowrap', borderRight: '1px solid #ccc',
                     borderBottom: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: '3px',
                     cursor: isSwitchable ? 'pointer' : 'default',
