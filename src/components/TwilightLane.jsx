@@ -25,12 +25,38 @@ function lerpColor(a, b, t) {
 export default function TwilightLane({ data }) {
   if (!data || data.length === 0) return null;
 
-  // Build CSS gradient from sun altitude per hour
-  const stops = data.map((item, i) => {
-    const color = altitudeToColor(item.sunAltitude ?? 10);
-    const pct = ((i + 0.5) / data.length) * 100;
-    return `${color} ${pct.toFixed(2)}%`;
-  });
+  // Build CSS gradient from sun altitude per hour, but with higher resolution
+  // to ensure short twilight phases (like golden hour) aren't skipped
+  // if they fall exactly between two hourly data points.
+  const stops = [];
+  const resolution = 4; // 4 stops per hour (every 15 mins)
+
+  for (let i = 0; i < data.length - 1; i++) {
+    const alt1 = data[i].sunAltitude ?? 10;
+    const alt2 = data[i+1].sunAltitude ?? 10;
+    
+    for (let s = 0; s < resolution; s++) {
+      const t = s / resolution;
+      const alt = alt1 + (alt2 - alt1) * t;
+      const color = altitudeToColor(alt);
+      const pct = ((i + 0.5 + t) / data.length) * 100;
+      stops.push(`${color} ${pct.toFixed(2)}%`);
+    }
+  }
+
+  // Add the final data point's center
+  if (data.length > 0) {
+    const lastIdx = data.length - 1;
+    const finalAlt = data[lastIdx].sunAltitude ?? 10;
+    const finalColor = altitudeToColor(finalAlt);
+    const finalPct = ((lastIdx + 0.5) / data.length) * 100;
+    stops.push(`${finalColor} ${finalPct.toFixed(2)}%`);
+    
+    // Add end stops to stretch nicely to the very edges of the div
+    const firstColor = altitudeToColor(data[0].sunAltitude ?? 10);
+    stops.unshift(`${firstColor} 0%`);
+    stops.push(`${finalColor} 100%`);
+  }
 
   const gradient = `linear-gradient(to right, ${stops.join(', ')})`;
 
