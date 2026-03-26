@@ -48,13 +48,13 @@ export default function Dashboard() {
       });
   }, []);
 
-  // Build a map: cityName -> { date, cities[], activeIndex } for switchable slots
+  // Build a map: displayName -> { date, entries[], activeIndex } for switchable slots
   const switchInfo = {};
   if (dateSlots) {
     for (const slot of dateSlots) {
-      if (slot.cities.length > 1) {
-        const activeCity = slot.cities[slot.activeIndex];
-        switchInfo[activeCity] = slot;
+      if (slot.entries.length > 1) {
+        const activeEntry = slot.entries[slot.activeIndex];
+        switchInfo[activeEntry.originalName] = slot;
       }
     }
   }
@@ -62,13 +62,13 @@ export default function Dashboard() {
   const handleCityClick = useCallback(async (cityName) => {
     if (switching || !dateSlots) return;
     // Find the slot containing this city
-    const slot = dateSlots.find(s => s.cities[s.activeIndex] === cityName);
-    if (!slot || slot.cities.length <= 1) return;
+    const slot = dateSlots.find(s => s.entries[s.activeIndex].originalName === cityName);
+    if (!slot || slot.entries.length <= 1) return;
 
     setSwitching(true);
     const newSlots = dateSlots.map(s => {
       if (s === slot) {
-        return { ...s, activeIndex: (s.activeIndex + 1) % s.cities.length };
+        return { ...s, activeIndex: (s.activeIndex + 1) % s.entries.length };
       }
       return s;
     });

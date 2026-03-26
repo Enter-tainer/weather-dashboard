@@ -1,3 +1,23 @@
+// Format: ?route=location~display:date;location~display:date
+// location = cityName | lat,lon
+// ~ and display are optional
+// ; separates entries
+
+const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
+
+function parseEntry(part) {
+  const [locationSpec, date] = part.split(':');
+  const [location, displayName] = locationSpec.split('~');
+
+  if (COORD_RE.test(location)) {
+    const [lat, lon] = location.split(',').map(Number);
+    const originalName = displayName || `${lat}°, ${lon}°`;
+    return { lat, lon, date, originalName };
+  }
+
+  return { city: location, date, originalName: displayName || location };
+}
+
 export async function parseRoute() {
   const params = new URLSearchParams(window.location.search);
   const routeStr = params.get('route');
@@ -13,54 +33,46 @@ export async function parseRoute() {
     }
   }
 
-  // Custom format: ?route=City1:2024-03-26,City2:2024-03-27
-  return routeStr.split(',').map(part => {
-    const [city, date] = part.split(':');
-    return { city, date, originalName: city };
-  });
+  return routeStr.split(';').map(parseEntry);
 }
 
 // Parse route entries and group by date.
-// Returns { dateSlots: [{date, cities: [name, ...], activeIndex}], allCities: [...] }
-// where dateSlots with multiple cities support switching.
+// Returns { dateSlots: [{date, entries: [{city?, lat?, lon?, originalName}, ...], activeIndex}] }
+// where dateSlots with multiple entries support switching.
 export function parseSwitchableRoute() {
   const params = new URLSearchParams(window.location.search);
   const routeStr = params.get('route');
   if (!routeStr) return null;
 
-  const entries = routeStr.split(',').map(part => {
-    const [city, date] = part.split(':');
-    return { city, date };
-  });
+  const entries = routeStr.split(';').map(parseEntry);
 
   // Group by date
   const dateMap = new Map();
-  for (const { city, date } of entries) {
-    if (!dateMap.has(date)) dateMap.set(date, []);
-    dateMap.get(date).push(city);
+  for (const entry of entries) {
+    if (!dateMap.has(entry.date)) dateMap.set(entry.date, []);
+    dateMap.get(entry.date).push(entry);
   }
 
-  // Check if any date has multiple cities
+  // Check if any date has multiple entries
   let hasSwitchable = false;
-  for (const cities of dateMap.values()) {
-    if (cities.length > 1) { hasSwitchable = true; break; }
+  for (const group of dateMap.values()) {
+    if (group.length > 1) { hasSwitchable = true; break; }
   }
   if (!hasSwitchable) return null;
 
   const dateSlots = [];
-  for (const [date, cities] of dateMap) {
-    dateSlots.push({ date, cities, activeIndex: 0 });
+  for (const [date, group] of dateMap) {
+    dateSlots.push({ date, entries: group, activeIndex: 0 });
   }
   return { dateSlots };
 }
 
-// Build route for specific active selections: [{date, city}, ...]
+// Build route for specific active selections
 export function buildRouteForSelections(dateSlots) {
-  return dateSlots.map(slot => ({
-    city: slot.cities[slot.activeIndex],
-    date: slot.date,
-    originalName: slot.cities[slot.activeIndex],
-  }));
+  return dateSlots.map(slot => {
+    const entry = slot.entries[slot.activeIndex];
+    return { ...entry, date: slot.date };
+  });
 }
 
 function generate7Days(city, _unused, originalName, lat, lon) {
@@ -96,7 +108,6 @@ async function reverseGeocode(lat, lon) {
     );
     const data = await res.json();
     const a = data.address || {};
-    // 优先取城市 > 区县 > 省 > 国家
     return a.city || a.town || a.village || a.county || a.state || a.country || '当前位置';
   } catch {
     return '当前位置';
