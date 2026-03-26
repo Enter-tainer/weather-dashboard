@@ -24,12 +24,10 @@ function altToY(alt) {
   return LANE_HEIGHT * (1 - Math.min(alt, MAX_ALT) / MAX_ALT);
 }
 
-// Windy-style cloud color: dense grays, high contrast
-function cloudColor(alt, cover) {
-  const t = Math.min(alt / MAX_ALT, 1);
-  const v = Math.round(60 + t * 70); // 60 → 130
-  const alpha = (cover / 100) * (0.95 - t * 0.1);
-  return `rgba(${v}, ${v}, ${v + 10}, ${alpha})`;
+// Uniform cloud color — only alpha varies with coverage
+function cloudColor(cover) {
+  const alpha = (cover / 100) * 0.85;
+  return `rgba(90, 90, 100, ${alpha})`;
 }
 
 export default function CloudAndRainLane({ data }) {
@@ -80,14 +78,12 @@ export default function CloudAndRainLane({ data }) {
 
           const altLow = lower.altitude ?? FALLBACK_ALT[lower.pressure];
           const altHigh = upper.altitude ?? FALLBACK_ALT[upper.pressure];
-          const midAlt = (altLow + altHigh) / 2;
 
           const yTop = altToY(altHigh);
           const yBot = altToY(altLow);
           if (yBot - yTop <= 0) continue;
 
-          // Flat fill, no edge gradient
-          ctx.fillStyle = cloudColor(midAlt, cover);
+          ctx.fillStyle = cloudColor(cover);
           ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
         }
       } else {
@@ -99,11 +95,10 @@ export default function CloudAndRainLane({ data }) {
         ];
         for (const layer of layers) {
           if (layer.cover < 3) continue;
-          const midAlt = (layer.altLow + layer.altHigh) / 2;
           const yTop = altToY(layer.altHigh);
           const yBot = altToY(layer.altLow);
 
-          ctx.fillStyle = cloudColor(midAlt, layer.cover);
+          ctx.fillStyle = cloudColor(layer.cover);
           ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
         }
       }
