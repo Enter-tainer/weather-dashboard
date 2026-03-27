@@ -19,6 +19,15 @@ const LEVEL_LABELS = [
   { pressure: 850, label: '850h 1.5km' },
 ];
 
+// Precipitation color by weather code type
+function precipColor(code, alpha = 0.6) {
+  if ([95, 96, 99].includes(code)) return `rgba(107, 33, 168, ${alpha})`; // thunderstorm — purple
+  if ([56, 57, 66, 67].includes(code)) return `rgba(139, 92, 246, ${alpha})`; // freezing — violet
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(56, 189, 248, ${alpha})`; // snow — light blue
+  if ([51, 53, 55].includes(code)) return `rgba(96, 165, 250, ${alpha})`; // drizzle — medium blue
+  return `rgba(13, 71, 161, ${alpha})`; // rain (default) — dark blue
+}
+
 // Map altitude (meters) to Y pixel (top = MAX_ALT, bottom = 0)
 function altToY(alt) {
   return LANE_HEIGHT * (1 - Math.min(alt, MAX_ALT) / MAX_ALT);
@@ -114,10 +123,10 @@ export default function CloudAndRainLane({ data }) {
         });
       }
 
-      // Main precipitation bar
+      // Main precipitation bar — colored by type
       if (d.precipitation > 0) {
         const barHeight = Math.min(40, d.precipitation * 4);
-        ctx.fillStyle = 'rgba(13, 71, 161, 0.5)';
+        ctx.fillStyle = precipColor(d.weatherCode, 0.5);
         ctx.fillRect(x + COL_WIDTH / 2 - 4, height - barHeight, 8, barHeight);
       }
     }
@@ -154,9 +163,9 @@ export default function CloudAndRainLane({ data }) {
             return (
               <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: `${barHeight + 2}px` }}>
                  {item.precipitation > 0 && (
-                    <span style={{ 
-                      color: '#0d47a1', 
-                      fontSize: '9px', 
+                    <span style={{
+                      color: precipColor(item.weatherCode, 1),
+                      fontSize: '9px',
                       fontWeight: 'bold',
                       textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 0px 4px rgba(255,255,255,0.8)'
                     }}>
