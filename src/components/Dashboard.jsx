@@ -20,13 +20,15 @@ import LocationLane from './LocationLane';
 
 import './Dashboard.css';
 
-export default function Dashboard() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function Dashboard({ testData }) {
+  const [data, setData] = useState(testData || null);
+  const [loading, setLoading] = useState(!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
+    if (testData) return; // Skip fetching when using mock data
+
     const switchable = parseSwitchableRoute();
     let fetchPromise;
 
@@ -48,7 +50,7 @@ export default function Dashboard() {
         console.error(err);
         setLoading(false);
       });
-  }, []);
+  }, [testData]);
 
   // Build a map: displayName -> { date, entries[], activeIndex } for switchable slots
   const switchInfo = {};
