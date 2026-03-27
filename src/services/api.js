@@ -199,18 +199,31 @@ export async function fetchCityDataForDate(cityObj) {
     });
   }
 
-  // Compute timezone offset: API returns local times without offset,
-  // but JS Date parses them as UTC. We need to adjust for SunCalc.
-  const tzOffsetMs = getTimezoneOffsetMs(timezone, date);
-  const toUtc = (localStr) => new Date(new Date(localStr).getTime() + tzOffsetMs);
+  // Use utc_offset_seconds from API response for reliable timezone handling.
+  // API returns local times without offset; JS Date parses them as browser-local.
+  // driftMs = target_offset - browser_offset (the gap between the two).
+  const targetOffsetMs = (forecastRes?.utc_offset_seconds ?? ensembleRes?.utc_offset_seconds ?? 0) * 1000;
+  const browserOffsetMs = -new Date(date + 'T12:00:00').getTimezoneOffset() * 60000;
+  const driftMs = targetOffsetMs - browserOffsetMs;
+  const toUtc = (localStr) => new Date(new Date(localStr).getTime() - driftMs);
+  const fromUtc = (utcDate) => new Date(utcDate.getTime() + driftMs);
+
+  // Resolve the IANA timezone name for toLocaleString (handles timezone='auto')
+  const resolvedTz = forecastRes?.timezone || ensembleRes?.timezone || timezone;
+  const localTime = (utcDate) => {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: resolvedTz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(utcDate);
+    const h = parseInt(parts.find(p => p.type === 'hour').value);
+    const m = parseInt(parts.find(p => p.type === 'minute').value);
+    return { localHour: h, localMinute: m };
+  };
 
   // Sun, moon & twilight events via SunCalc
   const dateObj = toUtc(date + 'T12:00:00');
   const sunTimes = SunCalc.getTimes(dateObj, latitude, longitude);
 
   const sunEvents = [];
-  if (sunTimes.sunrise) sunEvents.push({ type: 'sunrise', time: sunTimes.sunrise });
-  if (sunTimes.sunset) sunEvents.push({ type: 'sunset', time: sunTimes.sunset });
+  if (sunTimes.sunrise) sunEvents.push({ type: 'sunrise', time: fromUtc(sunTimes.sunrise), ...localTime(sunTimes.sunrise) });
+  if (sunTimes.sunset) sunEvents.push({ type: 'sunset', time: fromUtc(sunTimes.sunset), ...localTime(sunTimes.sunset) });
 
   // Compute sun altitude for each hour (for twilight gradient lane)
   for (const item of combined) {
@@ -221,8 +234,8 @@ export async function fetchCityDataForDate(cityObj) {
   const moonEvents = [];
   const moonTimes = SunCalc.getMoonTimes(dateObj, latitude, longitude);
   const moonIllum = SunCalc.getMoonIllumination(dateObj);
-  if (moonTimes.rise) moonEvents.push({ type: 'moonrise', time: moonTimes.rise, phase: moonIllum.phase, fraction: moonIllum.fraction });
-  if (moonTimes.set) moonEvents.push({ type: 'moonset', time: moonTimes.set, phase: moonIllum.phase, fraction: moonIllum.fraction });
+  if (moonTimes.rise) moonEvents.push({ type: 'moonrise', time: fromUtc(moonTimes.rise), ...localTime(moonTimes.rise), phase: moonIllum.phase, fraction: moonIllum.fraction });
+  if (moonTimes.set) moonEvents.push({ type: 'moonset', time: fromUtc(moonTimes.set), ...localTime(moonTimes.set), phase: moonIllum.phase, fraction: moonIllum.fraction });
 
   // Add moon phase + fraction to each hourly data point
   for (const item of combined) {
