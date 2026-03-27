@@ -18,8 +18,8 @@ export default function CapeLane({ data }) {
            const bgColor = getCapeColor(cape);
            return (
              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                {index % 3 === 0 && cape > 100 && (
-                   <span style={{ fontSize: '9px', color: '#444', fontWeight: 'bold' }}>{Math.round(cape)}</span>
+               {cape > 0 && (
+                 <span style={{ fontSize: '8px', color: '#444', fontWeight: 'bold' }}>{Math.round(cape)}</span>
                 )}
              </div>
            );

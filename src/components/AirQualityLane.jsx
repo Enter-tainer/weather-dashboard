@@ -29,7 +29,7 @@ export default function AirQualityLane({ data }) {
             const color = item.aqiUS > 150 ? '#fff' : '#111';
             return (
               <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, fontSize: '11px', color }}>
-                {index % 3 === 0 ? item.aqiUS : ''}
+                {item.aqiUS}
               </div>
             );
           })}
@@ -45,7 +45,7 @@ export default function AirQualityLane({ data }) {
             
             return (
               <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, color: '#444' }}>
-                {index % 3 === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
+                {visKm !== '-' ? parseFloat(visKm) : ''}
               </div>
             );
           })}
