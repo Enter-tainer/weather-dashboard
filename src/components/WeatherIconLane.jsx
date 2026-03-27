@@ -103,10 +103,11 @@ export default function WeatherIconLane({ data }) {
         {data.map((_, index) => (
           <div key={index} className="lane-cell" />
         ))}
-        {/* Merged icon spans */}
-        {spans.map((span) => {
+        {/* Merged icon spans with alternating background */}
+        {spans.map((span, spanIdx) => {
           const left = span.startIndex * COL_WIDTH;
           const width = span.count * COL_WIDTH;
+          const bg = spanIdx % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent';
           return (
             <div
               key={span.startIndex}
@@ -120,6 +121,8 @@ export default function WeatherIconLane({ data }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 pointerEvents: 'none',
+                backgroundColor: bg,
+                borderRight: '1px solid rgba(0,0,0,0.06)',
               }}
             >
               <img
@@ -127,7 +130,7 @@ export default function WeatherIconLane({ data }) {
                 alt=""
                 width={22}
                 height={22}
-                style={{ display: 'block', filter: 'contrast(1.3) saturate(1.2)' }}
+                style={{ display: 'block' }}
               />
             </div>
           );
