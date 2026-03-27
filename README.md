@@ -1,61 +1,128 @@
-# 🌤️ Windy-Style Pro Weather Dashboard
+# Weather Dashboard / 天气面板
 
 ![Dashboard Screenshot](./demo.jpg)
 
-> A high-density, professional-grade meteorological dashboard built with React and HTML5 Canvas, deeply integrated with the [Open-Meteo API](https://open-meteo.com/).
+A [Windy](https://www.windy.com/)-style weather dashboard built with React + Canvas. All data comes from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
 
-This project moves beyond standard consumer weather apps, rendering high-fidelity meteorological data with advanced visualizations like **Ensemble Spaghetti Plots**, **CAPE Heatmaps**, and **Precise Sun Event Shading**, inspired by industry leaders like [Windy.com](https://www.windy.com/).
+一个类 [Windy](https://www.windy.com/) 风格的天气面板，用 React + Canvas 画的，数据全部来自 [Open-Meteo](https://open-meteo.com/)（免费，不需要 API key）。
 
-## ✨ Key Features
+The focus is on **information density** — ensemble forecasts, CAPE, cloud layers, pressure fields, all stacked on a single horizontally-scrollable timeline.
 
-- **Multi-City & Multi-Date Unified Timeline**: Pass routing parameters to sequentially track weather across different locations and dates in a single unbroken horizontal scroll. (e.g., `/?route=Beijing:2026-03-24,London:2026-03-26`)
-- **Advanced Ensemble Clustering**: Automatically queries `ecmwf_ifs04` (51 members), `icon_seamless`, or `gfs05` depending on forecast horizon to render **uncertainty plumes** and probability densities for **Temperature** and **Surface Pressure**.
-- **Dynamic Granular Lanes**:
-  - **CAPE (Convective Available Potential Energy)**: Heatmap-based warning blocks for convective and severe thunderstorm risks.
-  - **UV Index**: Dynamic safety-colored numbering.
-  - **Cloud Stratification**: Independent shading for High, Mid, and Low cloud coverage arrays.
-  - **Precipitation**: Precipitation probability (%) juxtaposed directly against the volume (mm) chart.
-  - **Wind Dynamics**: Uses strict Beaufort Scale (`bft`) mapping for base wind, plotted against dangerous peak gusts.
-- **Micro-Precision Sun Events**: Real-time cross-referencing with exact `sunrise` and `sunset` times to draw pixel-perfect physical night-shade bands directly over the time axis, eliminating fixed 18:00–06:00 rendering artifacts.
-- **Fallback Resilience**: Intelligent fallback logic seamlessly degrades from exact deterministic models to cluster-mean aggregations for queries extending >15 days into the future.
+重点在于**信息密度**——集合预报、CAPE、云层分层、气压场，全部堆在一条可以横向滚动的时间轴上。
 
-## 🚀 Tech Stack
+## Features / 主要功能
 
-- **React 19** + **Vite**: Ultra-fast frontend component architecture.
-- **HTML Canvas 2D**: Performance-critical ensemble line rendering for hundreds of overlapping transparent members.
-- **Vanilla CSS Flexbox**: Strict flex-layout arrays controlling variable lane heights, ensuring zero horizontal misalignment across diverse data sources.
-- **Lucide React**: Crisp iconography for sun events and wind vectors.
+- **Multi-city itinerary** — chain "Beijing 3 days → London 4 days" in one unbroken scroll
+- **多城市行程拼接** — 在 URL 里写好「北京 3 天 → 伦敦 4 天」，一条时间轴滚到底
 
-## 📦 Getting Started
+- **Ensemble forecasts** — auto-selects ECMWF / ICON / GFS by forecast range, draws uncertainty bands & spaghetti lines
+- **集合预报** — 根据预报时距自动选 ECMWF / ICON / GFS 模型，画出不确定性区间和 spaghetti 线
 
-### Local Development
+- **CAPE heatmap** — convective risk at a glance
+- **CAPE 热力图** — 对流风险一目了然
 
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+- **UV index** — color-coded by safety level
+- **UV 指数** — 按安全等级自动着色
 
-2. Start the Vite development server:
-   ```bash
-   pnpm dev
-   ```
+- **Cloud layers** — high / mid / low clouds rendered independently
+- **云层分层** — 高 / 中 / 低云独立渲染
 
-3. Open your browser exactly to the printed local port (usually `localhost:5174`). Modify the URL query block (`?route=Shanghai:2026-03-26`) to instantly fetch new locations!
+- **Precipitation** — probability (%) side-by-side with volume (mm)
+- **降水** — 概率 (%) 和降水量 (mm) 并排对照
 
-### Build for Production
+- **Wind** — Beaufort scale blocks + gust peaks
+- **风力** — 蒲福风级色块 + 阵风峰值
+
+- **Sunrise / sunset shading** — uses real sunrise/sunset times, not a naive 18:00–06:00 cutoff
+- **日出日落着色** — 用真实 sunrise/sunset 时间画夜间阴影，不是 18:00–06:00 一刀切
+
+- **Long-range fallback** — beyond 15 days, auto-switches from deterministic models to ensemble mean
+- **远期降级** — 超过 15 天自动从确定性模型切到集合均值，不会直接报错
+
+## Tech Stack / 技术栈
+
+React 19 + Vite. Charts are hand-drawn on Canvas 2D (hundreds of semi-transparent ensemble lines — DOM can't handle it). Layout via CSS Flexbox, icons from Lucide React.
+
+React 19 + Vite，图表用 Canvas 2D 手绘（集合预报几百条半透明线，DOM 扛不住），布局用 CSS Flexbox，图标用 Lucide React。
+
+## URL Parameters / URL 参数
+
+Everything is configured via the `route` query parameter. No login, no config files.
+
+所有配置都通过 URL 的 `route` 参数传，不需要登录也不需要配置文件。
+
+### Format / 格式
+
+```
+?route=location[~displayName]:date;location[~displayName]:date;...
+```
+
+- **location**: city name (`Beijing`, `上海`, etc.) or coordinates (`35.68,139.69`)
+- **位置**：城市名（`Beijing`、`上海` 都行）或经纬度（`35.68,139.69`）
+
+- **~displayName**: optional, overrides the label shown on the chart
+- **~显示名**：可选，用来覆盖图表上方显示的地名
+
+- **date**: `YYYY-MM-DD`
+- **日期**：`YYYY-MM-DD`
+
+Entries are separated by `;`.
+
+条目之间用 `;` 隔开。
+
+### Examples / 举几个例子
+
+Single city, next few days: / 一个城市，看未来几天：
+```
+/?route=Shanghai:2026-03-28
+```
+
+Multi-city trip, stitched together: / 出差行程，三段拼在一起：
+```
+/?route=Beijing:2026-03-24;London:2026-03-27;New%20York:2026-03-30
+```
+
+Coordinates with a custom display name: / 用坐标定位，顺便自定义显示名：
+```
+/?route=35.68,139.69~东京:2026-03-28
+```
+
+Two cities on the same date — a toggle button appears for quick comparison: / 同一天挂两个城市，界面上会出现切换按钮，方便对比：
+```
+/?route=Beijing~北京:2026-03-28;Shanghai~上海:2026-03-28
+```
+
+### Without parameters / 不传参数的话
+
+The app tries browser geolocation first (reverse-geocoded via Nominatim). If that fails, defaults to Beijing, showing the next 7 days.
+
+会先尝试浏览器定位拿你当前坐标（Nominatim 反查地名），拿不到就默认显示北京未来 7 天。
+
+## Getting Started / 本地开发
 
 ```bash
-pnpm build
+pnpm install
+pnpm dev
 ```
-The output will reside in the `/dist` directory, completely static and ready to be dragged and dropped onto generic hosts.
 
-## 🌐 Deploying independently
+Open the URL printed in the terminal (usually `localhost:5174`). Add `?route=...` to the address bar to switch cities.
 
-Because the app operates 100% on the client-side and interacts autonomously with the open-access Open-Meteo endpoint (no API keys required), it is exquisitely structured for static edge networks.
+打开终端输出的地址（一般是 `localhost:5174`），在地址栏加 `?route=...` 就能切换城市。
 
-- **Vercel**: Import the repository and set the framework preset to `Vite`.
-- **Netlify**: Same configuration. Build command: `pnpm build`, Publish directory: `dist`.
-- **GitHub Pages**: You can wrap the build out via GitHub Actions.
+Build output is fully static: / 构建产物是纯静态的：
 
----
-_Note: Geocoding is natively built right into the dashboard parser (`/v1/search`), meaning arbitrary string locations correctly resolve lat/long independently._
+```bash
+pnpm build    # outputs to dist/  输出到 dist/
+```
+
+## Deployment / 部署
+
+Pure frontend, no backend. Drop it on any static host: / 纯前端，没有后端，随便丢到静态托管上：
+
+- **Vercel** — import repo, set framework to Vite / 导入仓库，框架选 Vite
+- **Netlify** — Build command `pnpm build`, Publish directory `dist`
+- **GitHub Pages** — run build via Actions / 用 Actions 跑一下 build 就好
+
+Geocoding is done client-side via Open-Meteo's `/v1/search` — no extra backend needed.
+
+地名解析是客户端直接调 Open-Meteo 的 `/v1/search` 完成的，不需要额外服务。
