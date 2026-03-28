@@ -68,13 +68,18 @@ function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
     .slice(0, maxCount);
 }
 
+function getDay(item) {
+  return item.time?.slice(0, 10) || '';
+}
+
 function computeMergedRuns(data) {
   const runs = [];
   let i = 0;
   while (i < data.length) {
     const code = data[i].weatherCode;
+    const day = getDay(data[i]);
     const start = i;
-    while (i < data.length && data[i].weatherCode === code) i++;
+    while (i < data.length && data[i].weatherCode === code && getDay(data[i]) === day) i++;
     runs.push({ code, start, length: i - start });
   }
   return runs;
