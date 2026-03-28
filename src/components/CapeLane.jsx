@@ -4,10 +4,10 @@ export default function CapeLane({ data }) {
   // CAPE J/kg ranges. Usually <1000 is mild, 1000-2000 is moderate, >2000 is severe
   const getCapeColor = (cape) => {
     if (cape < 100) return 'transparent';
-    if (cape < 500) return 'rgba(255, 235, 59, 0.3)'; // light yellow
-    if (cape < 1000) return 'rgba(255, 152, 0, 0.4)'; // orange
-    if (cape < 2000) return 'rgba(244, 67, 54, 0.5)'; // red
-    return 'rgba(156, 39, 176, 0.6)'; // purple
+    if (cape < 500) return 'rgba(255, 235, 59, 0.15)'; // light yellow
+    if (cape < 1000) return 'rgba(255, 170, 50, 0.2)'; // soft orange
+    if (cape < 2000) return 'rgba(244, 100, 80, 0.22)'; // soft red
+    return 'rgba(170, 80, 190, 0.25)'; // soft purple
   };
 
   return (

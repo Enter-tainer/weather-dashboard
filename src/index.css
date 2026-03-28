@@ -39,13 +39,13 @@
   --wind-8: #e8532f;
   --wind-9: #e82f2f;
   
-  /* AQI US Colors */
-  --aqi-good: #00e400;
-  --aqi-moderate: #ffff00;
-  --aqi-sg: #ff7e00;
-  --aqi-unhealthy: #ff0000;
-  --aqi-vu: #8f3f97;
-  --aqi-hazardous: #7e0023;
+  /* AQI US Colors - pastel/muted */
+  --aqi-good: rgba(0, 228, 0, 0.18);
+  --aqi-moderate: rgba(255, 230, 0, 0.22);
+  --aqi-sg: rgba(255, 160, 50, 0.25);
+  --aqi-unhealthy: rgba(255, 80, 80, 0.3);
+  --aqi-vu: rgba(160, 80, 170, 0.3);
+  --aqi-hazardous: rgba(160, 0, 50, 0.35);
 }
 
 * {

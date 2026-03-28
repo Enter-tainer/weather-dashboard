@@ -12,10 +12,10 @@ export default function AirQualityLane({ data }) {
 
   const getVisibilityColor = (visKm) => {
     if (visKm == null || visKm === '-') return 'transparent';
-    if (visKm >= 10) return 'rgba(0, 228, 0, 0.15)'; // OK
-    if (visKm >= 4) return 'rgba(255, 255, 0, 0.4)'; // Moderate haze
-    if (visKm >= 1) return 'rgba(255, 126, 0, 0.4)'; // Poor visibility
-    return 'rgba(255, 0, 0, 0.4)'; // Severe fog
+    if (visKm >= 10) return 'rgba(0, 228, 0, 0.08)'; // OK
+    if (visKm >= 4) return 'rgba(255, 230, 0, 0.15)'; // Moderate haze
+    if (visKm >= 1) return 'rgba(255, 160, 50, 0.18)'; // Poor visibility
+    return 'rgba(255, 80, 80, 0.22)'; // Severe fog
   };
 
   return (
@@ -26,7 +26,7 @@ export default function AirQualityLane({ data }) {
         <div className="lane-data">
           {data.map((item, index) => {
             const bgColor = getAqiColor(item.aqiUS);
-            const color = item.aqiUS > 150 ? '#fff' : '#111';
+            const color = '#333';
             return (
               <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, fontSize: '11px', color }}>
                 {item.aqiUS}
