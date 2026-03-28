@@ -15,6 +15,7 @@ import CapeLane from './CapeLane';
 import WindLane, { getBeaufort } from './WindLane';
 import AirQualityLane from './AirQualityLane';
 import DashboardBackground from './DashboardBackground';
+import WeatherAmbientBackground from './WeatherAmbientBackground';
 import TwilightLane from './TwilightLane';
 import LocationLane from './LocationLane';
 
@@ -244,6 +245,7 @@ export default function Dashboard({ testData }) {
       <div className="timeline-scroller">
         <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
           <DashboardBackground data={data} />
+          <WeatherAmbientBackground data={data} />
           <LocationLane data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
           <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
           <TwilightLane data={data} />
