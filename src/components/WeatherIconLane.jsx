@@ -101,7 +101,7 @@ export default function WeatherIconLane({ data }) {
                       color: '#888',
                       lineHeight: 1,
                     }}>
-                      {Math.round(entry.probability * 100)}
+                      {Math.round(entry.probability * 100)}%
                     </span>
                   </div>
                 ))
