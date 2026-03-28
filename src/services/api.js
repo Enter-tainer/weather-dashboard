@@ -46,14 +46,11 @@ export async function fetchCityDataForDate(cityObj) {
   const targetDate = new Date(date);
   const now = new Date();
   const diffDays = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
-  let ensembleModel = 'gfs05'; // fallback for > 15 days (up to 35 days)
-  if (diffDays <= 7) {
-    // 7天内优先使用 icon_seamless，分辨率高
-    ensembleModel = 'icon_seamless';
-  } else if (diffDays <= 15) {
-    // 8-15天内用 ecmwf_ifs04，中长期权威(51 members)
-    ensembleModel = 'ecmwf_ifs04';
+
+  let ensembleModel = 'gfs05'; // fallback for > 15 days (up to 35 days, 31 members, 50km)
+  if (diffDays <= 15) {
+    // 15天内用 ecmwf_ifs025，精度最高(51 members, 25km)
+    ensembleModel = 'ecmwf_ifs025';
   }
 
   // Pressure levels for altitude-based cloud visualization
