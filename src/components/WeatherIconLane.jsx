@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback, createRef } from 'react';
 import './Dashboard.css';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
 
@@ -79,10 +79,18 @@ function computeMergedRuns(data) {
   return runs;
 }
 
-function WeatherTooltip({ run, data, isNight, onClose }) {
+function WeatherTooltip({ anchorRef, data, run, isNight, onClose }) {
   const ref = useRef(null);
+  const [pos, setPos] = useState(null);
   const midIndex = run.start + Math.floor(run.length / 2);
   const topCodes = getTopWeatherCodes(data[midIndex].weatherCodeMembers);
+
+  useEffect(() => {
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    }
+  }, [anchorRef]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -94,19 +102,19 @@ function WeatherTooltip({ run, data, isNight, onClose }) {
     return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, [onClose]);
 
-  if (topCodes.length === 0) return null;
+  if (topCodes.length === 0 || !pos) return null;
 
   return (
     <div ref={ref} style={{
-      position: 'absolute',
-      left: `calc(${run.start + run.length / 2} * var(--col-width-hour))`,
-      transform: 'translateX(-50%)',
-      bottom: '100%',
-      marginBottom: '4px',
+      position: 'fixed',
+      left: pos.x,
+      top: pos.y,
+      transform: 'translate(-50%, -100%)',
+      marginTop: '-4px',
       background: 'rgba(40,40,40,0.95)',
       borderRadius: '6px',
       padding: '6px 8px',
-      zIndex: 100,
+      zIndex: 1000,
       whiteSpace: 'nowrap',
       boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       display: 'flex',
@@ -147,8 +155,10 @@ function WeatherTooltip({ run, data, isNight, onClose }) {
 
 export default function WeatherIconLane({ data }) {
   const [activeRun, setActiveRun] = useState(null);
+  const handleClose = useCallback(() => setActiveRun(null), []);
 
   const runs = useMemo(() => computeMergedRuns(data), [data]);
+  const overlayRefs = useMemo(() => runs.map(() => createRef()), [runs]);
 
   const cellInfo = useMemo(() => {
     const info = new Array(data.length);
@@ -190,6 +200,7 @@ export default function WeatherIconLane({ data }) {
 
           return (
             <div key={`run-${runIdx}`}
+              ref={overlayRefs[runIdx]}
               style={{
                 position: 'absolute',
                 left: leftPx,
@@ -200,6 +211,7 @@ export default function WeatherIconLane({ data }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: hasEnsemble ? 'pointer' : 'default',
+                zIndex: 1,
               }}
               onPointerEnter={() => hasEnsemble && setActiveRun(runIdx)}
               onPointerLeave={() => setActiveRun(null)}
@@ -208,10 +220,11 @@ export default function WeatherIconLane({ data }) {
               {getWeatherIcon(run.code, isNight)}
               {activeRun === runIdx && (
                 <WeatherTooltip
+                  anchorRef={overlayRefs[runIdx]}
                   run={run}
                   data={data}
                   isNight={isNight}
-                  onClose={() => setActiveRun(null)}
+                  onClose={handleClose}
                 />
               )}
             </div>
