@@ -43,6 +43,52 @@ function generateMembers(base, count, spread) {
   return members;
 }
 
+// Generate ensemble weather code members: majority agree on primaryCode,
+// some members may predict nearby/alternative codes for realism.
+function generateWeatherCodeMembers(primaryCode, count = 10, agreement = 0.6) {
+  // Map of plausible alternative codes grouped by weather category
+  const alternatives = {
+    0: [0, 1, 2],           // Clear → mainly clear, partly cloudy
+    1: [0, 1, 2, 3],       // Mainly clear
+    2: [1, 2, 3],           // Partly cloudy
+    3: [2, 3, 45],          // Overcast
+    45: [3, 45, 48],        // Fog
+    48: [45, 48],           // Rime fog
+    51: [0, 1, 51, 53],    // Light drizzle
+    53: [51, 53, 55, 61],  // Moderate drizzle
+    55: [53, 55, 61],      // Dense drizzle
+    56: [51, 56, 57],      // Freezing drizzle
+    57: [56, 57, 66],      // Dense freezing drizzle
+    61: [51, 53, 61, 63, 80], // Slight rain
+    63: [61, 63, 65, 81],  // Moderate rain
+    65: [63, 65, 82],      // Heavy rain
+    66: [61, 66, 67],      // Freezing rain
+    67: [66, 67, 65],      // Heavy freezing rain
+    71: [1, 2, 71, 73, 85], // Slight snow
+    73: [71, 73, 75],      // Moderate snow
+    75: [73, 75, 77, 86],  // Heavy snow
+    77: [75, 77],          // Snow grains
+    80: [1, 61, 80, 81],   // Slight rain showers
+    81: [80, 81, 82, 63],  // Moderate rain showers
+    82: [81, 82, 65, 95],  // Violent rain showers
+    85: [71, 85, 86],      // Slight snow showers
+    86: [75, 85, 86],      // Heavy snow showers
+    95: [82, 95, 96],      // Thunderstorm
+    96: [95, 96, 99],      // Thunderstorm + slight hail
+    99: [96, 99, 95],      // Thunderstorm + heavy hail
+  };
+  const alts = alternatives[primaryCode] || [primaryCode];
+  const members = [];
+  for (let i = 0; i < count; i++) {
+    if (Math.random() < agreement) {
+      members.push(primaryCode);
+    } else {
+      members.push(alts[Math.floor(Math.random() * alts.length)]);
+    }
+  }
+  return members;
+}
+
 function makeCloudByLevel(lowCover, midCover, highCover) {
   // Distribute coverage across pressure levels
   return PRESSURE_LEVELS.map(p => {
@@ -79,11 +125,12 @@ function clearDay(dayOffset) {
   for (let h = 0; h < 24; h++) {
     const alt = sunAlt(h);
     const isDay = alt > 0;
+    const code = isDay ? (h >= 10 && h <= 14 ? 0 : 1) : 0;
     items.push({
       cityName: '晴天城',
       time: formatTime(base, h),
       hour: h,
-      weatherCode: isDay ? (h >= 10 && h <= 14 ? 0 : 1) : 0,
+      weatherCode: code,
       temperature: isDay ? 18 + 8 * Math.sin(Math.PI * (h - 6) / 12) : 12 + rand(-2, 2),
       humidity: isDay ? 35 + rand(-5, 5) : 55 + rand(-5, 5),
       dewPoint: 8 + rand(-2, 2),
@@ -107,6 +154,7 @@ function clearDay(dayOffset) {
       windMembers: generateMembers(5 + rand(0, 8), 10, 3),
       cloudMembers: generateMembers(10, 10, 8),
       pressureMembers: generateMembers(1018, 10, 3),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.85),
       aqiUS: randInt(15, 40),
       aqiEU: randInt(10, 35),
       pm25: rand(3, 15),
@@ -162,6 +210,7 @@ function cloudyDay(dayOffset) {
       windMembers: generateMembers(8, 10, 4),
       cloudMembers: generateMembers(60, 10, 20),
       pressureMembers: generateMembers(1013, 10, 3),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.7),
       aqiUS: randInt(25, 55),
       aqiEU: randInt(20, 45),
       pm25: rand(8, 25),
@@ -236,6 +285,7 @@ function rainyDay(dayOffset) {
       windMembers: generateMembers(12, 10, 5),
       cloudMembers: generateMembers(80, 10, 15),
       pressureMembers: generateMembers(1005, 10, 4),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.55),
       aqiUS: randInt(20, 50),
       aqiEU: randInt(15, 40),
       pm25: rand(5, 20),
@@ -294,6 +344,7 @@ function snowDay(dayOffset) {
       windMembers: generateMembers(15, 10, 8),
       cloudMembers: generateMembers(90, 10, 8),
       pressureMembers: generateMembers(1000, 10, 5),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.65),
       aqiUS: randInt(10, 30),
       aqiEU: randInt(8, 25),
       pm25: rand(2, 10),
@@ -355,6 +406,7 @@ function fogDay(dayOffset) {
       windMembers: generateMembers(3, 10, 2),
       cloudMembers: generateMembers(70, 10, 25),
       pressureMembers: generateMembers(1020, 10, 2),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.8),
       aqiUS: randInt(80, 160), // poor AQI
       aqiEU: randInt(60, 120),
       pm25: rand(35, 80),
@@ -433,6 +485,7 @@ function thunderstormDay(dayOffset) {
       windMembers: generateMembers(20, 10, 10),
       cloudMembers: generateMembers(85, 10, 12),
       pressureMembers: generateMembers(995, 10, 6),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.5),
       aqiUS: randInt(30, 70),
       aqiEU: randInt(25, 55),
       pm25: rand(10, 30),
@@ -495,6 +548,7 @@ function mixedDay(dayOffset) {
       windMembers: generateMembers(10, 10, 6),
       cloudMembers: generateMembers(50, 10, 25),
       pressureMembers: generateMembers(1010, 10, 5),
+      weatherCodeMembers: generateWeatherCodeMembers(code, 10, 0.45),
       aqiUS: randInt(15, 100),
       aqiEU: randInt(10, 80),
       pm25: rand(5, 40),

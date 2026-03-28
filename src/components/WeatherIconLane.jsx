@@ -1,8 +1,8 @@
 import './Dashboard.css';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
 
-function getWeatherIcon(code, isNight) {
-  const props = { size: 18, color: '#444' };
+function getWeatherIcon(code, isNight, size = 18) {
+  const props = { size, color: '#444' };
 
   if (code === 0) return isNight ? <Moon {...props} color="#64748b" /> : <Sun {...props} color="#e69c00" />;
   if (code === 1) return isNight ? <CloudMoon {...props} color="#64748b" /> : <CloudSun {...props} color="#deba37" />;
@@ -49,17 +49,69 @@ function getWeatherIcon(code, isNight) {
   return <HelpCircle {...props} />;
 }
 
-export default function WeatherIconLane({ data }) {
+// Compute top N weather codes from ensemble members, sorted by frequency
+function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
+  if (!weatherCodeMembers || weatherCodeMembers.length === 0) return [];
+  const freq = {};
+  for (const code of weatherCodeMembers) {
+    freq[code] = (freq[code] || 0) + 1;
+  }
+  const total = weatherCodeMembers.length;
+  return Object.entries(freq)
+    .map(([code, count]) => ({ code: Number(code), probability: count / total }))
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, maxCount);
+}
+
+export default function WeatherIconLane({ data, expanded }) {
+  const laneHeight = expanded ? 'var(--lane-height-icon)' : '28px';
+
   return (
-    <div className="lane weather-icon-lane" style={{ height: 'var(--lane-height-icon)' }}>
+    <div className="lane weather-icon-lane" style={{ height: laneHeight, transition: 'height 0.2s ease' }}>
       <div className="lane-data">
         {data.map((item, index) => {
-          // Only show icon every 3 hours to avoid clutter
           const showIcon = index % 3 === 0;
+          const isNight = item.sunAltitude < 0;
+          const topCodes = getTopWeatherCodes(item.weatherCodeMembers);
+          const hasEnsemble = topCodes.length > 0;
 
           return (
-            <div key={index} className="lane-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               {showIcon ? getWeatherIcon(item.weatherCode, item.sunAltitude < 0) : ''}
+            <div key={index} className="lane-cell" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: expanded ? 'space-between' : 'center',
+              paddingTop: expanded ? '2px' : 0,
+              paddingBottom: expanded ? '1px' : 0,
+            }}>
+              {expanded && hasEnsemble && showIcon ? (
+                // Expanded: show top 3 ensemble weather codes with probability
+                topCodes.map((entry, rank) => (
+                  <div key={entry.code} style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0.4 + 0.6 * entry.probability,
+                    width: '100%',
+                  }}>
+                    {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
+                    <span style={{
+                      position: 'absolute',
+                      right: -8,
+                      bottom: -1,
+                      fontSize: '7px',
+                      color: '#888',
+                      lineHeight: 1,
+                    }}>
+                      {Math.round(entry.probability * 100)}%
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Collapsed: show single deterministic forecast icon (every 3 hours)
+                showIcon ? getWeatherIcon(item.weatherCode, isNight) : ''
+              )}
             </div>
           );
         })}

@@ -62,7 +62,7 @@ export async function fetchCityDataForDate(cityObj) {
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,${cloudPressureParams},${geopotentialParams}${tzParams}`;
 
   // Ensemble API
-  const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure&models=${ensembleModel}${tzParams}`;
+  const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
 
   // AQI API
   const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,dust${tzParams}`;
@@ -136,6 +136,7 @@ export async function fetchCityDataForDate(cityObj) {
     const windMembers = [];
     const cloudMembers = [];
     const pressureMembers = [];
+    const weatherCodeMembers = [];
     if (ensembleRes && ensembleRes.hourly) {
       for (const key in ensembleRes.hourly) {
         if (key.startsWith('temperature_2m_member') && ensembleRes.hourly[key][i] != null) tempMembers.push(ensembleRes.hourly[key][i]);
@@ -143,6 +144,7 @@ export async function fetchCityDataForDate(cityObj) {
         if (key.startsWith('wind_speed_10m_member') && ensembleRes.hourly[key][i] != null) windMembers.push(ensembleRes.hourly[key][i]);
         if (key.startsWith('cloud_cover_member') && ensembleRes.hourly[key][i] != null) cloudMembers.push(ensembleRes.hourly[key][i]);
         if (key.startsWith('surface_pressure_member') && ensembleRes.hourly[key][i] != null) pressureMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('weather_code_member') && ensembleRes.hourly[key][i] != null) weatherCodeMembers.push(ensembleRes.hourly[key][i]);
       }
     }
 
@@ -184,6 +186,7 @@ export async function fetchCityDataForDate(cityObj) {
       windMembers,
       cloudMembers,
       pressureMembers,
+      weatherCodeMembers,
 
       aqiUS: aqRes?.hourly?.us_aqi?.[i] || 0,
       aqiEU: aqRes?.hourly?.european_aqi?.[i] || 0,
