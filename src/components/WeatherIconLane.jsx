@@ -80,7 +80,7 @@ function computeMergedRuns(data) {
   return runs;
 }
 
-function WeatherTooltip({ anchorRef, data, run, isNight, onClose }) {
+function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }) {
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
   const midIndex = run.start + Math.floor(run.length / 2);
@@ -122,6 +122,20 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose }) {
       flexDirection: 'column',
       gap: '3px',
     }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        borderBottom: '1px solid rgba(255,255,255,0.15)',
+        paddingBottom: '3px',
+        marginBottom: '1px',
+      }}>
+        {getWeatherIcon(forecastCode, isNight, 14)}
+        <span style={{ fontSize: '10px', color: '#fff', fontWeight: 500 }}>
+          {WEATHER_NAMES[forecastCode] || `#${forecastCode}`}
+        </span>
+        <span style={{ fontSize: '9px', color: '#999' }}>预报</span>
+      </div>
       {topCodes.map((entry) => (
         <div key={entry.code} style={{
           display: 'flex',
@@ -227,6 +241,7 @@ export default function WeatherIconLane({ data }) {
                   data={data}
                   isNight={isNight}
                   onClose={handleClose}
+                  forecastCode={run.code}
                 />
               )}
             </div>
