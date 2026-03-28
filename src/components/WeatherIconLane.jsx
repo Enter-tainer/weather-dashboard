@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback, createRef } from 'react';
+import { createPortal } from 'react-dom';
 import './Dashboard.css';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
 
@@ -104,7 +105,7 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose }) {
 
   if (topCodes.length === 0 || !pos) return null;
 
-  return (
+  return createPortal(
     <div ref={ref} style={{
       position: 'fixed',
       left: pos.x,
@@ -149,7 +150,8 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose }) {
         borderRight: '4px solid transparent',
         borderTop: '4px solid rgba(40,40,40,0.95)',
       }} />
-    </div>
+    </div>,
+    document.body
   );
 }
 
