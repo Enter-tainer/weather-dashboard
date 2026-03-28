@@ -50,11 +50,14 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
     ctx.stroke();
     ctx.setLineDash([]);
 
+    // Detect location-change boundaries (break lines here)
+    const isBreak = (i) => i > 0 && data[i].cityName !== data[i - 1].cityName;
+
     // Draw Ensemble shadow bands (density effect)
     ctx.lineJoin = 'round';
     ctx.lineWidth = 15;
-    ctx.strokeStyle = 'rgba(211, 47, 47, 0.05)'; 
-    
+    ctx.strokeStyle = 'rgba(211, 47, 47, 0.05)';
+
     if (data[0].tempMembers && data[0].tempMembers.length > 0) {
       const numMembers = data[0].tempMembers.length;
       for (let m = 0; m < numMembers; m++) {
@@ -62,39 +65,48 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
         for (let i = 0; i < data.length; i++) {
           const x = getX(i);
           const y = getY(data[i].tempMembers[m]);
-          if (i === 0) ctx.moveTo(x, y);
+          if (i === 0 || isBreak(i)) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
       }
     }
-    
-    // Draw Main Temperature Line
-    ctx.beginPath();
+
+    // Draw Main Temperature Line — gradient fill per segment
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#c62828'; 
-    
+    ctx.strokeStyle = '#c62828';
+
     const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, 'rgba(211, 47, 47, 0.3)');
     grad.addColorStop(1, 'rgba(211, 47, 47, 0.0)');
-    
-    ctx.lineTo(getX(0), height);
-    for (let i = 0; i < data.length; i++) {
-      ctx.lineTo(getX(i), getY(data[i].temperature));
-    }
-    ctx.lineTo(getX(data.length - 1), height);
     ctx.fillStyle = grad;
-    ctx.fill();
-    
-    // Re-stroke main line
-    ctx.beginPath();
-    for (let i = 0; i < data.length; i++) {
-      const x = getX(i);
-      const y = getY(data[i].temperature);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+
+    // Fill and stroke each contiguous segment separately
+    let segStart = 0;
+    for (let i = 0; i <= data.length; i++) {
+      if (i === data.length || isBreak(i)) {
+        // Fill segment [segStart, i-1]
+        ctx.beginPath();
+        ctx.moveTo(getX(segStart), height);
+        for (let j = segStart; j < i; j++) {
+          ctx.lineTo(getX(j), getY(data[j].temperature));
+        }
+        ctx.lineTo(getX(i - 1), height);
+        ctx.fill();
+
+        // Stroke segment
+        ctx.beginPath();
+        for (let j = segStart; j < i; j++) {
+          const x = getX(j);
+          const y = getY(data[j].temperature);
+          if (j === segStart) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        segStart = i;
+      }
     }
-    ctx.stroke();
 
   }, [data, minTemp, maxTemp, tempSteps]);
 

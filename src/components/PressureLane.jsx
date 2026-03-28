@@ -24,18 +24,21 @@ export default function PressureLane({ data, minP, maxP }) {
     };
     const getX = (index) => index * COL_WIDTH + COL_WIDTH / 2;
 
+    // Detect location-change boundaries (break lines here)
+    const isBreak = (i) => i > 0 && data[i].cityName !== data[i - 1].cityName;
+
     // Draw ensemble members
     const mCount = data[0]?.pressureMembers?.length || 0;
     if (mCount > 0) {
       ctx.lineWidth = 1;
       ctx.strokeStyle = `rgba(100, 100, 100, ${Math.max(0.04, 2.5 / mCount)})`;
-      
+
       for (let mIdx = 0; mIdx < mCount; mIdx++) {
         ctx.beginPath();
         for (let i = 0; i < data.length; i++) {
           const x = getX(i);
           const y = getY(data[i].pressureMembers[mIdx]);
-          if (i === 0) ctx.moveTo(x, y);
+          if (i === 0 || isBreak(i)) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -46,11 +49,11 @@ export default function PressureLane({ data, minP, maxP }) {
     ctx.beginPath();
     ctx.lineWidth = 1.8;
     ctx.strokeStyle = 'rgba(50, 50, 50, 0.9)';
-    
+
     for (let i = 0; i < data.length; i++) {
        const x = getX(i);
        const y = getY(data[i].pressure);
-       if (i === 0) ctx.moveTo(x, y);
+       if (i === 0 || isBreak(i)) ctx.moveTo(x, y);
        else ctx.lineTo(x, y);
     }
     ctx.stroke();
