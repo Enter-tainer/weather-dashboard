@@ -60,7 +60,7 @@ function evictExpired() {
 
 // --- Rate limiter + 429 backoff fetch ---
 
-const MAX_CONCURRENT = 6;
+const MAX_CONCURRENT = 3;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 1000;
 
