@@ -1,6 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import './Dashboard.css';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
+
+const WEATHER_NAMES = {
+  0: '晴', 1: '少云', 2: '多云', 3: '阴',
+  45: '雾', 48: '雾凇',
+  51: '小毛毛雨', 53: '毛毛雨', 55: '大毛毛雨',
+  56: '冻毛毛雨', 57: '强冻毛毛雨',
+  61: '小雨', 63: '中雨', 65: '大雨',
+  66: '冻雨', 67: '强冻雨',
+  71: '小雪', 73: '中雪', 75: '大雪', 77: '雪粒',
+  80: '小阵雨', 81: '中阵雨', 82: '强阵雨',
+  85: '小阵雪', 86: '大阵雪',
+  95: '雷暴', 96: '雷暴+冰雹', 99: '强雷暴+冰雹',
+};
 
 function getWeatherIcon(code, isNight, size = 18) {
   const props = { size, color: '#444' };
@@ -66,49 +79,94 @@ function computeMergedRuns(data) {
   return runs;
 }
 
-function computeEnsembleMergedRuns(data) {
-  const runs = [];
-  let i = 0;
-  while (i < data.length) {
-    const topCodes = getTopWeatherCodes(data[i].weatherCodeMembers);
-    const code = topCodes.length > 0 ? topCodes[0].code : data[i].weatherCode;
-    const start = i;
-    while (i < data.length) {
-      const nextTop = getTopWeatherCodes(data[i].weatherCodeMembers);
-      const nextCode = nextTop.length > 0 ? nextTop[0].code : data[i].weatherCode;
-      if (nextCode !== code) break;
-      i++;
+function WeatherTooltip({ run, data, isNight, onClose }) {
+  const ref = useRef(null);
+  const midIndex = run.start + Math.floor(run.length / 2);
+  const topCodes = getTopWeatherCodes(data[midIndex].weatherCodeMembers);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        onClose();
+      }
     }
-    runs.push({ code, start, length: i - start });
-  }
-  return runs;
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
+  }, [onClose]);
+
+  if (topCodes.length === 0) return null;
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute',
+      left: `calc(${run.start + run.length / 2} * var(--col-width-hour))`,
+      transform: 'translateX(-50%)',
+      bottom: '100%',
+      marginBottom: '4px',
+      background: 'rgba(40,40,40,0.95)',
+      borderRadius: '6px',
+      padding: '6px 8px',
+      zIndex: 100,
+      whiteSpace: 'nowrap',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '3px',
+    }}>
+      {topCodes.map((entry) => (
+        <div key={entry.code} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          opacity: 0.4 + 0.6 * entry.probability,
+        }}>
+          {getWeatherIcon(entry.code, isNight, 14)}
+          <span style={{ fontSize: '10px', color: '#ddd' }}>
+            {WEATHER_NAMES[entry.code] || `#${entry.code}`}
+          </span>
+          <span style={{ fontSize: '10px', color: '#aaa', marginLeft: '2px' }}>
+            {Math.round(entry.probability * 100)}%
+          </span>
+        </div>
+      ))}
+      {/* Arrow */}
+      <div style={{
+        position: 'absolute',
+        bottom: '-4px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 0,
+        height: 0,
+        borderLeft: '4px solid transparent',
+        borderRight: '4px solid transparent',
+        borderTop: '4px solid rgba(40,40,40,0.95)',
+      }} />
+    </div>
+  );
 }
 
-export default function WeatherIconLane({ data, expanded }) {
-  const laneHeight = expanded ? 'var(--lane-height-icon)' : '28px';
+export default function WeatherIconLane({ data }) {
+  const [activeRun, setActiveRun] = useState(null);
 
   const runs = useMemo(() => computeMergedRuns(data), [data]);
-  const ensembleRuns = useMemo(() => computeEnsembleMergedRuns(data), [data]);
 
   const cellInfo = useMemo(() => {
-    const activeRuns = expanded ? ensembleRuns : runs;
     const info = new Array(data.length);
     let colorIdx = 0;
-    for (const run of activeRuns) {
+    for (const run of runs) {
       for (let j = run.start; j < run.start + run.length; j++) {
         info[j] = {
           isStart: j === run.start,
-          run,
           colorIdx,
         };
       }
       colorIdx++;
     }
     return info;
-  }, [data, expanded, runs, ensembleRuns]);
+  }, [data, runs]);
 
   return (
-    <div className="lane weather-icon-lane" style={{ height: laneHeight, transition: 'height 0.2s ease' }}>
+    <div className="lane weather-icon-lane" style={{ height: '28px' }}>
       <div className="lane-data" style={{ position: 'relative' }}>
         {data.map((item, index) => {
           const ci = cellInfo[index];
@@ -123,67 +181,39 @@ export default function WeatherIconLane({ data, expanded }) {
         })}
 
         {/* Overlay: render icons centered over each merged run */}
-        {(expanded ? ensembleRuns : runs).map((run, runIdx) => {
+        {runs.map((run, runIdx) => {
           const midIndex = run.start + Math.floor(run.length / 2);
           const isNight = data[midIndex].sunAltitude < 0;
-          // Position: left offset = run.start cells * col-width, width = run.length cells * col-width
           const leftPx = `calc(${run.start} * var(--col-width-hour))`;
           const widthPx = `calc(${run.length} * var(--col-width-hour))`;
+          const hasEnsemble = data[midIndex].weatherCodeMembers?.length > 0;
 
-          if (expanded) {
-            const topCodes = getTopWeatherCodes(data[midIndex].weatherCodeMembers);
-            if (topCodes.length === 0) return null;
-            return (
-              <div key={`run-${runIdx}`} style={{
+          return (
+            <div key={`run-${runIdx}`}
+              style={{
                 position: 'absolute',
                 left: leftPx,
                 width: widthPx,
                 top: 0,
                 bottom: 0,
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '2px',
-                paddingBottom: '1px',
-                pointerEvents: 'none',
-              }}>
-                {topCodes.map((entry, rank) => (
-                  <div key={entry.code} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: 0.4 + 0.6 * entry.probability,
-                    gap: '1px',
-                  }}>
-                    {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
-                    <span style={{
-                      fontSize: '7px',
-                      color: '#888',
-                      lineHeight: 1,
-                    }}>
-                      {Math.round(entry.probability * 100)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            );
-          }
-
-          // Collapsed: single icon centered
-          return (
-            <div key={`run-${runIdx}`} style={{
-              position: 'absolute',
-              left: leftPx,
-              width: widthPx,
-              top: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              pointerEvents: 'none',
-            }}>
+                justifyContent: 'center',
+                cursor: hasEnsemble ? 'pointer' : 'default',
+              }}
+              onPointerEnter={() => hasEnsemble && setActiveRun(runIdx)}
+              onPointerLeave={() => setActiveRun(null)}
+              onClick={() => hasEnsemble && setActiveRun(activeRun === runIdx ? null : runIdx)}
+            >
               {getWeatherIcon(run.code, isNight)}
+              {activeRun === runIdx && (
+                <WeatherTooltip
+                  run={run}
+                  data={data}
+                  isNight={isNight}
+                  onClose={() => setActiveRun(null)}
+                />
+              )}
             </div>
           );
         })}
