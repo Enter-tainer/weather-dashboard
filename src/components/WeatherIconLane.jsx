@@ -68,6 +68,7 @@ export default function WeatherIconLane({ data }) {
     <div className="lane weather-icon-lane" style={{ height: 'var(--lane-height-icon)' }}>
       <div className="lane-data">
         {data.map((item, index) => {
+          const showIcon = index % 3 === 0;
           const isNight = item.sunAltitude < 0;
           const topCodes = getTopWeatherCodes(item.weatherCodeMembers);
           const hasEnsemble = topCodes.length > 0;
@@ -81,7 +82,7 @@ export default function WeatherIconLane({ data }) {
               paddingTop: '2px',
               paddingBottom: '1px',
             }}>
-              {hasEnsemble ? (
+              {hasEnsemble && showIcon ? (
                 topCodes.map((entry, rank) => (
                   <div key={entry.code} style={{
                     position: 'relative',
@@ -105,8 +106,8 @@ export default function WeatherIconLane({ data }) {
                   </div>
                 ))
               ) : (
-                // Fallback: show deterministic forecast icon (every 3 hours)
-                index % 3 === 0 ? getWeatherIcon(item.weatherCode, isNight) : ''
+                // Fallback: show deterministic forecast icon
+                showIcon ? getWeatherIcon(item.weatherCode, isNight) : ''
               )}
             </div>
           );
