@@ -95,7 +95,7 @@ export default function WeatherIconLane({ data }) {
                     {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
                     <span style={{
                       position: 'absolute',
-                      right: 0,
+                      right: -8,
                       bottom: -1,
                       fontSize: '7px',
                       color: '#888',
