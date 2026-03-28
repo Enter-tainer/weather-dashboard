@@ -89,7 +89,7 @@ export default function WeatherIconLane({ data }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: Math.max(0.2, entry.probability),
+                    opacity: 0.4 + 0.6 * entry.probability,
                     width: '100%',
                   }}>
                     {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
