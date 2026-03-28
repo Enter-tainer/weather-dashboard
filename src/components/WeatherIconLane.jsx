@@ -63,9 +63,11 @@ function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
     .slice(0, maxCount);
 }
 
-export default function WeatherIconLane({ data }) {
+export default function WeatherIconLane({ data, expanded }) {
+  const laneHeight = expanded ? 'var(--lane-height-icon)' : '28px';
+
   return (
-    <div className="lane weather-icon-lane" style={{ height: 'var(--lane-height-icon)' }}>
+    <div className="lane weather-icon-lane" style={{ height: laneHeight, transition: 'height 0.2s ease' }}>
       <div className="lane-data">
         {data.map((item, index) => {
           const showIcon = index % 3 === 0;
@@ -78,11 +80,12 @@ export default function WeatherIconLane({ data }) {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingTop: '2px',
-              paddingBottom: '1px',
+              justifyContent: expanded ? 'space-between' : 'center',
+              paddingTop: expanded ? '2px' : 0,
+              paddingBottom: expanded ? '1px' : 0,
             }}>
-              {hasEnsemble && showIcon ? (
+              {expanded && hasEnsemble && showIcon ? (
+                // Expanded: show top 3 ensemble weather codes with probability
                 topCodes.map((entry, rank) => (
                   <div key={entry.code} style={{
                     position: 'relative',
@@ -106,7 +109,7 @@ export default function WeatherIconLane({ data }) {
                   </div>
                 ))
               ) : (
-                // Fallback: show deterministic forecast icon
+                // Collapsed: show single deterministic forecast icon (every 3 hours)
                 showIcon ? getWeatherIcon(item.weatherCode, isNight) : ''
               )}
             </div>
