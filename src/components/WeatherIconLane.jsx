@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import './Dashboard.css';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
 
@@ -63,55 +64,124 @@ function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
     .slice(0, maxCount);
 }
 
+// Group consecutive hours with the same weather code into merged runs
+function computeMergedRuns(data) {
+  const runs = [];
+  let i = 0;
+  while (i < data.length) {
+    const code = data[i].weatherCode;
+    const start = i;
+    while (i < data.length && data[i].weatherCode === code) i++;
+    runs.push({ code, start, length: i - start });
+  }
+  return runs;
+}
+
+// For expanded mode: merge by top-1 ensemble weather code
+function computeEnsembleMergedRuns(data) {
+  const runs = [];
+  let i = 0;
+  while (i < data.length) {
+    const topCodes = getTopWeatherCodes(data[i].weatherCodeMembers);
+    const code = topCodes.length > 0 ? topCodes[0].code : data[i].weatherCode;
+    const start = i;
+    while (i < data.length) {
+      const nextTop = getTopWeatherCodes(data[i].weatherCodeMembers);
+      const nextCode = nextTop.length > 0 ? nextTop[0].code : data[i].weatherCode;
+      if (nextCode !== code) break;
+      i++;
+    }
+    runs.push({ code, start, length: i - start });
+  }
+  return runs;
+}
+
 export default function WeatherIconLane({ data, expanded }) {
   const laneHeight = expanded ? 'var(--lane-height-icon)' : '28px';
+
+  const runs = useMemo(() => computeMergedRuns(data), [data]);
+  const ensembleRuns = useMemo(() => computeEnsembleMergedRuns(data), [data]);
+
+  // Build a lookup: for each cell index, which run does it belong to and is it the middle?
+  const cellInfo = useMemo(() => {
+    const activeRuns = expanded ? ensembleRuns : runs;
+    const info = new Array(data.length);
+    let colorIdx = 0;
+    for (const run of activeRuns) {
+      const mid = run.start + Math.floor(run.length / 2);
+      for (let j = run.start; j < run.start + run.length; j++) {
+        info[j] = {
+          isMiddle: j === mid,
+          run,
+          colorIdx,
+        };
+      }
+      colorIdx++;
+    }
+    return info;
+  }, [data, expanded, runs, ensembleRuns]);
 
   return (
     <div className="lane weather-icon-lane" style={{ height: laneHeight, transition: 'height 0.2s ease' }}>
       <div className="lane-data">
         {data.map((item, index) => {
-          const showIcon = index % 3 === 0;
           const isNight = item.sunAltitude < 0;
-          const topCodes = getTopWeatherCodes(item.weatherCodeMembers);
-          const hasEnsemble = topCodes.length > 0;
+          const ci = cellInfo[index];
+          const isMiddle = ci?.isMiddle;
+          const bgColor = ci?.colorIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.04)';
 
+          // Expanded mode: show ensemble top 3 at the middle cell of each run
+          if (expanded) {
+            const topCodes = isMiddle ? getTopWeatherCodes(item.weatherCodeMembers) : [];
+            return (
+              <div key={index} className="lane-cell" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: '2px',
+                paddingBottom: '1px',
+                backgroundColor: bgColor,
+                borderLeft: index === ci?.run.start ? '1px solid rgba(0,0,0,0.08)' : 'none',
+              }}>
+                {isMiddle && topCodes.length > 0 ? (
+                  topCodes.map((entry, rank) => (
+                    <div key={entry.code} style={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0.4 + 0.6 * entry.probability,
+                      width: '100%',
+                    }}>
+                      {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
+                      <span style={{
+                        position: 'absolute',
+                        right: -8,
+                        bottom: -1,
+                        fontSize: '7px',
+                        color: '#888',
+                        lineHeight: 1,
+                      }}>
+                        {Math.round(entry.probability * 100)}%
+                      </span>
+                    </div>
+                  ))
+                ) : ''}
+              </div>
+            );
+          }
+
+          // Collapsed mode: show single icon at the middle of each merged run
           return (
             <div key={index} className="lane-cell" style={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: expanded ? 'space-between' : 'center',
-              paddingTop: expanded ? '2px' : 0,
-              paddingBottom: expanded ? '1px' : 0,
+              justifyContent: 'center',
+              backgroundColor: bgColor,
+              borderLeft: index === ci?.run.start ? '1px solid rgba(0,0,0,0.08)' : 'none',
             }}>
-              {expanded && hasEnsemble && showIcon ? (
-                // Expanded: show top 3 ensemble weather codes with probability
-                topCodes.map((entry, rank) => (
-                  <div key={entry.code} style={{
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: 0.4 + 0.6 * entry.probability,
-                    width: '100%',
-                  }}>
-                    {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
-                    <span style={{
-                      position: 'absolute',
-                      right: -8,
-                      bottom: -1,
-                      fontSize: '7px',
-                      color: '#888',
-                      lineHeight: 1,
-                    }}>
-                      {Math.round(entry.probability * 100)}%
-                    </span>
-                  </div>
-                ))
-              ) : (
-                // Collapsed: show single deterministic forecast icon (every 3 hours)
-                showIcon ? getWeatherIcon(item.weatherCode, isNight) : ''
-              )}
+              {isMiddle ? getWeatherIcon(item.weatherCode, isNight) : ''}
             </div>
           );
         })}
