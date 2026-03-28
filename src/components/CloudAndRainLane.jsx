@@ -145,7 +145,6 @@ export default function CloudAndRainLane({ data }) {
                 position: 'absolute', top: `${y - 11}px`, left: '2px',
                 fontSize: '8px', color: 'rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
                 fontFamily: 'sans-serif',
-                textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 0px 4px rgba(255,255,255,0.8)',
               }}
             >
               {label}
