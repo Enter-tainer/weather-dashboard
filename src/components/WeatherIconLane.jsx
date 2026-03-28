@@ -11,46 +11,36 @@ function getWeatherIcon(code, isNight, size = 18) {
   if (code === 3) return <Cloud {...props} color={isNight ? "#475569" : "#666"} />;
   if ([45, 48].includes(code)) return <CloudFog {...props} />;
 
-  // Drizzle: light → moderate → dense
   if (code === 51) return <CloudDrizzle {...props} color="#93c5fd" />;
   if (code === 53) return <CloudDrizzle {...props} color="#60a5fa" />;
   if (code === 55) return <CloudDrizzle {...props} color="#3b82f6" />;
-  // Freezing drizzle
   if (code === 56) return <CloudDrizzle {...props} color="#a78bfa" />;
   if (code === 57) return <CloudDrizzle {...props} color="#8b5cf6" />;
 
-  // Rain: light → moderate → heavy
   if (code === 61) return isNight ? <CloudMoonRain {...props} color="#60a5fa" /> : <CloudSunRain {...props} color="#60a5fa" />;
   if (code === 63) return <CloudRain {...props} color="#2563eb" />;
   if (code === 65) return <CloudRainWind {...props} color="#1d4ed8" />;
-  // Freezing rain
   if (code === 66) return <CloudRain {...props} color="#a78bfa" />;
   if (code === 67) return <CloudRainWind {...props} color="#8b5cf6" />;
 
-  // Snow: light → moderate → heavy
   if (code === 71) return <CloudSnow {...props} color="#7dd3fc" />;
   if (code === 73) return <CloudSnow {...props} color="#38bdf8" />;
   if (code === 75) return <CloudSnow {...props} color="#0284c7" />;
-  if (code === 77) return <CloudSnow {...props} color="#0369a1" />; // Snow grains
+  if (code === 77) return <CloudSnow {...props} color="#0369a1" />;
 
-  // Rain showers: slight → moderate → violent
   if (code === 80) return isNight ? <CloudMoonRain {...props} color="#60a5fa" /> : <CloudSunRain {...props} color="#60a5fa" />;
   if (code === 81) return <CloudRain {...props} color="#2563eb" />;
   if (code === 82) return <CloudRainWind {...props} color="#1e40af" />;
-  // Snow showers
   if (code === 85) return <CloudSnow {...props} color="#38bdf8" />;
   if (code === 86) return <CloudSnow {...props} color="#0284c7" />;
 
-  // Thunderstorm
   if (code === 95) return <CloudLightning {...props} color="#9333ea" />;
-  // Thunderstorm with hail
   if (code === 96) return <CloudHail {...props} color="#7c3aed" />;
   if (code === 99) return <CloudHail {...props} color="#6d28d9" />;
 
   return <HelpCircle {...props} />;
 }
 
-// Compute top N weather codes from ensemble members, sorted by frequency
 function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
   if (!weatherCodeMembers || weatherCodeMembers.length === 0) return [];
   const freq = {};
@@ -64,7 +54,6 @@ function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
     .slice(0, maxCount);
 }
 
-// Group consecutive hours with the same weather code into merged runs
 function computeMergedRuns(data) {
   const runs = [];
   let i = 0;
@@ -77,7 +66,6 @@ function computeMergedRuns(data) {
   return runs;
 }
 
-// For expanded mode: merge by top-1 ensemble weather code
 function computeEnsembleMergedRuns(data) {
   const runs = [];
   let i = 0;
@@ -102,16 +90,14 @@ export default function WeatherIconLane({ data, expanded }) {
   const runs = useMemo(() => computeMergedRuns(data), [data]);
   const ensembleRuns = useMemo(() => computeEnsembleMergedRuns(data), [data]);
 
-  // Build a lookup: for each cell index, which run does it belong to and is it the middle?
   const cellInfo = useMemo(() => {
     const activeRuns = expanded ? ensembleRuns : runs;
     const info = new Array(data.length);
     let colorIdx = 0;
     for (const run of activeRuns) {
-      const mid = run.start + Math.floor(run.length / 2);
       for (let j = run.start; j < run.start + run.length; j++) {
         info[j] = {
-          isMiddle: j === mid,
+          isStart: j === run.start,
           run,
           colorIdx,
         };
@@ -123,65 +109,81 @@ export default function WeatherIconLane({ data, expanded }) {
 
   return (
     <div className="lane weather-icon-lane" style={{ height: laneHeight, transition: 'height 0.2s ease' }}>
-      <div className="lane-data">
+      <div className="lane-data" style={{ position: 'relative' }}>
         {data.map((item, index) => {
-          const isNight = item.sunAltitude < 0;
           const ci = cellInfo[index];
-          const isMiddle = ci?.isMiddle;
           const bgColor = ci?.colorIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.04)';
 
-          // Expanded mode: show ensemble top 3 at the middle cell of each run
+          return (
+            <div key={index} className="lane-cell" style={{
+              backgroundColor: bgColor,
+              borderLeft: ci?.isStart ? '1px solid rgba(0,0,0,0.08)' : 'none',
+            }} />
+          );
+        })}
+
+        {/* Overlay: render icons centered over each merged run */}
+        {(expanded ? ensembleRuns : runs).map((run, runIdx) => {
+          const midIndex = run.start + Math.floor(run.length / 2);
+          const isNight = data[midIndex].sunAltitude < 0;
+          // Position: left offset = run.start cells * col-width, width = run.length cells * col-width
+          const leftPx = `calc(${run.start} * var(--col-width-hour))`;
+          const widthPx = `calc(${run.length} * var(--col-width-hour))`;
+
           if (expanded) {
-            const topCodes = isMiddle ? getTopWeatherCodes(item.weatherCodeMembers) : [];
+            const topCodes = getTopWeatherCodes(data[midIndex].weatherCodeMembers);
+            if (topCodes.length === 0) return null;
             return (
-              <div key={index} className="lane-cell" style={{
+              <div key={`run-${runIdx}`} style={{
+                position: 'absolute',
+                left: leftPx,
+                width: widthPx,
+                top: 0,
+                bottom: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 paddingTop: '2px',
                 paddingBottom: '1px',
-                backgroundColor: bgColor,
-                borderLeft: index === ci?.run.start ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                pointerEvents: 'none',
               }}>
-                {isMiddle && topCodes.length > 0 ? (
-                  topCodes.map((entry, rank) => (
-                    <div key={entry.code} style={{
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: 0.4 + 0.6 * entry.probability,
-                      width: '100%',
+                {topCodes.map((entry, rank) => (
+                  <div key={entry.code} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0.4 + 0.6 * entry.probability,
+                    gap: '1px',
+                  }}>
+                    {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
+                    <span style={{
+                      fontSize: '7px',
+                      color: '#888',
+                      lineHeight: 1,
                     }}>
-                      {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
-                      <span style={{
-                        position: 'absolute',
-                        right: -8,
-                        bottom: -1,
-                        fontSize: '7px',
-                        color: '#888',
-                        lineHeight: 1,
-                      }}>
-                        {Math.round(entry.probability * 100)}%
-                      </span>
-                    </div>
-                  ))
-                ) : ''}
+                      {Math.round(entry.probability * 100)}%
+                    </span>
+                  </div>
+                ))}
               </div>
             );
           }
 
-          // Collapsed mode: show single icon at the middle of each merged run
+          // Collapsed: single icon centered
           return (
-            <div key={index} className="lane-cell" style={{
+            <div key={`run-${runIdx}`} style={{
+              position: 'absolute',
+              left: leftPx,
+              width: widthPx,
+              top: 0,
+              bottom: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: bgColor,
-              borderLeft: index === ci?.run.start ? '1px solid rgba(0,0,0,0.08)' : 'none',
+              pointerEvents: 'none',
             }}>
-              {isMiddle ? getWeatherIcon(item.weatherCode, isNight) : ''}
+              {getWeatherIcon(run.code, isNight)}
             </div>
           );
         })}
