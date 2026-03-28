@@ -1,8 +1,8 @@
 import './Dashboard.css';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
 
-function getWeatherIcon(code, isNight) {
-  const props = { size: 18, color: '#444' };
+function getWeatherIcon(code, isNight, size = 18) {
+  const props = { size, color: '#444' };
 
   if (code === 0) return isNight ? <Moon {...props} color="#64748b" /> : <Sun {...props} color="#e69c00" />;
   if (code === 1) return isNight ? <CloudMoon {...props} color="#64748b" /> : <CloudSun {...props} color="#deba37" />;
@@ -49,17 +49,65 @@ function getWeatherIcon(code, isNight) {
   return <HelpCircle {...props} />;
 }
 
+// Compute top N weather codes from ensemble members, sorted by frequency
+function getTopWeatherCodes(weatherCodeMembers, maxCount = 3) {
+  if (!weatherCodeMembers || weatherCodeMembers.length === 0) return [];
+  const freq = {};
+  for (const code of weatherCodeMembers) {
+    freq[code] = (freq[code] || 0) + 1;
+  }
+  const total = weatherCodeMembers.length;
+  return Object.entries(freq)
+    .map(([code, count]) => ({ code: Number(code), probability: count / total }))
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, maxCount);
+}
+
 export default function WeatherIconLane({ data }) {
   return (
     <div className="lane weather-icon-lane" style={{ height: 'var(--lane-height-icon)' }}>
       <div className="lane-data">
         {data.map((item, index) => {
-          // Only show icon every 3 hours to avoid clutter
-          const showIcon = index % 3 === 0;
+          const isNight = item.sunAltitude < 0;
+          const topCodes = getTopWeatherCodes(item.weatherCodeMembers);
+          const hasEnsemble = topCodes.length > 0;
 
           return (
-            <div key={index} className="lane-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               {showIcon ? getWeatherIcon(item.weatherCode, item.sunAltitude < 0) : ''}
+            <div key={index} className="lane-cell" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: '2px',
+              paddingBottom: '1px',
+            }}>
+              {hasEnsemble ? (
+                topCodes.map((entry, rank) => (
+                  <div key={entry.code} style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: Math.max(0.2, entry.probability),
+                    width: '100%',
+                  }}>
+                    {getWeatherIcon(entry.code, isNight, rank === 0 ? 16 : 13)}
+                    <span style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: -1,
+                      fontSize: '7px',
+                      color: '#888',
+                      lineHeight: 1,
+                    }}>
+                      {Math.round(entry.probability * 100)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Fallback: show deterministic forecast icon (every 3 hours)
+                index % 3 === 0 ? getWeatherIcon(item.weatherCode, isNight) : ''
+              )}
             </div>
           );
         })}
