@@ -25,7 +25,7 @@ export default function Dashboard({ testData }) {
   const [loading, setLoading] = useState(!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
-  const [weatherExpanded, setWeatherExpanded] = useState(false);
+
 
   useEffect(() => {
     if (testData) return; // Skip fetching when using mock data
@@ -162,7 +162,7 @@ export default function Dashboard({ testData }) {
           <div style={{ marginTop: '2px' }}>小时</div>
         </div>
         <div className="legend-cell" style={{ height: '12px', fontSize: '9px', color: '#888' }}>曙暮</div>
-        <div className="legend-cell" style={{ height: weatherExpanded ? 'var(--lane-height-icon)' : '28px', fontSize: '11px', color: '#555', cursor: 'pointer', userSelect: 'none', transition: 'height 0.2s ease' }} onClick={() => setWeatherExpanded(v => !v)}>天气 <span style={{ fontSize: '8px', color: '#aaa' }}>{weatherExpanded ? '▲' : '▼'}</span></div>
+        <div className="legend-cell" style={{ height: '28px', fontSize: '11px', color: '#555' }}>天气</div>
 
         <div className="legend-cell" style={{ height: 'var(--lane-height-uv)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
           <div>紫外线 <span style={{fontSize: '8px', color: '#888'}}>UV</span></div>
@@ -247,7 +247,7 @@ export default function Dashboard({ testData }) {
           <LocationLane data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
           <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
           <TwilightLane data={data} />
-          <WeatherIconLane data={data} expanded={weatherExpanded} />
+          <WeatherIconLane data={data} />
           <UVLane data={data} />
           <HumidityLane data={data} />
           <TemperatureTextLane data={data} />
