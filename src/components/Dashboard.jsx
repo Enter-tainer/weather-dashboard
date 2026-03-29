@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchFullTimeline, fetchTimelineForRoute } from '../services/api';
+import { fetchTimelineForRoute, fetchFullTimelineStreaming, fetchTimelineForRouteStreaming } from '../services/api';
 import { parseSwitchableRoute, buildRouteForSelections } from '../services/urlParser';
 import TimeAxis from './TimeAxis';
 import WeatherIconLane from './WeatherIconLane';
@@ -23,35 +23,26 @@ import './Dashboard.css';
 
 export default function Dashboard({ testData }) {
   const [data, setData] = useState(testData || null);
-  const [loading, setLoading] = useState(!testData);
+  const [loadingDone, setLoadingDone] = useState(!!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
-
 
   useEffect(() => {
     if (testData) return; // Skip fetching when using mock data
 
-    const switchable = parseSwitchableRoute();
-    let fetchPromise;
+    const onUpdate = (timeline, { done }) => {
+      if (timeline.length > 0) setData(timeline);
+      if (done) setLoadingDone(true);
+    };
 
+    const switchable = parseSwitchableRoute();
     if (switchable) {
       setDateSlots(switchable.dateSlots);
-      // Only fetch the active city per date slot
       const route = buildRouteForSelections(switchable.dateSlots);
-      fetchPromise = fetchTimelineForRoute(route);
+      fetchTimelineForRouteStreaming(route, onUpdate);
     } else {
-      fetchPromise = fetchFullTimeline();
+      fetchFullTimelineStreaming(onUpdate);
     }
-
-    fetchPromise
-      .then(timeline => {
-        setData(timeline);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
   }, [testData]);
 
   // Build a map: displayName -> { date, entries[], activeIndex } for switchable slots
@@ -90,9 +81,9 @@ export default function Dashboard({ testData }) {
     setSwitching(false);
   }, [dateSlots, switching]);
 
-  if (loading) return <div className="loading-state">Loading global weather data...</div>;
   if (!data || data.length === 0) {
-    return <div>No data available</div>;
+    if (loadingDone) return <div>No data available</div>;
+    return <div className="loading-state"><div className="loading-spinner" /> 加载中...</div>;
   }
 
   // Calculate Global Scales for Y-Axes
@@ -261,6 +252,18 @@ export default function Dashboard({ testData }) {
           <WindLane data={data} maxBft={maxBft} />
           <PressureLane data={data} minP={minP} maxP={maxP} />
           <AirQualityLane data={data} />
+          {!loadingDone && (
+            <div style={{
+              position: 'absolute',
+              right: '-40px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+            }}>
+              <div className="loading-spinner" />
+            </div>
+          )}
         </div>
       </div>
     </div>
