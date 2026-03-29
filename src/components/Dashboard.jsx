@@ -18,6 +18,7 @@ import DashboardBackground from './DashboardBackground';
 import WeatherAmbientBackground from './WeatherAmbientBackground';
 import TwilightLane from './TwilightLane';
 import LocationLane from './LocationLane';
+import RouteEditor from './RouteEditor';
 
 import './Dashboard.css';
 
@@ -130,7 +131,9 @@ export default function Dashboard({ testData }) {
   }
 
   return (
-    <div className="dashboard-wrapper">      {/* Legend Sidebar */}
+    <div className="dashboard-wrapper">
+      <RouteEditor />
+      {/* Legend Sidebar */}
       <div className="legend-sidebar">
         <div className="legend-cell" style={{ height: '24px', borderBottom: 'none' }}
 >

@@ -75,7 +75,19 @@ export function buildRouteForSelections(dateSlots) {
   });
 }
 
-function generate7Days(city, _unused, originalName, lat, lon) {
+// Convert an array of entries back to a string route
+export function stringifyRoute(entries) {
+  if (!entries || entries.length === 0) return '';
+  return entries.map(entry => {
+    let loc = entry.lat != null && entry.lon != null ? `${entry.lat},${entry.lon}` : (entry.city || '');
+    if (entry.originalName && entry.originalName !== loc && entry.originalName !== entry.city) {
+      loc += `~${entry.originalName}`;
+    }
+    return `${loc}:${entry.date}`;
+  }).join(';');
+}
+
+export function generate7Days(city, _unused, originalName, lat, lon) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
