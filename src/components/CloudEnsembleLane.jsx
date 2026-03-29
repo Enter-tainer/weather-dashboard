@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -7,7 +7,7 @@ const LANE_HEIGHT = 50;
 export default function CloudEnsembleLane({ data }) {
   const canvasRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!canvasRef.current || !data || data.length === 0) return;
     const ctx = canvasRef.current.getContext('2d');
     const width = data.length * COL_WIDTH;
