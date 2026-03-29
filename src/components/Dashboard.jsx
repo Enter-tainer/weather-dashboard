@@ -254,7 +254,7 @@ export default function Dashboard({ testData }) {
               <div style={{
                 position: 'absolute',
                 right: '-40px',
-                top: 'calc(50% + 57px)',
+                top: '50%',
                 transform: 'translateY(-50%)',
                 display: 'flex',
                 alignItems: 'center',
