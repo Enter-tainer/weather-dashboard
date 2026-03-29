@@ -15,7 +15,7 @@ export default function LocationLane({ data, switchInfo, onCityClick }) {
   }
 
   return (
-    <div className="lane location-lane" style={{ height: '24px', borderBottom: 'none' }}>
+    <div className="lane location-lane" style={{ height: '24px', borderBottom: 'none', backgroundColor: '#e5e5e5' }}>
       <div className="lane-data" style={{ position: 'relative', width: `${data.length * COL_WIDTH}px` }}>
         {cityGroups.map((group) => {
           const slot = switchInfo && switchInfo[group.cityName];
