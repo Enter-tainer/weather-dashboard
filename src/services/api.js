@@ -329,13 +329,10 @@ async function fetchAndAssemble(route) {
   return assembleTimeline(results);
 }
 
-// Streaming variant: calls onUpdate(timeline, {done, loaded, total}) as each city resolves.
-// Only assembles the contiguous prefix of resolved cities (0..N) to prevent layout shifts
-// when later cities resolve before earlier ones.
+// Streaming variant: calls onUpdate(timeline, {done, loaded, total}) as each city resolves
 export function fetchAndAssembleStreaming(route, onUpdate) {
   const results = new Array(route.length).fill(null);
   let loaded = 0;
-  let assembledUpTo = 0; // how far we've assembled contiguously
   const total = route.length;
 
   route.forEach((cityObj, idx) => {
@@ -344,20 +341,8 @@ export function fetchAndAssembleStreaming(route, onUpdate) {
       .then(cityData => {
         results[idx] = cityData;
         loaded++;
-
-        // Only extend the timeline with contiguous results from where we left off
-        let newUpTo = assembledUpTo;
-        while (newUpTo < total && results[newUpTo] !== null) newUpTo++;
-
-        if (newUpTo > assembledUpTo) {
-          assembledUpTo = newUpTo;
-          const timeline = assembleTimeline(results.slice(0, assembledUpTo));
-          onUpdate(timeline, { done: loaded === total, loaded, total });
-        } else if (loaded === total) {
-          // All loaded — final assemble with everything
-          const timeline = assembleTimeline(results);
-          onUpdate(timeline, { done: true, loaded, total });
-        }
+        const timeline = assembleTimeline(results.map(r => r || []));
+        onUpdate(timeline, { done: loaded === total, loaded, total });
       });
   });
 }
