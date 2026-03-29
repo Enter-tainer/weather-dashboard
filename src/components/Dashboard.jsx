@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchFullTimeline, fetchTimelineForRoute } from '../services/api';
+import { fetchTimelineForRoute, fetchFullTimelineStreaming, fetchTimelineForRouteStreaming } from '../services/api';
 import { parseSwitchableRoute, buildRouteForSelections } from '../services/urlParser';
 import TimeAxis from './TimeAxis';
 import WeatherIconLane from './WeatherIconLane';
@@ -23,35 +23,26 @@ import './Dashboard.css';
 
 export default function Dashboard({ testData }) {
   const [data, setData] = useState(testData || null);
-  const [loading, setLoading] = useState(!testData);
+  const [loadingDone, setLoadingDone] = useState(!!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
-
 
   useEffect(() => {
     if (testData) return; // Skip fetching when using mock data
 
-    const switchable = parseSwitchableRoute();
-    let fetchPromise;
+    const onUpdate = (timeline, { done }) => {
+      if (timeline.length > 0) setData(timeline);
+      if (done) setLoadingDone(true);
+    };
 
+    const switchable = parseSwitchableRoute();
     if (switchable) {
       setDateSlots(switchable.dateSlots);
-      // Only fetch the active city per date slot
       const route = buildRouteForSelections(switchable.dateSlots);
-      fetchPromise = fetchTimelineForRoute(route);
+      fetchTimelineForRouteStreaming(route, onUpdate);
     } else {
-      fetchPromise = fetchFullTimeline();
+      fetchFullTimelineStreaming(onUpdate);
     }
-
-    fetchPromise
-      .then(timeline => {
-        setData(timeline);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
   }, [testData]);
 
   // Build a map: displayName -> { date, entries[], activeIndex } for switchable slots
@@ -90,10 +81,7 @@ export default function Dashboard({ testData }) {
     setSwitching(false);
   }, [dateSlots, switching]);
 
-  if (loading) return <div className="loading-state">Loading global weather data...</div>;
-  if (!data || data.length === 0) {
-    return <div>No data available</div>;
-  }
+  const hasData = data && data.length > 0;
 
   // Calculate Global Scales for Y-Axes
   let minTemp = Infinity;
@@ -101,7 +89,7 @@ export default function Dashboard({ testData }) {
   let minP = Infinity;
   let maxP = -Infinity;
   let maxBft = 0;
-  data.forEach(d => {
+  if (hasData) data.forEach(d => {
     if (d.temperature < minTemp) minTemp = d.temperature;
     if (d.temperature > maxTemp) maxTemp = d.temperature;
     d.tempMembers?.forEach(m => {
@@ -243,25 +231,44 @@ export default function Dashboard({ testData }) {
       </div>
 
       <div className="timeline-scroller">
-        <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-          <DashboardBackground data={data} />
-          <WeatherAmbientBackground data={data} />
-          <LocationLane data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
-          <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
-          <TwilightLane data={data} />
-          <WeatherIconLane data={data} />
-          <UVLane data={data} />
-          <HumidityLane data={data} />
-          <TemperatureTextLane data={data} />
-          <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />
-          <CloudEnsembleLane data={data} />
-          <CloudAndRainLane data={data} />
-          <PrecipitationProbLane data={data} />
-          <CapeLane data={data} />
-          <WindLane data={data} maxBft={maxBft} />
-          <PressureLane data={data} minP={minP} maxP={maxP} />
-          <AirQualityLane data={data} />
-        </div>
+        {hasData ? (
+          <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+            <DashboardBackground data={data} />
+            <WeatherAmbientBackground data={data} />
+            <LocationLane data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
+            <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
+            <TwilightLane data={data} />
+            <WeatherIconLane data={data} />
+            <UVLane data={data} />
+            <HumidityLane data={data} />
+            <TemperatureTextLane data={data} />
+            <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />
+            <CloudEnsembleLane data={data} />
+            <CloudAndRainLane data={data} />
+            <PrecipitationProbLane data={data} />
+            <CapeLane data={data} />
+            <WindLane data={data} maxBft={maxBft} />
+            <PressureLane data={data} minP={minP} maxP={maxP} />
+            <AirQualityLane data={data} />
+            {!loadingDone && (
+              <div style={{
+                position: 'absolute',
+                right: '-40px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                <div className="loading-spinner" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '8px', color: '#888' }}>
+            {!loadingDone && <div className="loading-spinner" />}
+            {loadingDone && 'No data available'}
+          </div>
+        )}
       </div>
     </div>
   );

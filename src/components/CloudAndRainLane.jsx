@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -42,7 +42,7 @@ function cloudColor(cover) {
 export default function CloudAndRainLane({ data }) {
   const canvasRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!canvasRef.current || !data || data.length === 0) return;
     const ctx = canvasRef.current.getContext('2d');
     const width = data.length * COL_WIDTH;

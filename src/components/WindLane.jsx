@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import './Dashboard.css';
 
 // Exported for Dashboard legend calculations
@@ -24,7 +24,7 @@ const LANE_HEIGHT = 80;
 export default function WindLane({ data, maxBft }) {
   const canvasRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!canvasRef.current || !data || data.length === 0) return;
     const ctx = canvasRef.current.getContext('2d');
     const width = data.length * COL_WIDTH;

@@ -329,11 +329,37 @@ async function fetchAndAssemble(route) {
   return assembleTimeline(results);
 }
 
+// Streaming variant: calls onUpdate(timeline, {done, loaded, total}) as each city resolves
+export function fetchAndAssembleStreaming(route, onUpdate) {
+  const results = new Array(route.length).fill(null);
+  let loaded = 0;
+  const total = route.length;
+
+  route.forEach((cityObj, idx) => {
+    fetchCityDataForDate(cityObj)
+      .catch(e => { console.error(e); return []; })
+      .then(cityData => {
+        results[idx] = cityData;
+        loaded++;
+        const timeline = assembleTimeline(results.map(r => r || []));
+        onUpdate(timeline, { done: loaded === total, loaded, total });
+      });
+  });
+}
+
 export async function fetchFullTimeline() {
   const route = await parseRoute();
   return fetchAndAssemble(route);
 }
 
+export function fetchFullTimelineStreaming(onUpdate) {
+  parseRoute().then(route => fetchAndAssembleStreaming(route, onUpdate));
+}
+
 export async function fetchTimelineForRoute(route) {
   return fetchAndAssemble(route);
+}
+
+export function fetchTimelineForRouteStreaming(route, onUpdate) {
+  fetchAndAssembleStreaming(route, onUpdate);
 }

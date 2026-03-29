@@ -83,3 +83,16 @@ body {
 h1, h2, h3, h4, p {
   margin: 0;
 }
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-top-color: #888;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

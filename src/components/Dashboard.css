@@ -6,7 +6,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: flex-start;
 }
 
@@ -51,12 +51,20 @@
 
 .loading-state, .error-state {
   display: flex;
+  gap: 8px;
   width: 100vw;
   height: 100vh;
   justify-content: center;
   align-items: center;
   color: white;
   font-size: 1.5rem;
+}
+
+.loading-state .loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-color: rgba(255,255,255,0.2);
+  border-top-color: #fff;
 }
 
 /* Base styles for all lanes */
