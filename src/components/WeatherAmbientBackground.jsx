@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useStaticCanvas } from '../hooks/useStaticCanvas';
 
 const COL_WIDTH = 22;
 
@@ -43,43 +43,46 @@ function computeDistribution(weatherCodeMembers) {
 }
 
 const ALPHA = 0.22;
-// Horizontal radius: extend into neighbors for smooth blending
 const H_RADIUS_PX = COL_WIDTH * 1.2;
-
-// Height constants (must match CSS vars)
-// 28 + 25 + 35 + 35 + 110 = 233
 const BG_HEIGHT = 233;
 
 export default function WeatherAmbientBackground({ data }) {
-  const background = useMemo(() => {
-    const gradients = [];
+  const totalWidth = data.length * COL_WIDTH;
 
+  const imgSrc = useStaticCanvas(totalWidth, BG_HEIGHT, (ctx) => {
     for (let i = 0; i < data.length; i++) {
       const dist = computeDistribution(data[i].weatherCodeMembers);
       if (!dist) continue;
 
       const cx = (i + 0.5) * COL_WIDTH;
 
-      // Stack categories vertically: each gets a position based on cumulative probability
       let cumulative = 0;
       for (const seg of dist) {
         const yCenter = (cumulative + seg.prob / 2) * BG_HEIGHT;
-        const vRadius = seg.prob * BG_HEIGHT * 0.7; // slightly smaller than proportional for softer edges
+        const vRadius = Math.max(seg.prob * BG_HEIGHT * 0.7, 8);
         const [r, g, b] = WEATHER_COLORS[seg.cat];
 
-        gradients.push(
-          `radial-gradient(${H_RADIUS_PX}px ${Math.max(vRadius, 8)}px at ${cx}px ${yCenter}px, rgba(${r},${g},${b},${ALPHA}) 0%, rgba(${r},${g},${b},0) 100%)`
-        );
+        // Draw elliptical gradient matching CSS radial-gradient(Hpx Vpx at cx cy)
+        // Scale context so a circular gradient becomes elliptical
+        ctx.save();
+        ctx.translate(cx, yCenter);
+        ctx.scale(H_RADIUS_PX / vRadius, 1);
+
+        // Create gradient in scaled space (circular, radius = vRadius)
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, vRadius);
+        grad.addColorStop(0, `rgba(${r},${g},${b},${ALPHA})`);
+        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.fillStyle = grad;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, vRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
 
         cumulative += seg.prob;
       }
     }
-
-    if (gradients.length === 0) return 'transparent';
-    return gradients.join(', ');
   }, [data]);
-
-  const totalWidth = data.length * COL_WIDTH;
 
   return (
     <div style={{
@@ -90,7 +93,8 @@ export default function WeatherAmbientBackground({ data }) {
       height: 'calc(28px + var(--lane-height-uv) + var(--lane-height-humidity) + 35px + var(--lane-height-temp))',
       zIndex: 0,
       pointerEvents: 'none',
-      background,
-    }} />
+    }}>
+      {imgSrc && <img src={imgSrc} style={{ width: '100%', height: '100%' }} alt="" />}
+    </div>
   );
 }
