@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useStaticCanvas } from '../hooks/useStaticCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -40,24 +40,12 @@ function cloudColor(cover) {
 }
 
 export default function CloudAndRainLane({ data }) {
-  const canvasRef = useRef(null);
+  const width = data.length * COL_WIDTH;
 
-  useLayoutEffect(() => {
-    if (!canvasRef.current || !data || data.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const width = data.length * COL_WIDTH;
-    const height = LANE_HEIGHT;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvasRef.current.width = width * dpr;
-    canvasRef.current.height = height * dpr;
-    ctx.scale(dpr, dpr);
-
-    ctx.clearRect(0, 0, width, height);
-
+  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     // Light background tint
     ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, w, h);
 
     // Altitude grid lines (no canvas labels — they're in the sticky DOM overlay)
     ctx.setLineDash([4, 6]);
@@ -68,7 +56,7 @@ export default function CloudAndRainLane({ data }) {
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
+      ctx.lineTo(w, y);
       ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -118,7 +106,7 @@ export default function CloudAndRainLane({ data }) {
         d.precipMembers.forEach(precip => {
           if (precip > 0.1) {
             const barHeight = Math.min(40, precip * 4);
-            ctx.fillRect(x, height - barHeight, COL_WIDTH, barHeight);
+            ctx.fillRect(x, h - barHeight, COL_WIDTH, barHeight);
           }
         });
       }
@@ -127,7 +115,7 @@ export default function CloudAndRainLane({ data }) {
       if (d.precipitation > 0) {
         const barHeight = Math.min(40, d.precipitation * 4);
         ctx.fillStyle = precipColor(d.weatherCode, 0.5);
-        ctx.fillRect(x + COL_WIDTH / 2 - 4, height - barHeight, 8, barHeight);
+        ctx.fillRect(x + COL_WIDTH / 2 - 4, h - barHeight, 8, barHeight);
       }
     }
   }, [data]);
@@ -153,11 +141,10 @@ export default function CloudAndRainLane({ data }) {
         })}
       </div>
       <div className="lane-data" style={{ position: 'relative' }}>
-        <canvas
-          ref={canvasRef}
-          style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }}
-        />
-        <div style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
+        {imgSrc && (
+          <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} alt="" />
+        )}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
           {data.map((item, index) => {
             const barHeight = item.precipitation > 0 ? Math.min(40, item.precipitation * 4) : 0;
             return (

@@ -1,12 +1,10 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useStaticCanvas } from '../hooks/useStaticCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
 const LANE_HEIGHT = 110;
 
 export default function TemperatureLane({ data, minTemp, maxTemp }) {
-  const canvasRef = useRef(null);
-  
   const minTempVal = Math.floor(minTemp / 5) * 5;
   const maxTempVal = Math.ceil(maxTemp / 5) * 5;
   const tempSteps = [];
@@ -16,24 +14,13 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
     }
   }
 
-  useLayoutEffect(() => {
-    if (!canvasRef.current || !data || data.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const width = data.length * COL_WIDTH;
-    const height = LANE_HEIGHT;
-    
-    // Scale for high DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    canvasRef.current.width = width * dpr;
-    canvasRef.current.height = height * dpr;
-    ctx.scale(dpr, dpr);
-    
-    ctx.clearRect(0, 0, width, height);
-    
+  const width = data.length * COL_WIDTH;
+
+  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const range = maxTemp - minTemp;
     if (range === 0) return;
 
-    const getY = (val) => height - ((val - minTemp) / range) * height;
+    const getY = (val) => h - ((val - minTemp) / range) * h;
     const getX = (index) => index * COL_WIDTH + (COL_WIDTH / 2);
 
     // Draw gridlines
@@ -42,9 +29,9 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
     ctx.strokeStyle = 'rgba(0,0,0,0.1)';
     tempSteps.forEach(t => {
        const y = getY(t);
-       if (y >= 10 && y <= height - 10) {
+       if (y >= 10 && y <= h - 10) {
            ctx.moveTo(0, y);
-           ctx.lineTo(width, y);
+           ctx.lineTo(w, y);
        }
     });
     ctx.stroke();
@@ -76,7 +63,7 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#c62828';
 
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(211, 47, 47, 0.3)');
     grad.addColorStop(1, 'rgba(211, 47, 47, 0.0)');
     ctx.fillStyle = grad;
@@ -87,11 +74,11 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
       if (i === data.length || isBreak(i)) {
         // Fill segment [segStart, i-1]
         ctx.beginPath();
-        ctx.moveTo(getX(segStart), height);
+        ctx.moveTo(getX(segStart), h);
         for (let j = segStart; j < i; j++) {
           ctx.lineTo(getX(j), getY(data[j].temperature));
         }
-        ctx.lineTo(getX(i - 1), height);
+        ctx.lineTo(getX(i - 1), h);
         ctx.fill();
 
         // Stroke segment
@@ -107,16 +94,14 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
         segStart = i;
       }
     }
-
   }, [data, minTemp, maxTemp, tempSteps]);
 
   return (
     <div className="lane temp-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
       <div className="lane-data">
-        <canvas 
-          ref={canvasRef} 
-          style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }}
-        />
+        {imgSrc && (
+          <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} alt="" />
+        )}
       </div>
     </div>
   );
