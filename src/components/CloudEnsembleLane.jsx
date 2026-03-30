@@ -1,26 +1,14 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useStaticCanvas } from '../hooks/useStaticCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
 const LANE_HEIGHT = 50;
 
 export default function CloudEnsembleLane({ data }) {
-  const canvasRef = useRef(null);
+  const width = data.length * COL_WIDTH;
 
-  useLayoutEffect(() => {
-    if (!canvasRef.current || !data || data.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const width = data.length * COL_WIDTH;
-    const height = LANE_HEIGHT;
-    
-    const dpr = window.devicePixelRatio || 1;
-    canvasRef.current.width = width * dpr;
-    canvasRef.current.height = height * dpr;
-    ctx.scale(dpr, dpr);
-    
-    ctx.clearRect(0, 0, width, height);
-
-    const getY = (cov) => height - 5 - (cov / 100) * (height - 10);
+  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
+    const getY = (cov) => h - 5 - (cov / 100) * (h - 10);
     const getX = (index) => index * COL_WIDTH + COL_WIDTH / 2;
 
     // Detect location-change boundaries (break lines here)
@@ -55,16 +43,12 @@ export default function CloudEnsembleLane({ data }) {
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
-
   }, [data]);
 
   return (
     <div className="lane cloud-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'transparent' }}>
       <div className="lane-data">
-        <canvas 
-          ref={canvasRef} 
-          style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px` }}
-        />
+        {imgSrc && <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px` }} alt="" />}
       </div>
     </div>
   );

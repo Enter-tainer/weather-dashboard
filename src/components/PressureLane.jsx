@@ -1,26 +1,16 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useStaticCanvas } from '../hooks/useStaticCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
 
 export default function PressureLane({ data, minP, maxP }) {
-  const canvasRef = useRef(null);
+  const width = data.length * COL_WIDTH;
+  const height = 45; // --lane-height-pressure
 
-  useLayoutEffect(() => {
-    if (!canvasRef.current || !data || data.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const width = data.length * COL_WIDTH;
-    const height = 45; // --lane-height-pressure
-    
-    const dpr = window.devicePixelRatio || 1;
-    canvasRef.current.width = width * dpr;
-    canvasRef.current.height = height * dpr;
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, width, height);
-
+  const imgSrc = useStaticCanvas(width, height, (ctx, w, h) => {
     const getY = (p) => {
-      if (maxP === minP) return height / 2;
-      return height - 5 - ((p - minP) / (maxP - minP)) * (height - 10);
+      if (maxP === minP) return h / 2;
+      return h - 5 - ((p - minP) / (maxP - minP)) * (h - 10);
     };
     const getX = (index) => index * COL_WIDTH + COL_WIDTH / 2;
 
@@ -57,13 +47,12 @@ export default function PressureLane({ data, minP, maxP }) {
        else ctx.lineTo(x, y);
     }
     ctx.stroke();
-
   }, [data, minP, maxP]);
 
   return (
     <div className="lane pressure-lane" style={{ height: 'var(--lane-height-pressure)', position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
       <div className="lane-data">
-        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: 'var(--lane-height-pressure)' }} />
+        {imgSrc && <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: 'var(--lane-height-pressure)' }} alt="" />}
       </div>
     </div>
   );
