@@ -97,7 +97,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 21
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', textShadow: '0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.9)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px rgba(255,255,255,0.9)', paintOrder: 'stroke fill' }}>
                    <IconComp size={10} color={color} /> {hh}:{mm}
                 </div>
                 <div style={{ height: '6px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />
@@ -124,7 +124,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', textShadow: '0 0 2px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.9)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px rgba(255,255,255,0.9)', paintOrder: 'stroke fill' }}>
                    <Moon size={10} color={color} />{arrow}{hh}:{mm}
                 </div>
                 <div style={{ height: '18px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />

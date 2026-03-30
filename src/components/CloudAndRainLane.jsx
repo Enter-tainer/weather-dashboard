@@ -154,7 +154,8 @@ export default function CloudAndRainLane({ data }) {
                       color: precipColor(item.weatherCode, 1),
                       fontSize: '9px',
                       fontWeight: 'bold',
-                      textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 0px 4px rgba(255,255,255,0.8)'
+                      WebkitTextStroke: '2px white',
+                      paintOrder: 'stroke fill'
                     }}>
                       {item.precipitation.toFixed(1)}
                     </span>
