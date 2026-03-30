@@ -3,6 +3,21 @@ const STORAGE_PREFIX = 'weather_cache:';
 const TTL_GEO = 60 * 60 * 1000;      // 1 hour for geocoding
 const TTL_WEATHER = 10 * 60 * 1000;   // 10 minutes for weather data
 
+// --- In-memory cache (avoids JSON.parse on every read) ---
+
+const memCache = new Map(); // key -> { value, expires }
+
+function memGet(key) {
+  const entry = memCache.get(key);
+  if (!entry) return undefined; // miss
+  if (Date.now() > entry.expires) { memCache.delete(key); return undefined; }
+  return entry.value;
+}
+
+function memSet(key, value, ttl) {
+  memCache.set(key, { value, expires: Date.now() + ttl });
+}
+
 // --- localStorage-backed cache ---
 
 function storageKey(key) {
@@ -10,6 +25,10 @@ function storageKey(key) {
 }
 
 export function getCached(key) {
+  // Check in-memory first
+  const mem = memGet(key);
+  if (mem !== undefined) return mem;
+
   try {
     const raw = localStorage.getItem(storageKey(key));
     if (!raw) return null;
@@ -18,6 +37,9 @@ export function getCached(key) {
       localStorage.removeItem(storageKey(key));
       return null;
     }
+    // Promote to memory cache
+    const remaining = entry.expires - Date.now();
+    memSet(key, entry.value, remaining);
     return entry.value;
   } catch {
     return null;
@@ -25,6 +47,9 @@ export function getCached(key) {
 }
 
 export function setCache(key, value, ttl) {
+  // Always write to memory
+  memSet(key, value, ttl);
+
   try {
     localStorage.setItem(storageKey(key), JSON.stringify({
       value,

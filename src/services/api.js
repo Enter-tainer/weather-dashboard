@@ -249,7 +249,7 @@ export async function fetchCityDataForDate(cityObj) {
   return combined;
 }
 
-function assembleTimeline(results) {
+export function assembleTimeline(results) {
   const flatData = [];
   const globalSunEvents = [];
   const globalNightBands = [];

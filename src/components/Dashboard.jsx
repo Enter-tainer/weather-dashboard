@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { fetchTimelineForRoute, fetchFullTimelineStreaming, fetchTimelineForRouteStreaming } from '../services/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchCityDataForDate, assembleTimeline, fetchFullTimelineStreaming } from '../services/api';
 import { parseSwitchableRoute, buildRouteForSelections } from '../services/urlParser';
 import TimeAxis from './TimeAxis';
 import WeatherIconLane from './WeatherIconLane';
@@ -22,27 +22,60 @@ import RouteEditor from './RouteEditor';
 
 import './Dashboard.css';
 
+function cityKey(entry) {
+  if (entry.lat != null) return `${entry.lat},${entry.lon}:${entry.date}`;
+  return `${entry.city}:${entry.date}`;
+}
+
 export default function Dashboard({ testData }) {
   const [data, setData] = useState(testData || null);
   const [loadingDone, setLoadingDone] = useState(!!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
+  const cityCache = useRef(new Map()); // cityKey -> per-city result array
 
   useEffect(() => {
-    if (testData) return; // Skip fetching when using mock data
-
-    const onUpdate = (timeline, { done }) => {
-      if (timeline.length > 0) setData(timeline);
-      if (done) setLoadingDone(true);
-    };
+    if (testData) return;
 
     const switchable = parseSwitchableRoute();
     if (switchable) {
       setDateSlots(switchable.dateSlots);
-      const route = buildRouteForSelections(switchable.dateSlots);
-      fetchTimelineForRouteStreaming(route, onUpdate);
+      const activeRoute = buildRouteForSelections(switchable.dateSlots);
+      const results = new Array(activeRoute.length).fill(null);
+      let loaded = 0;
+
+      // Phase 1: stream-load active entries
+      activeRoute.forEach((entry, idx) => {
+        fetchCityDataForDate(entry)
+          .catch(e => { console.error(e); return []; })
+          .then(cityData => {
+            cityCache.current.set(cityKey(entry), cityData);
+            results[idx] = cityData;
+            loaded++;
+            const timeline = assembleTimeline(results.map(r => r || []));
+            if (timeline.length > 0) setData(timeline);
+            if (loaded === activeRoute.length) {
+              setLoadingDone(true);
+              // Phase 2: background-prefetch all alternative entries
+              for (const slot of switchable.dateSlots) {
+                for (let i = 0; i < slot.entries.length; i++) {
+                  if (i === slot.activeIndex) continue;
+                  const alt = { ...slot.entries[i], date: slot.date };
+                  if (!cityCache.current.has(cityKey(alt))) {
+                    fetchCityDataForDate(alt)
+                      .then(d => cityCache.current.set(cityKey(alt), d))
+                      .catch(() => {});
+                  }
+                }
+              }
+            }
+          });
+      });
     } else {
-      fetchFullTimelineStreaming(onUpdate);
+      fetchFullTimelineStreaming((timeline, { done }) => {
+        if (timeline.length > 0) setData(timeline);
+        if (done) setLoadingDone(true);
+      });
     }
   }, [testData]);
 
@@ -57,13 +90,11 @@ export default function Dashboard({ testData }) {
     }
   }
 
-  const handleCityClick = useCallback(async (cityName) => {
+  const handleCityClick = useCallback((cityName) => {
     if (switching || !dateSlots) return;
-    // Find the slot containing this city
     const slot = dateSlots.find(s => s.entries[s.activeIndex].originalName === cityName);
     if (!slot || slot.entries.length <= 1) return;
 
-    setSwitching(true);
     const newSlots = dateSlots.map(s => {
       if (s === slot) {
         return { ...s, activeIndex: (s.activeIndex + 1) % s.entries.length };
@@ -72,14 +103,26 @@ export default function Dashboard({ testData }) {
     });
     setDateSlots(newSlots);
 
-    try {
-      const route = buildRouteForSelections(newSlots);
-      const timeline = await fetchTimelineForRoute(route);
-      setData(timeline);
-    } catch (err) {
-      console.error(err);
+    // Build route and check memory cache
+    const route = buildRouteForSelections(newSlots);
+    const cached = route.map(entry => cityCache.current.get(cityKey(entry)));
+
+    if (cached.every(Boolean)) {
+      // All in memory — instant switch
+      setData(assembleTimeline(cached));
+    } else {
+      // Some missing — fetch only the missing ones
+      setSwitching(true);
+      Promise.all(route.map((entry, i) => {
+        if (cached[i]) return cached[i];
+        return fetchCityDataForDate(entry)
+          .then(d => { cityCache.current.set(cityKey(entry), d); return d; })
+          .catch(e => { console.error(e); return []; });
+      })).then(results => {
+        setData(assembleTimeline(results));
+        setSwitching(false);
+      });
     }
-    setSwitching(false);
   }, [dateSlots, switching]);
 
   const hasData = data && data.length > 0;
