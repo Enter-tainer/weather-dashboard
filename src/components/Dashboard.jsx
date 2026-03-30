@@ -109,7 +109,14 @@ export default function Dashboard({ testData }) {
 
     if (cached.every(Boolean)) {
       // All in memory — instant switch
-      setData(assembleTimeline(cached));
+      const t0 = performance.now();
+      const timeline = assembleTimeline(cached);
+      console.log(`[switch] assembleTimeline: ${(performance.now()-t0).toFixed(1)}ms, setData follows…`);
+      console.time('[switch] React render');
+      setData(timeline);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        console.timeEnd('[switch] React render');
+      }));
     } else {
       // Some missing — fetch only the missing ones
       setSwitching(true);

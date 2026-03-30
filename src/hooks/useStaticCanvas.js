@@ -12,12 +12,17 @@ import { useState, useLayoutEffect } from 'react';
  * @param {any[]} deps    - dependency array (re-draws when changed)
  * @returns {string|null} data URL for an <img src>
  */
+let canvasSeq = 0;
+
 export function useStaticCanvas(width, height, draw, deps) {
   const [src, setSrc] = useState(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (!width || !height) { setSrc(null); return; }
+
+    const id = ++canvasSeq;
+    const t0 = performance.now();
 
     const dpr = window.devicePixelRatio || 1;
     const canvas = document.createElement('canvas');
@@ -27,8 +32,12 @@ export function useStaticCanvas(width, height, draw, deps) {
     ctx.scale(dpr, dpr);
 
     draw(ctx, width, height);
+    const t1 = performance.now();
 
     setSrc(canvas.toDataURL());
+    const t2 = performance.now();
+
+    console.log(`[canvas#${id}] ${width}x${height} @${dpr}x — draw:${(t1-t0).toFixed(1)}ms encode:${(t2-t1).toFixed(1)}ms total:${(t2-t0).toFixed(1)}ms`);
   }, deps);
 
   return src;
