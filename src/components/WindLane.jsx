@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useStaticCanvas } from '../hooks/useStaticCanvas';
 import './Dashboard.css';
 
 // Exported for Dashboard legend calculations
@@ -22,21 +22,9 @@ const COL_WIDTH = 22;
 const LANE_HEIGHT = 80;
 
 export default function WindLane({ data, maxBft }) {
-  const canvasRef = useRef(null);
+  const width = data.length * COL_WIDTH;
 
-  useLayoutEffect(() => {
-    if (!canvasRef.current || !data || data.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const width = data.length * COL_WIDTH;
-    const height = LANE_HEIGHT;
-    
-    const dpr = window.devicePixelRatio || 1;
-    canvasRef.current.width = width * dpr;
-    canvasRef.current.height = height * dpr;
-    ctx.scale(dpr, dpr);
-    
-    ctx.clearRect(0, 0, width, height);
-
+  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx) => {
     data.forEach((d, i) => {
       const x = i * COL_WIDTH;
       // Chart available height: 45px (bottom 30px max reserved for arrow area, 5px top padding)
@@ -68,16 +56,15 @@ export default function WindLane({ data, maxBft }) {
         ctx.fill();
       }
     });
-
   }, [data, maxBft]);
 
   return (
     <div className="lane wind-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
       <div className="lane-data">
-        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
-        
+        {imgSrc && <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} alt="" />}
+
         {/* Overlay text and arrows */}
-        <div style={{ position: 'absolute', top: 0, left: 0, width: `${data.length * COL_WIDTH}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
           {data.map((item, index) => (
              <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '3px', alignItems: 'center' }}>
                {index % 3 === 0 && (

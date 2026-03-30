@@ -47,6 +47,7 @@
   /* Width will be set inline based on items count */
   min-height: min-content;
   position: relative;
+  will-change: transform;
 }
 
 .loading-state, .error-state {
@@ -73,6 +74,8 @@
   flex-direction: row;
   position: relative;
   border-bottom: 1px solid rgba(0,0,0,0.05);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;
 }
 
 .lane-legend {
