@@ -1,4 +1,4 @@
-import { useStaticCanvas } from '../hooks/useStaticCanvas';
+import { useCanvas } from '../hooks/useCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -7,7 +7,7 @@ export default function PressureLane({ data, minP, maxP }) {
   const width = data.length * COL_WIDTH;
   const height = 45; // --lane-height-pressure
 
-  const imgSrc = useStaticCanvas(width, height, (ctx, w, h) => {
+  const canvasRef = useCanvas(width, height, (ctx, w, h) => {
     const getY = (p) => {
       if (maxP === minP) return h / 2;
       return h - 5 - ((p - minP) / (maxP - minP)) * (h - 10);
@@ -52,7 +52,7 @@ export default function PressureLane({ data, minP, maxP }) {
   return (
     <div className="lane pressure-lane" style={{ height: 'var(--lane-height-pressure)', position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
       <div className="lane-data">
-        {imgSrc && <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: 'var(--lane-height-pressure)' }} alt="" />}
+        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: 'var(--lane-height-pressure)' }} />
       </div>
     </div>
   );

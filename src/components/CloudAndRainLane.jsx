@@ -1,4 +1,4 @@
-import { useStaticCanvas } from '../hooks/useStaticCanvas';
+import { useCanvas } from '../hooks/useCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -42,7 +42,7 @@ function cloudColor(cover) {
 export default function CloudAndRainLane({ data }) {
   const width = data.length * COL_WIDTH;
 
-  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
+  const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     // Light background tint
     ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
     ctx.fillRect(0, 0, w, h);
@@ -141,9 +141,7 @@ export default function CloudAndRainLane({ data }) {
         })}
       </div>
       <div className="lane-data" style={{ position: 'relative' }}>
-        {imgSrc && (
-          <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} alt="" />
-        )}
+        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
           {data.map((item, index) => {
             const barHeight = item.precipitation > 0 ? Math.min(40, item.precipitation * 4) : 0;

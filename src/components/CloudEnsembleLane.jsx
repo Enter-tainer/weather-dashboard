@@ -1,4 +1,4 @@
-import { useStaticCanvas } from '../hooks/useStaticCanvas';
+import { useCanvas } from '../hooks/useCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -7,7 +7,7 @@ const LANE_HEIGHT = 50;
 export default function CloudEnsembleLane({ data }) {
   const width = data.length * COL_WIDTH;
 
-  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
+  const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const getY = (cov) => h - 5 - (cov / 100) * (h - 10);
     const getX = (index) => index * COL_WIDTH + COL_WIDTH / 2;
 
@@ -48,7 +48,7 @@ export default function CloudEnsembleLane({ data }) {
   return (
     <div className="lane cloud-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'transparent' }}>
       <div className="lane-data">
-        {imgSrc && <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px` }} alt="" />}
+        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px` }} />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useStaticCanvas } from '../hooks/useStaticCanvas';
+import { useCanvas } from '../hooks/useCanvas';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -16,7 +16,7 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
 
   const width = data.length * COL_WIDTH;
 
-  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
+  const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const range = maxTemp - minTemp;
     if (range === 0) return;
 
@@ -99,9 +99,7 @@ export default function TemperatureLane({ data, minTemp, maxTemp }) {
   return (
     <div className="lane temp-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
       <div className="lane-data">
-        {imgSrc && (
-          <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} alt="" />
-        )}
+        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
       </div>
     </div>
   );
