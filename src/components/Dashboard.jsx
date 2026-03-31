@@ -49,7 +49,7 @@ export default function Dashboard({ testData }) {
         fetchCityDataForDate(entry)
           .catch(e => { console.error(e); return []; })
           .then(cityData => {
-            cityCache.current.set(cityKey(entry), cityData);
+            if (cityData.length > 0) cityCache.current.set(cityKey(entry), cityData);
             results[idx] = cityData;
             loaded++;
             const timeline = assembleTimeline(results.map(r => r || []));
@@ -63,7 +63,7 @@ export default function Dashboard({ testData }) {
                   const alt = { ...slot.entries[i], date: slot.date };
                   if (!cityCache.current.has(cityKey(alt))) {
                     fetchCityDataForDate(alt)
-                      .then(d => cityCache.current.set(cityKey(alt), d))
+                      .then(d => { if (d.length > 0) cityCache.current.set(cityKey(alt), d); })
                       .catch(() => {});
                   }
                 }
@@ -118,7 +118,7 @@ export default function Dashboard({ testData }) {
       Promise.all(route.map((entry, i) => {
         if (cached[i]) return cached[i];
         return fetchCityDataForDate(entry)
-          .then(d => { cityCache.current.set(cityKey(entry), d); return d; })
+          .then(d => { if (d.length > 0) cityCache.current.set(cityKey(entry), d); return d; })
           .catch(e => { console.error(e); return []; });
       })).then(results => {
         setData(assembleTimeline(results));
