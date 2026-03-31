@@ -28,8 +28,14 @@ export async function getCityDetails(cityName) {
   throw new Error(`City not found: ${cityName}`);
 }
 
+// Memoize processed results to avoid re-running SunCalc + member extraction
+// on every city switch. Key = "lat,lon:date" or "city:date".
+const processedCache = new Map();
+
 export async function fetchCityDataForDate(cityObj) {
   const { city, date, originalName, lat, lon } = cityObj;
+  const memoKey = lat != null ? `${lat},${lon}:${date}` : `${city}:${date}`;
+  if (processedCache.has(memoKey)) return processedCache.get(memoKey);
   let latitude, longitude, timezone, name;
   if (lat != null && lon != null) {
     latitude = lat;
@@ -246,6 +252,7 @@ export async function fetchCityDataForDate(cityObj) {
 
   combined.sunEvents = sunEvents;
   combined.moonEvents = moonEvents;
+  processedCache.set(memoKey, combined);
   return combined;
 }
 
