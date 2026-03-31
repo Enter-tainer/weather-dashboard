@@ -1,4 +1,4 @@
-import { useStaticCanvas } from '../hooks/useStaticCanvas';
+import { useCanvas } from '../hooks/useCanvas';
 import './Dashboard.css';
 
 // Exported for Dashboard legend calculations
@@ -24,7 +24,7 @@ const LANE_HEIGHT = 80;
 export default function WindLane({ data, maxBft }) {
   const width = data.length * COL_WIDTH;
 
-  const imgSrc = useStaticCanvas(width, LANE_HEIGHT, (ctx) => {
+  const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx) => {
     data.forEach((d, i) => {
       const x = i * COL_WIDTH;
       // Chart available height: 45px (bottom 30px max reserved for arrow area, 5px top padding)
@@ -61,7 +61,7 @@ export default function WindLane({ data, maxBft }) {
   return (
     <div className="lane wind-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
       <div className="lane-data">
-        {imgSrc && <img src={imgSrc} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} alt="" />}
+        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
 
         {/* Overlay text and arrows */}
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>

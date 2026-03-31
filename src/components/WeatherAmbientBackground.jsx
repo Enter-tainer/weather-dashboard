@@ -1,4 +1,4 @@
-import { useStaticCanvas } from '../hooks/useStaticCanvas';
+import { useCanvas } from '../hooks/useCanvas';
 
 const COL_WIDTH = 22;
 
@@ -49,7 +49,7 @@ const BG_HEIGHT = 233;
 export default function WeatherAmbientBackground({ data }) {
   const totalWidth = data.length * COL_WIDTH;
 
-  const imgSrc = useStaticCanvas(totalWidth, BG_HEIGHT, (ctx) => {
+  const canvasRef = useCanvas(totalWidth, BG_HEIGHT, (ctx) => {
     for (let i = 0; i < data.length; i++) {
       const dist = computeDistribution(data[i].weatherCodeMembers);
       if (!dist) continue;
@@ -94,7 +94,7 @@ export default function WeatherAmbientBackground({ data }) {
       zIndex: 0,
       pointerEvents: 'none',
     }}>
-      {imgSrc && <img src={imgSrc} style={{ width: '100%', height: '100%' }} alt="" />}
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
