@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchCityDataForDate, assembleTimeline, fetchFullTimelineStreaming } from '../services/api';
 import { parseSwitchableRoute, buildRouteForSelections } from '../services/urlParser';
 import TimeAxis from './TimeAxis';
@@ -22,17 +22,11 @@ import RouteEditor from './RouteEditor';
 
 import './Dashboard.css';
 
-function cityKey(entry) {
-  if (entry.lat != null) return `${entry.lat},${entry.lon}:${entry.date}`;
-  return `${entry.city}:${entry.date}`;
-}
-
 export default function Dashboard({ testData }) {
   const [data, setData] = useState(testData || null);
   const [loadingDone, setLoadingDone] = useState(!!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
-  const cityCache = useRef(new Map()); // cityKey -> per-city result array
 
   useEffect(() => {
     if (testData) return;
@@ -49,7 +43,6 @@ export default function Dashboard({ testData }) {
         fetchCityDataForDate(entry)
           .catch(e => { console.error(e); return []; })
           .then(cityData => {
-            if (cityData.length > 0) cityCache.current.set(cityKey(entry), cityData);
             results[idx] = cityData;
             loaded++;
             const timeline = assembleTimeline(results.map(r => r || []));
@@ -61,11 +54,7 @@ export default function Dashboard({ testData }) {
                 for (let i = 0; i < slot.entries.length; i++) {
                   if (i === slot.activeIndex) continue;
                   const alt = { ...slot.entries[i], date: slot.date };
-                  if (!cityCache.current.has(cityKey(alt))) {
-                    fetchCityDataForDate(alt)
-                      .then(d => { if (d.length > 0) cityCache.current.set(cityKey(alt), d); })
-                      .catch(() => {});
-                  }
+                  fetchCityDataForDate(alt).catch(() => {});
                 }
               }
             }
@@ -103,28 +92,15 @@ export default function Dashboard({ testData }) {
     });
     setDateSlots(newSlots);
 
-    // Build route and check memory cache
+    // Fetch all entries — cachedFetch handles localStorage cache hits internally
+    setSwitching(true);
     const route = buildRouteForSelections(newSlots);
-    const cached = route.map(entry => cityCache.current.get(cityKey(entry)));
-
-    if (cached.every(Boolean)) {
-      // All in memory — instant switch with brief visual feedback
-      setSwitching(true);
-      setData(assembleTimeline(cached));
-      setTimeout(() => setSwitching(false), 150);
-    } else {
-      // Some missing — fetch only the missing ones
-      setSwitching(true);
-      Promise.all(route.map((entry, i) => {
-        if (cached[i]) return cached[i];
-        return fetchCityDataForDate(entry)
-          .then(d => { if (d.length > 0) cityCache.current.set(cityKey(entry), d); return d; })
-          .catch(e => { console.error(e); return []; });
-      })).then(results => {
-        setData(assembleTimeline(results));
-        setSwitching(false);
-      });
-    }
+    Promise.all(route.map(entry =>
+      fetchCityDataForDate(entry).catch(e => { console.error(e); return []; })
+    )).then(results => {
+      setData(assembleTimeline(results));
+      setSwitching(false);
+    });
   }, [dateSlots, switching]);
 
   const hasData = data && data.length > 0;
