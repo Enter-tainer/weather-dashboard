@@ -7,8 +7,9 @@ const MAX_ALT = 10000; // meters
 
 // Fallback altitudes (meters) when geopotential height is unavailable
 const FALLBACK_ALT = {
-  1000: 100, 925: 750, 850: 1500, 700: 3000,
-  600: 4200, 500: 5500, 400: 7200, 300: 9000,
+  1000: 110, 975: 320, 950: 500, 925: 800, 900: 1000,
+  850: 1500, 800: 1900, 700: 3000, 600: 4200,
+  500: 5600, 400: 7200, 300: 9200,
 };
 
 // Pressure level labels shown as sticky overlays

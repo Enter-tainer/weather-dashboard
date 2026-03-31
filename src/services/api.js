@@ -60,7 +60,7 @@ export async function fetchCityDataForDate(cityObj) {
   }
 
   // Pressure levels for altitude-based cloud visualization
-  const pressureLevels = [1000, 925, 850, 700, 600, 500, 400, 300];
+  const pressureLevels = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300];
   const cloudPressureParams = pressureLevels.map(p => `cloud_cover_${p}hPa`).join(',');
   const geopotentialParams = pressureLevels.map(p => `geopotential_height_${p}hPa`).join(',');
 
