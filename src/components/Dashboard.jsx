@@ -108,8 +108,10 @@ export default function Dashboard({ testData }) {
     const cached = route.map(entry => cityCache.current.get(cityKey(entry)));
 
     if (cached.every(Boolean)) {
-      // All in memory — instant switch
+      // All in memory — instant switch with brief visual feedback
+      setSwitching(true);
       setData(assembleTimeline(cached));
+      setTimeout(() => setSwitching(false), 150);
     } else {
       // Some missing — fetch only the missing ones
       setSwitching(true);
