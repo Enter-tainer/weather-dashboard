@@ -12,13 +12,13 @@ const FALLBACK_ALT = {
   500: 5600, 400: 7200, 300: 9200,
 };
 
-// Non-uniform Y-axis: expand 0-1km region for boundary layer detail
+// Non-uniform Y-axis: equal height for low/mid/high cloud regions
 // Breakpoints: [altitude_m, fraction_of_height_from_bottom]
 const ALT_BREAKS = [
   [0, 0],
-  [1000, 0.40],   // 0-1km occupies bottom 40%
-  [3000, 0.65],   // 1-3km occupies next 25%
-  [10000, 1.0],   // 3-10km occupies top 35%
+  [2000, 0.333],   // low clouds: 0-2km = 1/3
+  [6000, 0.667],   // mid clouds: 2-6km = 1/3
+  [10000, 1.0],    // high clouds: 6-10km = 1/3
 ];
 
 // Map altitude (meters) to Y pixel using piecewise linear scale
