@@ -37,6 +37,8 @@ function altToY(alt) {
 
 // Grid lines at key altitudes matching the legend sidebar
 const GRID_ALTS = [1000, 2000, 4000, 5000, 6000, 8000, 10000];
+// Cloud classification boundaries get thicker lines
+const BOUNDARY_ALTS = new Set([2000, 6000]);
 
 // Precipitation color by weather code type
 function precipColor(code, alpha = 0.6) {
@@ -61,11 +63,12 @@ export default function CloudAndRainLane({ data }) {
     ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
     ctx.fillRect(0, 0, w, h);
 
-    // Altitude grid lines
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 0.5;
+    // Altitude grid lines (cloud boundaries thicker)
     for (const alt of GRID_ALTS) {
+      const isBoundary = BOUNDARY_ALTS.has(alt);
+      ctx.setLineDash(isBoundary ? [6, 4] : [4, 6]);
+      ctx.strokeStyle = isBoundary ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = isBoundary ? 1.2 : 0.5;
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
