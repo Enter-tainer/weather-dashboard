@@ -35,12 +35,8 @@ function altToY(alt) {
   return 0;
 }
 
-// Altitude-based labels: 1km boundary layer + high/mid/low cloud boundaries
-const LEVEL_LABELS = [
-  { alt: 6000, label: '6km' },
-  { alt: 2000, label: '2km' },
-  { alt: 1000, label: '1km' },
-];
+// Grid lines at key altitudes matching the legend sidebar
+const GRID_ALTS = [1000, 2000, 4000, 5000, 6000, 8000, 10000];
 
 // Precipitation color by weather code type
 function precipColor(code, alpha = 0.6) {
@@ -69,7 +65,7 @@ export default function CloudAndRainLane({ data }) {
     ctx.setLineDash([4, 6]);
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 0.5;
-    for (const { alt } of LEVEL_LABELS) {
+    for (const alt of GRID_ALTS) {
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -156,24 +152,6 @@ export default function CloudAndRainLane({ data }) {
 
   return (
     <div className="lane cloud-rain-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
-      {/* Sticky pressure level labels — must be direct children of .lane for sticky to work */}
-      <div style={{ position: 'sticky', left: 0, width: 0, height: 0, zIndex: 10, pointerEvents: 'none', flexShrink: 0 }}>
-        {LEVEL_LABELS.map(({ alt, label }) => {
-          const y = altToY(alt);
-          return (
-            <div
-              key={alt}
-              style={{
-                position: 'absolute', top: `${y - 11}px`, left: '2px',
-                fontSize: '8px', color: 'rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
-                fontFamily: 'sans-serif',
-              }}
-            >
-              {label}
-            </div>
-          );
-        })}
-      </div>
       <div className="lane-data" style={{ position: 'relative' }}>
         <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
