@@ -12,13 +12,33 @@ const FALLBACK_ALT = {
   500: 5600, 400: 7200, 300: 9200,
 };
 
-// Pressure level labels shown as sticky overlays
-const LEVEL_LABELS = [
-  { pressure: 300, label: '300h 9km' },
-  { pressure: 500, label: '500h 5km' },
-  { pressure: 700, label: '700h 3km' },
-  { pressure: 850, label: '850h 1.5km' },
+// Non-uniform Y-axis: equal height for low/mid/high cloud regions
+// Breakpoints: [altitude_m, fraction_of_height_from_bottom]
+const ALT_BREAKS = [
+  [0, 0],
+  [2000, 0.333],   // low clouds: 0-2km = 1/3
+  [6000, 0.667],   // mid clouds: 2-6km = 1/3
+  [10000, 1.0],    // high clouds: 6-10km = 1/3
 ];
+
+// Map altitude (meters) to Y pixel using piecewise linear scale
+function altToY(alt) {
+  const a = Math.min(Math.max(alt, 0), MAX_ALT);
+  for (let i = 0; i < ALT_BREAKS.length - 1; i++) {
+    const [a0, f0] = ALT_BREAKS[i];
+    const [a1, f1] = ALT_BREAKS[i + 1];
+    if (a <= a1) {
+      const frac = f0 + (f1 - f0) * (a - a0) / (a1 - a0);
+      return LANE_HEIGHT * (1 - frac);
+    }
+  }
+  return 0;
+}
+
+// Grid lines at key altitudes matching the legend sidebar
+const GRID_ALTS = [1000, 2000, 4000, 5000, 6000, 8000, 10000];
+// Cloud classification boundaries get thicker lines
+const BOUNDARY_ALTS = new Set([2000, 6000]);
 
 // Precipitation color by weather code type
 function precipColor(code, alpha = 0.6) {
@@ -27,11 +47,6 @@ function precipColor(code, alpha = 0.6) {
   if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(56, 189, 248, ${alpha})`; // snow — light blue
   if ([51, 53, 55].includes(code)) return `rgba(96, 165, 250, ${alpha})`; // drizzle — medium blue
   return `rgba(13, 71, 161, ${alpha})`; // rain (default) — dark blue
-}
-
-// Map altitude (meters) to Y pixel (top = MAX_ALT, bottom = 0)
-function altToY(alt) {
-  return LANE_HEIGHT * (1 - Math.min(alt, MAX_ALT) / MAX_ALT);
 }
 
 // Uniform cloud color — only alpha varies with coverage
@@ -48,12 +63,12 @@ export default function CloudAndRainLane({ data }) {
     ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
     ctx.fillRect(0, 0, w, h);
 
-    // Altitude grid lines (no canvas labels — they're in the sticky DOM overlay)
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 0.5;
-    for (const { pressure } of LEVEL_LABELS) {
-      const alt = FALLBACK_ALT[pressure];
+    // Altitude grid lines (cloud boundaries thicker)
+    for (const alt of GRID_ALTS) {
+      const isBoundary = BOUNDARY_ALTS.has(alt);
+      ctx.setLineDash(isBoundary ? [6, 4] : [4, 6]);
+      ctx.strokeStyle = isBoundary ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = isBoundary ? 1.2 : 0.5;
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -119,28 +134,27 @@ export default function CloudAndRainLane({ data }) {
         ctx.fillRect(x + COL_WIDTH / 2 - 4, h - barHeight, 8, barHeight);
       }
     }
+
+    // Boundary layer height — dashed line across all hours
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(180, 120, 60, 0.6)';
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < data.length; i++) {
+      const blh = data[i].boundaryLayerHeight;
+      if (blh == null) { started = false; continue; }
+      const x = i * COL_WIDTH + COL_WIDTH / 2;
+      const y = altToY(blh);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
   }, [data]);
 
   return (
     <div className="lane cloud-rain-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
-      {/* Sticky pressure level labels — must be direct children of .lane for sticky to work */}
-      <div style={{ position: 'sticky', left: 0, width: 0, height: 0, zIndex: 10, pointerEvents: 'none', flexShrink: 0 }}>
-        {LEVEL_LABELS.map(({ pressure, label }) => {
-          const y = altToY(FALLBACK_ALT[pressure]);
-          return (
-            <div
-              key={pressure}
-              style={{
-                position: 'absolute', top: `${y - 11}px`, left: '2px',
-                fontSize: '8px', color: 'rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
-                fontFamily: 'sans-serif',
-              }}
-            >
-              {label}
-            </div>
-          );
-        })}
-      </div>
       <div className="lane-data" style={{ position: 'relative' }}>
         <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
