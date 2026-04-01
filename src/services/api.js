@@ -71,7 +71,7 @@ export async function fetchCityDataForDate(cityObj) {
   const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
 
   // AQI API
-  const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,dust${tzParams}`;
+  const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,dust,aerosol_optical_depth${tzParams}`;
 
   let [forecastRes, ensembleRes, aqRes] = await Promise.all([
     cachedFetch(forecastUrl, TTL_WEATHER).catch(() => null),
@@ -202,6 +202,7 @@ export async function fetchCityDataForDate(cityObj) {
       no2: aqRes?.hourly?.nitrogen_dioxide?.[i] || 0,
       so2: aqRes?.hourly?.sulphur_dioxide?.[i] || 0,
       dust: aqRes?.hourly?.dust?.[i] || 0,
+      aod: aqRes?.hourly?.aerosol_optical_depth?.[i] ?? null,
     });
   }
 

@@ -37,7 +37,7 @@ export default function AirQualityLane({ data }) {
       </div>
       
       {/* Visibility Row (m to km) */}
-      <div className="lane" style={{ height: '20px', fontSize: '9px', borderBottom: 'none' }}>
+      <div className="lane" style={{ height: '20px', fontSize: '9px' }}>
         <div className="lane-data">
           {data.map((item, index) => {
             const visKm = item.visibility != null ? (item.visibility / 1000).toFixed(1) : '-';
