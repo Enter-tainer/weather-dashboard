@@ -14,6 +14,7 @@ import PressureLane from './PressureLane';
 import CapeLane from './CapeLane';
 import WindLane, { getBeaufort } from './WindLane';
 import AirQualityLane from './AirQualityLane';
+import AerosolLane from './AerosolLane';
 import DashboardBackground from './DashboardBackground';
 import WeatherAmbientBackground from './WeatherAmbientBackground';
 import TwilightLane from './TwilightLane';
@@ -249,8 +250,12 @@ export default function Dashboard({ testData }) {
           <div>AQI</div>
         </div>
 
-        <div className="legend-cell" style={{ height: '20px', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555', borderBottom: 'none' }}>
+        <div className="legend-cell" style={{ height: '20px', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555' }}>
           <div>能见度 <span style={{fontSize: '8px', color: '#888'}}>km</span></div>
+        </div>
+
+        <div className="legend-cell" style={{ height: '30px', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555', borderBottom: 'none' }}>
+          <div>AOD</div>
         </div>
       </div>
 
@@ -274,6 +279,7 @@ export default function Dashboard({ testData }) {
             <WindLane data={data} maxBft={maxBft} />
             <PressureLane data={data} minP={minP} maxP={maxP} />
             <AirQualityLane data={data} />
+            <AerosolLane data={data} />
             {!loadingDone && (
               <div style={{
                 position: 'absolute',
