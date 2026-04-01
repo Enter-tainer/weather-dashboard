@@ -65,7 +65,7 @@ export async function fetchCityDataForDate(cityObj) {
   const geopotentialParams = pressureLevels.map(p => `geopotential_height_${p}hPa`).join(',');
 
   // Forecast API
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,${cloudPressureParams},${geopotentialParams}${tzParams}`;
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,boundary_layer_height,${cloudPressureParams},${geopotentialParams}${tzParams}`;
 
   // Ensemble API
   const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
@@ -179,6 +179,8 @@ export async function fetchCityDataForDate(cityObj) {
       cloudLow: forecastRes.hourly.cloud_cover_low[i],
       cloudMid: forecastRes.hourly.cloud_cover_mid[i],
       cloudHigh: forecastRes.hourly.cloud_cover_high[i],
+
+      boundaryLayerHeight: forecastRes.hourly.boundary_layer_height?.[i] ?? null,
 
       // Pressure-level cloud cover and geopotential heights for altitude visualization
       cloudByLevel: pressureLevels.map(p => ({

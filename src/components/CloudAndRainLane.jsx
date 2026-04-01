@@ -12,12 +12,36 @@ const FALLBACK_ALT = {
   500: 5600, 400: 7200, 300: 9200,
 };
 
+// Non-uniform Y-axis: expand 0-1km region for boundary layer detail
+// Breakpoints: [altitude_m, fraction_of_height_from_bottom]
+const ALT_BREAKS = [
+  [0, 0],
+  [1000, 0.40],   // 0-1km occupies bottom 40%
+  [3000, 0.65],   // 1-3km occupies next 25%
+  [10000, 1.0],   // 3-10km occupies top 35%
+];
+
+// Map altitude (meters) to Y pixel using piecewise linear scale
+function altToY(alt) {
+  const a = Math.min(Math.max(alt, 0), MAX_ALT);
+  for (let i = 0; i < ALT_BREAKS.length - 1; i++) {
+    const [a0, f0] = ALT_BREAKS[i];
+    const [a1, f1] = ALT_BREAKS[i + 1];
+    if (a <= a1) {
+      const frac = f0 + (f1 - f0) * (a - a0) / (a1 - a0);
+      return LANE_HEIGHT * (1 - frac);
+    }
+  }
+  return 0;
+}
+
 // Pressure level labels shown as sticky overlays
 const LEVEL_LABELS = [
   { pressure: 300, label: '300h 9km' },
   { pressure: 500, label: '500h 5km' },
   { pressure: 700, label: '700h 3km' },
   { pressure: 850, label: '850h 1.5km' },
+  { pressure: 950, label: '950h 0.5km' },
 ];
 
 // Precipitation color by weather code type
@@ -27,11 +51,6 @@ function precipColor(code, alpha = 0.6) {
   if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(56, 189, 248, ${alpha})`; // snow — light blue
   if ([51, 53, 55].includes(code)) return `rgba(96, 165, 250, ${alpha})`; // drizzle — medium blue
   return `rgba(13, 71, 161, ${alpha})`; // rain (default) — dark blue
-}
-
-// Map altitude (meters) to Y pixel (top = MAX_ALT, bottom = 0)
-function altToY(alt) {
-  return LANE_HEIGHT * (1 - Math.min(alt, MAX_ALT) / MAX_ALT);
 }
 
 // Uniform cloud color — only alpha varies with coverage
@@ -48,7 +67,7 @@ export default function CloudAndRainLane({ data }) {
     ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
     ctx.fillRect(0, 0, w, h);
 
-    // Altitude grid lines (no canvas labels — they're in the sticky DOM overlay)
+    // Altitude grid lines
     ctx.setLineDash([4, 6]);
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 0.5;
@@ -119,6 +138,23 @@ export default function CloudAndRainLane({ data }) {
         ctx.fillRect(x + COL_WIDTH / 2 - 4, h - barHeight, 8, barHeight);
       }
     }
+
+    // Boundary layer height — dashed line across all hours
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(180, 120, 60, 0.6)';
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < data.length; i++) {
+      const blh = data[i].boundaryLayerHeight;
+      if (blh == null) { started = false; continue; }
+      const x = i * COL_WIDTH + COL_WIDTH / 2;
+      const y = altToY(blh);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
   }, [data]);
 
   return (
