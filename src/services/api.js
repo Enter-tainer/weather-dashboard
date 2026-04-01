@@ -28,6 +28,26 @@ export async function getCityDetails(cityName) {
   throw new Error(`City not found: ${cityName}`);
 }
 
+// Estimate visibility (meters) from pollutant concentrations and relative humidity.
+// Uses Koschmieder equation: V = 3912 / β_total (km)
+// β components in 1/Mm (inverse megameters):
+//   fine scatter: 3.0 * PM2.5 * f(RH)
+//   coarse scatter: 0.6 * max(PM10 - PM2.5, 0)
+//   NO2 absorption: 0.33 * NO2
+//   Rayleigh (clean air): 10
+// f(RH) = hygroscopic growth ≈ (1 - RH/100)^-0.55, capped at RH=95%
+function estimateVisibility(pm25, pm10, no2, rh) {
+  if (pm25 == null && pm10 == null) return null;
+  const rhClamped = Math.min(rh ?? 50, 95) / 100;
+  const fRH = Math.pow(1 - rhClamped, -0.55);
+  const bFine = 3.0 * (pm25 || 0) * fRH;
+  const bCoarse = 0.6 * Math.max((pm10 || 0) - (pm25 || 0), 0);
+  const bNO2 = 0.33 * (no2 || 0);
+  const bRayleigh = 10;
+  const bTotal = bFine + bCoarse + bNO2 + bRayleigh;
+  return (3912 / bTotal) * 1000; // km → meters
+}
+
 // Memoize processed results to avoid re-running SunCalc + member extraction
 // on every city switch. Key = "lat,lon:date" or "city:date".
 const processedCache = new Map();
@@ -169,7 +189,14 @@ export async function fetchCityDataForDate(cityObj) {
       windSpeed: forecastRes.hourly.wind_speed_10m[i],
       windGusts: forecastRes.hourly.wind_gusts_10m[i],
       windDir: forecastRes.hourly.wind_direction_10m[i],
-      visibility: forecastRes.hourly.visibility[i],
+      visibility: Math.min(
+        forecastRes.hourly.visibility[i] ?? Infinity,
+        estimateVisibility(
+          aqRes?.hourly?.pm2_5?.[i], aqRes?.hourly?.pm10?.[i],
+          aqRes?.hourly?.nitrogen_dioxide?.[i],
+          forecastRes.hourly.relative_humidity_2m[i]
+        ) ?? Infinity
+      ),
       
       uvIndex: forecastRes.hourly.uv_index?.[i] || 0,
       pressure: forecastRes.hourly.surface_pressure?.[i] || 1013,
