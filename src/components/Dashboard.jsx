@@ -214,7 +214,7 @@ export default function Dashboard({ testData }) {
           <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>云<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>m</span></span>
           {/* Non-uniform Y-axis: 0-2km=1/3, 2-6km=1/3, 6-10km=1/3 of 150px */}
           <span style={{ position: 'absolute', top: '-4px', right: '2px', fontSize: '8px', color: '#aaa' }}>10k</span>
-          <span style={{ position: 'absolute', top: '11px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
+          <span style={{ position: 'absolute', top: '19px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
           <span style={{ position: 'absolute', top: '44px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
           <span style={{ position: 'absolute', top: '57px', right: '2px', fontSize: '8px', color: '#aaa' }}>5k</span>
           <span style={{ position: 'absolute', top: '69px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
