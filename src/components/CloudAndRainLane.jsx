@@ -35,13 +35,11 @@ function altToY(alt) {
   return 0;
 }
 
-// Pressure level labels shown as sticky overlays
+// Altitude-based labels: 1km boundary layer + high/mid/low cloud boundaries
 const LEVEL_LABELS = [
-  { pressure: 300, label: '300h 9km' },
-  { pressure: 500, label: '500h 5km' },
-  { pressure: 700, label: '700h 3km' },
-  { pressure: 850, label: '850h 1.5km' },
-  { pressure: 950, label: '950h 0.5km' },
+  { alt: 6000, label: '6km' },
+  { alt: 2000, label: '2km' },
+  { alt: 1000, label: '1km' },
 ];
 
 // Precipitation color by weather code type
@@ -71,8 +69,7 @@ export default function CloudAndRainLane({ data }) {
     ctx.setLineDash([4, 6]);
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 0.5;
-    for (const { pressure } of LEVEL_LABELS) {
-      const alt = FALLBACK_ALT[pressure];
+    for (const { alt } of LEVEL_LABELS) {
       const y = altToY(alt);
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -161,11 +158,11 @@ export default function CloudAndRainLane({ data }) {
     <div className="lane cloud-rain-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
       {/* Sticky pressure level labels — must be direct children of .lane for sticky to work */}
       <div style={{ position: 'sticky', left: 0, width: 0, height: 0, zIndex: 10, pointerEvents: 'none', flexShrink: 0 }}>
-        {LEVEL_LABELS.map(({ pressure, label }) => {
-          const y = altToY(FALLBACK_ALT[pressure]);
+        {LEVEL_LABELS.map(({ alt, label }) => {
+          const y = altToY(alt);
           return (
             <div
-              key={pressure}
+              key={alt}
               style={{
                 position: 'absolute', top: `${y - 11}px`, left: '2px',
                 fontSize: '8px', color: 'rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
