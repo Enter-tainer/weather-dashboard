@@ -41,39 +41,54 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
 
         {/* City blocks - each wraps its cells so the label can be CSS sticky */}
         {cityGroups.map((group) => {
-          const slot = switchInfo && switchInfo[group.cityName];
-          const isSwitchable = !!slot;
+          // Sub-group by date within each city
+          const dayGroups = [];
+          let currentDay = null;
+          for (const { item, index } of group.items) {
+            const dateKey = new Date(item.time).toDateString();
+            if (!currentDay || currentDay.dateKey !== dateKey) {
+              const dateObj = new Date(item.time);
+              const dayStr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()];
+              currentDay = { dateKey, dateStr: `${dayStr} ${dateObj.getDate()}`, items: [], startIndex: index, moonPhase: item.moonPhase, moonFraction: item.moonFraction };
+              dayGroups.push(currentDay);
+            }
+            currentDay.items.push({ item, index });
+          }
+
           return (
             <div key={`block-${group.startIndex}`} style={{ display: 'flex', position: 'relative' }}>
-              {/* Lane cells for this city */}
-              {group.items.map(({ item, index }) => {
-                const isFirstOfCity = index === group.startIndex;
-                const isDateLabel = item.hour === 0 || isFirstOfCity;
-                const dateObj = new Date(item.time);
-                const dayStr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()];
-                const dateStr = `${dayStr} ${dateObj.getDate()}`;
-                
-                return (
-                  <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
-                    {isDateLabel && (
-                      <>
-                        <div style={{ position: 'absolute', top: '2px', left: '4px', zIndex: 5, fontSize: '11px', color: '#333', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
-                          {dateStr}
-                        </div>
-                        {item.moonPhase != null && (
-                          <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: '#777', whiteSpace: 'nowrap', zIndex: 5 }}>
-                            {getMoonPhaseName(item.moonPhase)} {Math.round(item.moonFraction * 100)}%
-                          </div>
-                        )}
-                      </>
-                    )}
-                    <div style={{ fontSize: '12px', color: '#888', marginTop: 'auto' }}>
-                      {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
+              {/* Sticky day label overlays */}
+              {dayGroups.map((day) => (
+                <div key={`daylabel-${day.startIndex}`} style={{
+                  position: 'absolute',
+                  left: `${(day.startIndex - group.startIndex) * COL_WIDTH}px`,
+                  width: `${day.items.length * COL_WIDTH}px`,
+                  height: '100%',
+                  pointerEvents: 'none',
+                  zIndex: 10
+                }}>
+                  <div style={{ position: 'sticky', left: 0, width: 'max-content' }}>
+                    <div style={{ padding: '2px 4px', fontSize: '11px', color: '#333', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                      {day.dateStr}
                     </div>
-                    <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }} />
                   </div>
-                );
-              })}
+                  {day.moonPhase != null && (
+                    <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: '#777', whiteSpace: 'nowrap' }}>
+                      {getMoonPhaseName(day.moonPhase)} {Math.round(day.moonFraction * 100)}%
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Lane cells for this city */}
+              {group.items.map(({ item, index }) => (
+                <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: 'auto' }}>
+                    {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
+                  </div>
+                  <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }} />
+                </div>
+              ))}
             </div>
           );
         })}
