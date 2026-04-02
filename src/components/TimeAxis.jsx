@@ -67,16 +67,16 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                   pointerEvents: 'none',
                   zIndex: 10
                 }}>
-                  <div style={{ position: 'sticky', left: 0, width: 'max-content', height: '100%' }}>
+                  <div style={{ position: 'sticky', left: 0, width: 'max-content' }}>
                     <div style={{ padding: '2px 4px', fontSize: '11px', color: '#333', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                       {day.dateStr}
                     </div>
-                    {day.moonPhase != null && (
-                      <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: '#777', whiteSpace: 'nowrap' }}>
-                        {getMoonPhaseName(day.moonPhase)} {Math.round(day.moonFraction * 100)}%
-                      </div>
-                    )}
                   </div>
+                  {day.moonPhase != null && (
+                    <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: '#777', whiteSpace: 'nowrap' }}>
+                      {getMoonPhaseName(day.moonPhase)} {Math.round(day.moonFraction * 100)}%
+                    </div>
+                  )}
                 </div>
               ))}
 
