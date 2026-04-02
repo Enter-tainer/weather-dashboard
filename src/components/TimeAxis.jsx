@@ -67,7 +67,7 @@ export default function TimeAxis({ data, switchInfo, onCityClick }) {
                   pointerEvents: 'none',
                   zIndex: 10
                 }}>
-                  <div style={{ position: 'sticky', left: 0, width: 'max-content' }}>
+                  <div style={{ position: 'sticky', left: 0, width: 'max-content', height: '100%' }}>
                     <div style={{ padding: '2px 4px', fontSize: '11px', color: '#333', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                       {day.dateStr}
                     </div>
