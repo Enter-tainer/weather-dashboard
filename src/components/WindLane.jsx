@@ -70,7 +70,7 @@ export default function WindLane({ data, maxBft }) {
                {index % 3 === 0 && (
                  <>
                    <span style={{ fontSize: '11px', color: '#222', fontWeight: 'bold' }}>{getBeaufort(item.windSpeed)}</span>
-                   <svg width="10" height="10" viewBox="0 0 24 24" style={{ transform: `rotate(${item.windDir}deg)`, opacity: 0.8, marginTop: '1px' }}>
+                   <svg width="10" height="10" viewBox="0 0 24 24" style={{ transform: `rotate(${item.windDir + 180}deg)`, opacity: 0.8, marginTop: '1px' }}>
                      <path d="M12 2L12 22M12 2L6 8M12 2L18 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                    </svg>
                  </>
