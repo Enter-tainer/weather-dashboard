@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 /**
  * Draw directly on a live <canvas> element (no toDataURL encoding).
@@ -10,22 +10,108 @@ import { useRef, useLayoutEffect } from 'react';
  * @param {any[]} deps    - dependency array (re-draws when changed)
  * @returns {React.RefObject<HTMLCanvasElement>}
  */
-export function useCanvas(width, height, draw, deps) {
+export function useCanvas(width, height, draw, deps = []) {
   const canvasRef = useRef(null);
+  const drawRef = useRef(draw);
+  const sizeRef = useRef({ width, height });
+  const frameRef = useRef(null);
+  const resumeTimerRef = useRef(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
+    drawRef.current = draw;
+    sizeRef.current = { width, height };
+  });
+
+  const redraw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !width || !height) return;
+    const { width: currentWidth, height: currentHeight } = sizeRef.current;
+
+    if (!canvas || !currentWidth || !currentHeight) return;
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
+    canvas.width = Math.max(1, Math.round(currentWidth * dpr));
+    canvas.height = Math.max(1, Math.round(currentHeight * dpr));
 
-    draw(ctx, width, height);
-  }, deps);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawRef.current(ctx, currentWidth, currentHeight);
+  }, []);
+
+  const scheduleRedraw = useCallback(() => {
+    if (document.hidden) return;
+    if (frameRef.current !== null) return;
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+      redraw();
+    });
+  }, [redraw]);
+
+  const scheduleResumeRedraw = useCallback(() => {
+    scheduleRedraw();
+
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+    }
+
+    resumeTimerRef.current = window.setTimeout(() => {
+      resumeTimerRef.current = null;
+      scheduleRedraw();
+    }, 250);
+  }, [scheduleRedraw]);
+
+  const cancelScheduledRedraw = useCallback(() => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+  }, []);
+
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useLayoutEffect(() => {
+    redraw();
+  }, [redraw, width, height, ...deps]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cancelScheduledRedraw();
+        return;
+      }
+
+      scheduleResumeRedraw();
+    };
+    const handleContextLost = (event) => event.preventDefault();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', scheduleResumeRedraw);
+    window.addEventListener('focus', scheduleResumeRedraw);
+    window.addEventListener('resize', scheduleRedraw);
+    window.addEventListener('orientationchange', scheduleResumeRedraw);
+    canvas?.addEventListener('contextlost', handleContextLost);
+    canvas?.addEventListener('contextrestored', scheduleResumeRedraw);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', scheduleResumeRedraw);
+      window.removeEventListener('focus', scheduleResumeRedraw);
+      window.removeEventListener('resize', scheduleRedraw);
+      window.removeEventListener('orientationchange', scheduleResumeRedraw);
+      canvas?.removeEventListener('contextlost', handleContextLost);
+      canvas?.removeEventListener('contextrestored', scheduleResumeRedraw);
+
+      cancelScheduledRedraw();
+    };
+  }, [cancelScheduledRedraw, scheduleRedraw, scheduleResumeRedraw]);
 
   return canvasRef;
 }
