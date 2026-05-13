@@ -1,22 +1,7 @@
 import { parseRoute } from './urlParser.js';
-import { getCached, setCache, cachedFetch, TTL_GEO, TTL_WEATHER } from './cache.js';
+import { cachedFetch, TTL_WEATHER } from './cache.js';
+import { getCityDetails, reverseGeocode } from './geocoding.js';
 import SunCalc from 'suncalc';
-
-export async function getCityDetails(cityName) {
-  const cacheKey = `geo:${cityName}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-
-  const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cityName}&count=1&format=json`);
-  const data = await res.json();
-  if (data.results && data.results.length > 0) {
-    const { latitude, longitude, timezone, name } = data.results[0];
-    const result = { latitude, longitude, timezone: timezone || 'auto', name };
-    setCache(cacheKey, result, TTL_GEO);
-    return result;
-  }
-  throw new Error(`City not found: ${cityName}`);
-}
 
 // Estimate visibility (meters) from pollutant concentrations and relative humidity.
 // Uses Koschmieder equation: V = 3912 / β_total (km)
@@ -38,20 +23,20 @@ function estimateVisibility(pm25, pm10, no2, rh) {
   return (3912 / bTotal) * 1000; // km → meters
 }
 
-// Memoize processed results to avoid re-running SunCalc + member extraction
-// on every city switch. Key = "lat,lon:date" or "city:date".
+// Memoize processed results to avoid re-running SunCalc + member extraction.
+// The display name is part of the key because processed rows include cityName.
 const processedCache = new Map();
 
 export async function fetchCityDataForDate(cityObj) {
   const { city, date, originalName, lat, lon } = cityObj;
-  const memoKey = lat != null ? `${lat},${lon}:${date}` : `${city}:${date}`;
+  const memoKey = lat != null ? `${lat},${lon}:${date}:${originalName || ''}` : `${city}:${date}:${originalName || ''}`;
   if (processedCache.has(memoKey)) return processedCache.get(memoKey);
   let latitude, longitude, timezone, name;
   if (lat != null && lon != null) {
     latitude = lat;
     longitude = lon;
     timezone = 'auto';
-    name = originalName || '当前位置';
+    name = originalName || await reverseGeocode(lat, lon, `${lat}°, ${lon}°`);
   } else {
     ({ latitude, longitude, timezone, name } = await getCityDetails(city));
   }

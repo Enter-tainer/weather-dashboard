@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Settings, X, Plus, Trash2, MapPin } from 'lucide-react';
 import { parseRoute, stringifyRoute, generate7Days } from '../services/urlParser';
+import { reverseGeocode } from '../services/geocoding';
 import './RouteEditor.css';
 
 const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
@@ -37,14 +38,25 @@ export default function RouteEditor() {
   };
 
   const updateEntry = (id, updates) => {
-    setEntries(entries.map(e => e._id === id ? { ...e, ...updates } : e));
+    setEntries(current => current.map(e => e._id === id ? { ...e, ...updates } : e));
   };
 
   const updateLocation = (id, value) => {
     const val = value.trim();
     if (COORD_RE.test(val)) {
       const [lat, lon] = val.split(',').map(Number);
-      updateEntry(id, { lat, lon, city: undefined });
+      const fallbackName = `${lat}°, ${lon}°`;
+      updateEntry(id, { lat, lon, city: undefined, originalName: '' });
+      reverseGeocode(lat, lon, fallbackName)
+        .then(name => {
+          setEntries(current => current.map(entry => {
+            if (entry._id !== id || entry.lat !== lat || entry.lon !== lon || entry.originalName) {
+              return entry;
+            }
+            return { ...entry, originalName: name };
+          }));
+        })
+        .catch(() => {});
     } else {
       updateEntry(id, { city: value, lat: undefined, lon: undefined });
     }

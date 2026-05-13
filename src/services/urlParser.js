@@ -2,6 +2,7 @@
 // location = cityName | lat,lon
 // ~ and display are optional
 // ; separates entries
+import { reverseGeocode } from './geocoding.js';
 
 const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
 
@@ -11,11 +12,27 @@ function parseEntry(part) {
 
   if (COORD_RE.test(location)) {
     const [lat, lon] = location.split(',').map(Number);
-    const originalName = displayName || `${lat}°, ${lon}°`;
-    return { lat, lon, date, originalName };
+    return { lat, lon, date, originalName: displayName || undefined };
   }
 
   return { city: location, date, originalName: displayName || location };
+}
+
+function coordinateFallbackName(lat, lon) {
+  return `${lat}°, ${lon}°`;
+}
+
+async function resolveCoordinateNames(entries) {
+  return Promise.all(entries.map(async entry => {
+    if (entry.lat == null || entry.lon == null || entry.originalName) return entry;
+
+    const originalName = await reverseGeocode(
+      entry.lat,
+      entry.lon,
+      coordinateFallbackName(entry.lat, entry.lon)
+    );
+    return { ...entry, originalName };
+  }));
 }
 
 export async function parseRoute() {
@@ -33,18 +50,18 @@ export async function parseRoute() {
     }
   }
 
-  return routeStr.split(';').map(parseEntry);
+  return resolveCoordinateNames(routeStr.split(';').map(parseEntry));
 }
 
 // Parse route entries and group by date.
 // Returns { dateSlots: [{date, entries: [{city?, lat?, lon?, originalName}, ...], activeIndex}] }
 // where dateSlots with multiple entries support switching.
-export function parseSwitchableRoute() {
+export async function parseSwitchableRoute() {
   const params = new URLSearchParams(window.location.search);
   const routeStr = params.get('route');
   if (!routeStr) return null;
 
-  const entries = routeStr.split(';').map(parseEntry);
+  const entries = await resolveCoordinateNames(routeStr.split(';').map(parseEntry));
 
   // Group by date
   const dateMap = new Map();
@@ -110,18 +127,4 @@ function getUserCoords() {
       { timeout: 10000 }
     );
   });
-}
-
-async function reverseGeocode(lat, lon) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh-CN`,
-      { headers: { 'Accept-Language': 'zh-CN,zh;q=0.9' } }
-    );
-    const data = await res.json();
-    const a = data.address || {};
-    return a.city || a.town || a.village || a.county || a.state || a.country || '当前位置';
-  } catch {
-    return '当前位置';
-  }
 }

@@ -10,9 +10,19 @@ export function useDashboardData(testData) {
 
   useEffect(() => {
     if (testData) return;
+    let cancelled = false;
 
-    const switchable = parseSwitchableRoute();
-    if (switchable) {
+    parseSwitchableRoute().then(switchable => {
+      if (cancelled) return;
+      if (!switchable) {
+        fetchFullTimelineStreaming((timeline, { done }) => {
+          if (cancelled) return;
+          if (timeline.length > 0) setData(timeline);
+          if (done) setLoadingDone(true);
+        });
+        return;
+      }
+
       setDateSlots(switchable.dateSlots);
       const activeRoute = buildRouteForSelections(switchable.dateSlots);
       const results = new Array(activeRoute.length).fill(null);
@@ -22,6 +32,7 @@ export function useDashboardData(testData) {
         fetchCityDataForDate(entry)
           .catch(e => { console.error(e); return []; })
           .then(cityData => {
+            if (cancelled) return;
             results[idx] = cityData;
             loaded++;
             const timeline = assembleTimeline(results.map(r => r || []));
@@ -38,12 +49,11 @@ export function useDashboardData(testData) {
             }
           });
       });
-    } else {
-      fetchFullTimelineStreaming((timeline, { done }) => {
-        if (timeline.length > 0) setData(timeline);
-        if (done) setLoadingDone(true);
-      });
-    }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [testData]);
 
   const switchInfo = useMemo(() => {
