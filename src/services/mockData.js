@@ -2,6 +2,7 @@
  * Mock data generator for testing the weather dashboard UI.
  * Produces 7 "city" segments (24h each) covering diverse weather scenarios.
  */
+import { SOUNDING_PRESSURE_LEVELS, APPROX_PRESSURE_HEIGHTS, dewPointFromRh } from './sounding.js';
 
 const PRESSURE_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300];
 const FALLBACK_ALT = {
@@ -34,6 +35,28 @@ function generateMembers(base, count, spread) {
     members.push(Math.max(0, base + (Math.random() - 0.5) * 2 * spread));
   }
   return members;
+}
+
+function buildMockSounding(item) {
+  const inversionLikely = item.humidity > 85 && (item.hour <= 10 || item.hour >= 20);
+  return SOUNDING_PRESSURE_LEVELS.map((pressure) => {
+    const agl = APPROX_PRESSURE_HEIGHTS[pressure] ?? 0;
+    const km = agl / 1000;
+    const inversionWarmNose = inversionLikely ? Math.max(0, 4 - agl / 180) : 0;
+    const temp = item.temperature - 6.2 * km + inversionWarmNose;
+    const rh = Math.max(8, Math.min(100, item.humidity - km * 11 + (item.cloudCover || 0) * 0.08));
+
+    return {
+      pressure,
+      temp,
+      dewPoint: dewPointFromRh(temp, rh),
+      relativeHumidity: rh,
+      altitude: agl,
+      agl,
+      windSpeed: item.windSpeed + km * 8,
+      windDir: (item.windDir + km * 25) % 360,
+    };
+  });
 }
 
 // Generate ensemble weather code members: majority agree on primaryCode,
@@ -569,7 +592,10 @@ export function generateMockTimeline() {
 
   let offset = 0;
   generators.forEach((gen, dayIdx) => {
-    const items = gen(dayIdx);
+    const items = gen(dayIdx).map(item => ({
+      ...item,
+      soundingLevels: buildMockSounding(item),
+    }));
     allItems.push(...items);
 
     // Generate sun events (sunrise ~6.25, sunset ~18.33)

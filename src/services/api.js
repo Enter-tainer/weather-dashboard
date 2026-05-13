@@ -1,6 +1,7 @@
 import { parseRoute } from './urlParser.js';
 import { cachedFetch, TTL_WEATHER } from './cache.js';
 import { getCityDetails, reverseGeocode } from './geocoding.js';
+import { SOUNDING_PRESSURE_LEVELS, dewPointFromRh } from './sounding.js';
 import SunCalc from 'suncalc';
 
 // Estimate visibility (meters) from pollutant concentrations and relative humidity.
@@ -55,12 +56,19 @@ export async function fetchCityDataForDate(cityObj) {
   }
 
   // Pressure levels for altitude-based cloud visualization
-  const pressureLevels = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300];
+  const pressureLevels = SOUNDING_PRESSURE_LEVELS;
   const cloudPressureParams = pressureLevels.map(p => `cloud_cover_${p}hPa`).join(',');
   const geopotentialParams = pressureLevels.map(p => `geopotential_height_${p}hPa`).join(',');
+  const soundingParams = [
+    ...pressureLevels.map(p => `temperature_${p}hPa`),
+    ...pressureLevels.map(p => `dew_point_${p}hPa`),
+    ...pressureLevels.map(p => `relative_humidity_${p}hPa`),
+    ...pressureLevels.map(p => `wind_speed_${p}hPa`),
+    ...pressureLevels.map(p => `wind_direction_${p}hPa`),
+  ].join(',');
 
   // Forecast API
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,boundary_layer_height,${cloudPressureParams},${geopotentialParams}${tzParams}`;
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,boundary_layer_height,${cloudPressureParams},${geopotentialParams},${soundingParams}${tzParams}`;
 
   // Ensemble API
   const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
@@ -129,6 +137,7 @@ export async function fetchCityDataForDate(cityObj) {
   }
 
   const hoursCount = forecastRes.hourly.time.length;
+  const elevation = forecastRes?.elevation ?? ensembleRes?.elevation ?? 0;
   const combined = [];
 
   for (let i = 0; i < hoursCount; i++) {
@@ -190,6 +199,24 @@ export async function fetchCityDataForDate(cityObj) {
         cover: forecastRes.hourly[`cloud_cover_${p}hPa`]?.[i] || 0,
         altitude: forecastRes.hourly[`geopotential_height_${p}hPa`]?.[i] || null,
       })),
+
+      soundingLevels: pressureLevels.map(p => {
+        const temp = forecastRes.hourly[`temperature_${p}hPa`]?.[i] ?? null;
+        const rh = forecastRes.hourly[`relative_humidity_${p}hPa`]?.[i] ?? null;
+        const dewPoint = forecastRes.hourly[`dew_point_${p}hPa`]?.[i] ?? dewPointFromRh(temp, rh);
+        const altitude = forecastRes.hourly[`geopotential_height_${p}hPa`]?.[i] ?? null;
+
+        return {
+          pressure: p,
+          temp,
+          dewPoint,
+          relativeHumidity: rh,
+          altitude,
+          agl: altitude != null ? Math.max(0, altitude - elevation) : null,
+          windSpeed: forecastRes.hourly[`wind_speed_${p}hPa`]?.[i] ?? null,
+          windDir: forecastRes.hourly[`wind_direction_${p}hPa`]?.[i] ?? null,
+        };
+      }).filter(level => level.temp != null),
 
       tempMembers,
       precipMembers,
