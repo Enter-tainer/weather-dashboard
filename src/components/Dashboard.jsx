@@ -1,362 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Maximize2, Minimize2 } from 'lucide-react';
-import { fetchCityDataForDate, assembleTimeline, fetchFullTimelineStreaming } from '../services/api';
-import { parseSwitchableRoute, buildRouteForSelections } from '../services/urlParser';
-import TimeAxis from './TimeAxis';
-import WeatherIconLane from './WeatherIconLane';
-import TemperatureLane from './TemperatureLane';
-import TemperatureTextLane from './TemperatureTextLane';
-import CloudEnsembleLane from './CloudEnsembleLane';
-import CloudAndRainLane from './CloudAndRainLane';
-import PrecipitationProbLane from './PrecipitationProbLane';
-import HumidityLane from './HumidityLane';
-import UVLane from './UVLane';
-import PressureLane from './PressureLane';
-import CapeLane from './CapeLane';
-import WindLane, { getBeaufort } from './WindLane';
-import AirQualityLane from './AirQualityLane';
-import AerosolLane from './AerosolLane';
-import DashboardBackground from './DashboardBackground';
-import WeatherAmbientBackground from './WeatherAmbientBackground';
-import TwilightLane from './TwilightLane';
-import LocationLane from './LocationLane';
+import { useMemo } from 'react';
 import RouteEditor from './RouteEditor';
+import CompactToggle from './CompactToggle';
+import DashboardLegend from './DashboardLegend';
+import DashboardLanes from './DashboardLanes';
+import { useCompactMode } from '../hooks/useCompactMode';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { calculateDashboardScales } from '../services/weatherMetrics';
 
 import './Dashboard.css';
 
-const COMPACT_VALUES = new Set(['1', 'true', 'yes', 'on']);
-
-function isCompactFromSearch(search) {
-  const params = new URLSearchParams(search);
-  return COMPACT_VALUES.has((params.get('compact') || '').toLowerCase());
-}
-
 export default function Dashboard({ testData }) {
-  const [data, setData] = useState(testData || null);
-  const [loadingDone, setLoadingDone] = useState(!!testData);
-  const [dateSlots, setDateSlots] = useState(null);
-  const [switching, setSwitching] = useState(false);
-  const [compactMode, setCompactMode] = useState(() => isCompactFromSearch(window.location.search));
-
-  useEffect(() => {
-    if (testData) return;
-
-    const switchable = parseSwitchableRoute();
-    if (switchable) {
-      setDateSlots(switchable.dateSlots);
-      const activeRoute = buildRouteForSelections(switchable.dateSlots);
-      const results = new Array(activeRoute.length).fill(null);
-      let loaded = 0;
-
-      // Phase 1: stream-load active entries
-      activeRoute.forEach((entry, idx) => {
-        fetchCityDataForDate(entry)
-          .catch(e => { console.error(e); return []; })
-          .then(cityData => {
-            results[idx] = cityData;
-            loaded++;
-            const timeline = assembleTimeline(results.map(r => r || []));
-            if (timeline.length > 0) setData(timeline);
-            if (loaded === activeRoute.length) {
-              setLoadingDone(true);
-              // Phase 2: background-prefetch all alternative entries
-              for (const slot of switchable.dateSlots) {
-                for (let i = 0; i < slot.entries.length; i++) {
-                  if (i === slot.activeIndex) continue;
-                  const alt = { ...slot.entries[i], date: slot.date };
-                  fetchCityDataForDate(alt).catch(() => {});
-                }
-              }
-            }
-          });
-      });
-    } else {
-      fetchFullTimelineStreaming((timeline, { done }) => {
-        if (timeline.length > 0) setData(timeline);
-        if (done) setLoadingDone(true);
-      });
-    }
-  }, [testData]);
-
-  // Build a map: displayName -> { date, entries[], activeIndex } for switchable slots
-  const switchInfo = {};
-  if (dateSlots) {
-    for (const slot of dateSlots) {
-      if (slot.entries.length > 1) {
-        const activeEntry = slot.entries[slot.activeIndex];
-        switchInfo[activeEntry.originalName] = slot;
-      }
-    }
-  }
-
-  const handleCityClick = useCallback((cityName) => {
-    if (switching || !dateSlots) return;
-    const slot = dateSlots.find(s => s.entries[s.activeIndex].originalName === cityName);
-    if (!slot || slot.entries.length <= 1) return;
-
-    const newSlots = dateSlots.map(s => {
-      if (s === slot) {
-        return { ...s, activeIndex: (s.activeIndex + 1) % s.entries.length };
-      }
-      return s;
-    });
-    setDateSlots(newSlots);
-
-    // Fetch all entries — cachedFetch handles localStorage cache hits internally
-    setSwitching(true);
-    const route = buildRouteForSelections(newSlots);
-    Promise.all(route.map(entry =>
-      fetchCityDataForDate(entry).catch(e => { console.error(e); return []; })
-    )).then(results => {
-      setData(assembleTimeline(results));
-      setSwitching(false);
-    });
-  }, [dateSlots, switching]);
-
-  const handleCompactToggle = useCallback(() => {
-    setCompactMode(current => {
-      const next = !current;
-      const url = new URL(window.location.href);
-      if (next) {
-        url.searchParams.set('compact', '1');
-      } else {
-        url.searchParams.delete('compact');
-      }
-      window.history.replaceState({}, '', url.toString());
-      return next;
-    });
-  }, []);
-
-  const hasData = data && data.length > 0;
-
-  // Calculate Global Scales for Y-Axes
-  let minTemp = Infinity;
-  let maxTemp = -Infinity;
-  let minP = Infinity;
-  let maxP = -Infinity;
-  let maxBft = 0;
-  if (hasData) data.forEach(d => {
-    if (d.temperature < minTemp) minTemp = d.temperature;
-    if (d.temperature > maxTemp) maxTemp = d.temperature;
-    d.tempMembers?.forEach(m => {
-      if (m < minTemp) minTemp = m;
-      if (m > maxTemp) maxTemp = m;
-    });
-
-    if (d.pressure < minP) minP = d.pressure;
-    if (d.pressure > maxP) maxP = d.pressure;
-    d.pressureMembers?.forEach(m => {
-      if (m < minP) minP = m;
-      if (m > maxP) maxP = m;
-    });
-
-    // Wind scale using Beaufort
-    const bSpeed = getBeaufort(d.windSpeed);
-    const bGusts = getBeaufort(d.windGusts);
-    if (bSpeed > maxBft) maxBft = bSpeed;
-    if (bGusts > maxBft) maxBft = bGusts;
-  });
-
-  if (minTemp !== Infinity) {
-    minTemp -= 5; maxTemp += 5;
-    if (minTemp === maxTemp) maxTemp += 1;
-  }
-  if (minP !== Infinity) {
-    minP = Math.floor(minP) - 1;
-    maxP = Math.ceil(maxP) + 1;
-    if (minP === maxP) maxP += 1;
-  }
-  if (maxBft < 4) maxBft = 4;
-
-  const tempSteps = [];
-  if (minTemp !== Infinity) {
-    const minTempVal = Math.floor(minTemp / 5) * 5;
-    const maxTempVal = Math.ceil(maxTemp / 5) * 5;
-    for (let t = minTempVal; t <= maxTempVal; t += 5) tempSteps.push(t);
-  }
+  const { compactMode, toggleCompactMode } = useCompactMode();
+  const {
+    data,
+    loadingDone,
+    switching,
+    switchInfo,
+    handleCityClick,
+  } = useDashboardData(testData);
+  const scales = useMemo(() => calculateDashboardScales(data), [data]);
 
   return (
     <div className="dashboard-wrapper">
-      <button
-        type="button"
-        className={`compact-toggle-btn${compactMode ? ' is-active' : ''}`}
-        onClick={handleCompactToggle}
-        title={compactMode ? '切换到完整视图' : '切换到紧凑视图'}
-        aria-label={compactMode ? '切换到完整视图' : '切换到紧凑视图'}
-      >
-        {compactMode ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
-      </button>
+      <CompactToggle compactMode={compactMode} onToggle={toggleCompactMode} />
       <RouteEditor />
-      {/* Legend Sidebar */}
-      <div className="legend-sidebar">
-        <div className="legend-cell" style={{ height: '24px', borderBottom: 'none' }}
->
-          <a
-            href="https://github.com/Enter-tainer/weather-dashboard"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', opacity: 0.7, textDecoration: 'none' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
-            </svg>
-          </a>
-        </div>
-        <div className="legend-cell" style={{ height: 'var(--lane-height-basic)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-          <div>星期</div>
-          <div style={{ marginTop: '2px' }}>小时</div>
-        </div>
-        <div className="legend-cell" style={{ height: '12px', fontSize: '9px', color: '#888' }}>曙暮</div>
-        <div className="legend-cell" style={{ height: '28px', fontSize: '11px', color: '#555' }}>天气</div>
-
-        <div className="legend-cell" style={{ height: 'var(--lane-height-uv)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-          <div>紫外线 <span style={{fontSize: '8px', color: '#888'}}>UV</span></div>
-        </div>
-
-        <div className="legend-cell" style={{ height: 'var(--lane-height-humidity)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-          <div>湿度 <span style={{fontSize: '9px', color: '#888'}}>%</span></div>
-          <div style={{fontSize: '10px', color: '#777'}}>露点 <span style={{fontSize: '8px'}}>°C</span></div>
-        </div>
-        <div className="legend-cell" style={{ height: '35px', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-          <div>温度 <span style={{fontSize: '9px', color: '#888'}}>°C</span></div>
-        </div>
-
-        {!compactMode && (
-          <>
-            {/* Temperature Y-Axis Legend */}
-            <div className="legend-cell" style={{ height: 'var(--lane-height-temp)', position: 'relative' }}>
-              <span style={{ position: 'absolute', top: '8px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>曲线</span>
-              {tempSteps.map(t => {
-                const y = 110 - ((t - minTemp) / (maxTemp - minTemp)) * 110;
-                if (y >= 15 && y <= 95) {
-                  return <span key={t} style={{ position: 'absolute', right: '4px', top: `${y - 6}px`, fontSize: '9px', color: '#999' }}>{t}°</span>;
-                }
-                return null;
-              })}
-            </div>
-
-            {/* Cloud Ensemble Y-Axis Legend */}
-            <div className="legend-cell" style={{ height: '50px', position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-              <span style={{ position: 'absolute', top: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>总云<span style={{fontSize: '9px', color: '#888', marginLeft: '2px'}}>%</span></span>
-              <span style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '9px', color: '#bbb' }}>100</span>
-              <span style={{ position: 'absolute', top: '20px', right: '2px', fontSize: '9px', color: '#bbb' }}>50</span>
-              <span style={{ position: 'absolute', top: '38px', right: '2px', fontSize: '9px', color: '#bbb' }}>0</span>
-            </div>
-
-            <div className="legend-cell" style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}>
-              <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>云<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>m</span></span>
-              {/* Non-uniform Y-axis: 0-2km=1/3, 2-6km=1/3, 6-10km=1/3 of 150px */}
-              <span style={{ position: 'absolute', top: '-4px', right: '2px', fontSize: '8px', color: '#aaa' }}>10k</span>
-              <span style={{ position: 'absolute', top: '19px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
-              <span style={{ position: 'absolute', top: '44px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
-              <span style={{ position: 'absolute', top: '57px', right: '2px', fontSize: '8px', color: '#aaa' }}>5k</span>
-              <span style={{ position: 'absolute', top: '69px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
-              <span style={{ position: 'absolute', top: '94px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
-              <span style={{ position: 'absolute', top: '119px', right: '2px', fontSize: '8px', color: '#aaa' }}>1k</span>
-              <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '10px', color: '#0d47a1' }}>降水<span style={{fontSize: '8px', opacity: 0.7, marginLeft: '1px'}}>mm</span></div>
-            </div>
-          </>
-        )}
-
-        <div className="legend-cell" style={{ height: compactMode ? '42px' : 'var(--lane-height-precip-prob)', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555' }}>
-          {compactMode ? (
-            <>
-              <div>降水</div>
-              <div style={{fontSize: '8px', color: '#888'}}>mm / %</div>
-            </>
-          ) : (
-            <div>降水概率<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>%</span></div>
-          )}
-        </div>
-
-        {!compactMode && (
-          <div className="legend-cell" style={{ height: 'var(--lane-height-cape)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-            <div>对流 <span style={{fontSize: '8px', color: '#888'}}>J/kg</span></div>
-          </div>
-        )}
-
-        {/* Wind Y-Axis Legend */}
-        <div className="legend-cell" style={{ height: compactMode ? '36px' : 'var(--lane-height-wind)', position: 'relative' }}>
-          {compactMode ? (
-            <>
-              <div>风力</div>
-              <div style={{ fontSize: '8px', color: '#888' }}>bft</div>
-            </>
-          ) : (
-            <>
-              <span style={{ position: 'absolute', top: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>风速</span>
-              <span style={{ position: 'absolute', bottom: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '10px', color: '#777' }}>bft</span>
-
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '9px', color: '#aaa' }}>{maxBft}</span>
-              <span style={{ position: 'absolute', top: '25px', right: '2px', fontSize: '9px', color: '#aaa' }}>{Math.round(maxBft/2)}</span>
-              <span style={{ position: 'absolute', top: '45px', right: '2px', fontSize: '9px', color: '#aaa' }}>0</span>
-            </>
-          )}
-        </div>
-
-        {!compactMode && (
-          <div className="legend-cell" style={{ height: 'var(--lane-height-pressure)', position: 'relative' }}>
-            <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>气压<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>hPa</span></span>
-            <span style={{ position: 'absolute', top: '16px', right: '4px', fontSize: '9px', color: '#aaa' }}>{maxP}</span>
-            <span style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '9px', color: '#aaa' }}>{minP}</span>
-          </div>
-        )}
-
-        <div className="legend-cell" style={{ height: '30px', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-          <div>AQI</div>
-        </div>
-
-        <div className="legend-cell" style={{ height: '20px', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555' }}>
-          <div>能见度 <span style={{fontSize: '8px', color: '#888'}}>km</span></div>
-        </div>
-
-        <div className="legend-cell" style={{ height: '30px', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555', borderBottom: 'none' }}>
-          <div>AOD</div>
-        </div>
-      </div>
-
-      <div className="timeline-scroller">
-        {hasData ? (
-          <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-            <DashboardBackground data={data} />
-            <WeatherAmbientBackground data={data} compact={compactMode} />
-            <LocationLane data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
-            <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
-            <TwilightLane data={data} />
-            <WeatherIconLane data={data} />
-            <UVLane data={data} />
-            <HumidityLane data={data} />
-            <TemperatureTextLane data={data} />
-            {!compactMode && <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
-            {!compactMode && <CloudEnsembleLane data={data} />}
-            {!compactMode && <CloudAndRainLane data={data} />}
-            <PrecipitationProbLane data={data} compact={compactMode} />
-            {!compactMode && <CapeLane data={data} />}
-            <WindLane data={data} maxBft={maxBft} compact={compactMode} />
-            {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
-            <AirQualityLane data={data} />
-            <AerosolLane data={data} />
-            {!loadingDone && (
-              <div style={{
-                position: 'absolute',
-                right: '-40px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                display: 'flex',
-                alignItems: 'center',
-              }}>
-                <div className="loading-spinner" />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '8px', color: '#888' }}>
-            {!loadingDone && <div className="loading-spinner" />}
-            {loadingDone && 'No data available'}
-          </div>
-        )}
-      </div>
+      <DashboardLegend compactMode={compactMode} scales={scales} />
+      <DashboardLanes
+        data={data}
+        loadingDone={loadingDone}
+        switching={switching}
+        switchInfo={switchInfo}
+        onCityClick={handleCityClick}
+        compactMode={compactMode}
+        scales={scales}
+      />
     </div>
   );
 }

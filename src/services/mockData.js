@@ -9,13 +9,6 @@ const FALLBACK_ALT = {
   600: 4200, 500: 5500, 400: 7200, 300: 9000,
 };
 
-// Simple sun altitude model: peak ~55° at noon, nadir ~-30° at midnight
-function mockSunAltitude(hour) {
-  // Smooth sinusoidal cycle, sunrise ~6, sunset ~18
-  return 55 * Math.sin(Math.PI * (hour - 6) / 12) * (hour >= 5 && hour <= 19 ? 1 : 1);
-  // More realistic: use cosine centered at noon
-}
-
 function sunAlt(hour) {
   // Solar noon at 12, max altitude 55°
   // Uses cosine: alt = maxAlt * cos(pi * (hour - 12) / 12)... no

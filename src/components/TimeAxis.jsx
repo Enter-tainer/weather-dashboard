@@ -1,4 +1,4 @@
-import { Sunrise, Sunset, Moon, MapPin } from 'lucide-react';
+import { Sunrise, Sunset, Moon } from 'lucide-react';
 import './Dashboard.css';
 
 function getMoonPhaseName(phase) {
@@ -13,7 +13,7 @@ function getMoonPhaseName(phase) {
   return '新月';
 }
 
-export default function TimeAxis({ data, switchInfo, onCityClick }) {
+export default function TimeAxis({ data }) {
   const COL_WIDTH = 22;
 
   // Group data items by city block

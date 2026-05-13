@@ -1,22 +1,6 @@
 import { useCanvas } from '../hooks/useCanvas';
+import { getBeaufort } from '../services/weatherMetrics';
 import './Dashboard.css';
-
-// Exported for Dashboard legend calculations
-export function getBeaufort(speedKmh) {
-  if (speedKmh < 2) return 0;
-  if (speedKmh < 6) return 1;
-  if (speedKmh < 12) return 2;
-  if (speedKmh < 20) return 3;
-  if (speedKmh < 29) return 4;
-  if (speedKmh < 39) return 5;
-  if (speedKmh < 50) return 6;
-  if (speedKmh < 62) return 7;
-  if (speedKmh < 75) return 8;
-  if (speedKmh < 89) return 9;
-  if (speedKmh < 103) return 10;
-  if (speedKmh < 118) return 11;
-  return 12;
-}
 
 const COL_WIDTH = 22;
 const LANE_HEIGHT = 80;
