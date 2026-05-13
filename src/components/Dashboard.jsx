@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { fetchCityDataForDate, assembleTimeline, fetchFullTimelineStreaming } from '../services/api';
 import { parseSwitchableRoute, buildRouteForSelections } from '../services/urlParser';
 import TimeAxis from './TimeAxis';
@@ -23,11 +24,19 @@ import RouteEditor from './RouteEditor';
 
 import './Dashboard.css';
 
+const COMPACT_VALUES = new Set(['1', 'true', 'yes', 'on']);
+
+function isCompactFromSearch(search) {
+  const params = new URLSearchParams(search);
+  return COMPACT_VALUES.has((params.get('compact') || '').toLowerCase());
+}
+
 export default function Dashboard({ testData }) {
   const [data, setData] = useState(testData || null);
   const [loadingDone, setLoadingDone] = useState(!!testData);
   const [dateSlots, setDateSlots] = useState(null);
   const [switching, setSwitching] = useState(false);
+  const [compactMode, setCompactMode] = useState(() => isCompactFromSearch(window.location.search));
 
   useEffect(() => {
     if (testData) return;
@@ -104,6 +113,20 @@ export default function Dashboard({ testData }) {
     });
   }, [dateSlots, switching]);
 
+  const handleCompactToggle = useCallback(() => {
+    setCompactMode(current => {
+      const next = !current;
+      const url = new URL(window.location.href);
+      if (next) {
+        url.searchParams.set('compact', '1');
+      } else {
+        url.searchParams.delete('compact');
+      }
+      window.history.replaceState({}, '', url.toString());
+      return next;
+    });
+  }, []);
+
   const hasData = data && data.length > 0;
 
   // Calculate Global Scales for Y-Axes
@@ -154,6 +177,15 @@ export default function Dashboard({ testData }) {
 
   return (
     <div className="dashboard-wrapper">
+      <button
+        type="button"
+        className={`compact-toggle-btn${compactMode ? ' is-active' : ''}`}
+        onClick={handleCompactToggle}
+        title={compactMode ? '切换到完整视图' : '切换到紧凑视图'}
+        aria-label={compactMode ? '切换到完整视图' : '切换到紧凑视图'}
+      >
+        {compactMode ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
+      </button>
       <RouteEditor />
       {/* Legend Sidebar */}
       <div className="legend-sidebar">
@@ -190,63 +222,86 @@ export default function Dashboard({ testData }) {
           <div>温度 <span style={{fontSize: '9px', color: '#888'}}>°C</span></div>
         </div>
 
-        {/* Temperature Y-Axis Legend */}
-        <div className="legend-cell" style={{ height: 'var(--lane-height-temp)', position: 'relative' }}>
-          <span style={{ position: 'absolute', top: '8px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>曲线</span>
-          {tempSteps.map(t => {
-            const y = 110 - ((t - minTemp) / (maxTemp - minTemp)) * 110;
-            if (y >= 15 && y <= 95) {
-              return <span key={t} style={{ position: 'absolute', right: '4px', top: `${y - 6}px`, fontSize: '9px', color: '#999' }}>{t}°</span>;
-            }
-            return null;
-          })}
+        {!compactMode && (
+          <>
+            {/* Temperature Y-Axis Legend */}
+            <div className="legend-cell" style={{ height: 'var(--lane-height-temp)', position: 'relative' }}>
+              <span style={{ position: 'absolute', top: '8px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>曲线</span>
+              {tempSteps.map(t => {
+                const y = 110 - ((t - minTemp) / (maxTemp - minTemp)) * 110;
+                if (y >= 15 && y <= 95) {
+                  return <span key={t} style={{ position: 'absolute', right: '4px', top: `${y - 6}px`, fontSize: '9px', color: '#999' }}>{t}°</span>;
+                }
+                return null;
+              })}
+            </div>
+
+            {/* Cloud Ensemble Y-Axis Legend */}
+            <div className="legend-cell" style={{ height: '50px', position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <span style={{ position: 'absolute', top: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>总云<span style={{fontSize: '9px', color: '#888', marginLeft: '2px'}}>%</span></span>
+              <span style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '9px', color: '#bbb' }}>100</span>
+              <span style={{ position: 'absolute', top: '20px', right: '2px', fontSize: '9px', color: '#bbb' }}>50</span>
+              <span style={{ position: 'absolute', top: '38px', right: '2px', fontSize: '9px', color: '#bbb' }}>0</span>
+            </div>
+
+            <div className="legend-cell" style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}>
+              <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>云<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>m</span></span>
+              {/* Non-uniform Y-axis: 0-2km=1/3, 2-6km=1/3, 6-10km=1/3 of 150px */}
+              <span style={{ position: 'absolute', top: '-4px', right: '2px', fontSize: '8px', color: '#aaa' }}>10k</span>
+              <span style={{ position: 'absolute', top: '19px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
+              <span style={{ position: 'absolute', top: '44px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
+              <span style={{ position: 'absolute', top: '57px', right: '2px', fontSize: '8px', color: '#aaa' }}>5k</span>
+              <span style={{ position: 'absolute', top: '69px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
+              <span style={{ position: 'absolute', top: '94px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
+              <span style={{ position: 'absolute', top: '119px', right: '2px', fontSize: '8px', color: '#aaa' }}>1k</span>
+              <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '10px', color: '#0d47a1' }}>降水<span style={{fontSize: '8px', opacity: 0.7, marginLeft: '1px'}}>mm</span></div>
+            </div>
+          </>
+        )}
+
+        <div className="legend-cell" style={{ height: compactMode ? '42px' : 'var(--lane-height-precip-prob)', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555' }}>
+          {compactMode ? (
+            <>
+              <div>降水</div>
+              <div style={{fontSize: '8px', color: '#888'}}>mm / %</div>
+            </>
+          ) : (
+            <div>降水概率<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>%</span></div>
+          )}
         </div>
 
-        {/* Cloud Ensemble Y-Axis Legend */}
-        <div className="legend-cell" style={{ height: '50px', position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-          <span style={{ position: 'absolute', top: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>总云<span style={{fontSize: '9px', color: '#888', marginLeft: '2px'}}>%</span></span>
-          <span style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '9px', color: '#bbb' }}>100</span>
-          <span style={{ position: 'absolute', top: '20px', right: '2px', fontSize: '9px', color: '#bbb' }}>50</span>
-          <span style={{ position: 'absolute', top: '38px', right: '2px', fontSize: '9px', color: '#bbb' }}>0</span>
-        </div>
-
-        <div className="legend-cell" style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}>
-          <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>云<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>m</span></span>
-          {/* Non-uniform Y-axis: 0-2km=1/3, 2-6km=1/3, 6-10km=1/3 of 150px */}
-          <span style={{ position: 'absolute', top: '-4px', right: '2px', fontSize: '8px', color: '#aaa' }}>10k</span>
-          <span style={{ position: 'absolute', top: '19px', right: '2px', fontSize: '8px', color: '#aaa' }}>8k</span>
-          <span style={{ position: 'absolute', top: '44px', right: '2px', fontSize: '8px', color: '#aaa' }}>6k</span>
-          <span style={{ position: 'absolute', top: '57px', right: '2px', fontSize: '8px', color: '#aaa' }}>5k</span>
-          <span style={{ position: 'absolute', top: '69px', right: '2px', fontSize: '8px', color: '#aaa' }}>4k</span>
-          <span style={{ position: 'absolute', top: '94px', right: '2px', fontSize: '8px', color: '#aaa' }}>2k</span>
-          <span style={{ position: 'absolute', top: '119px', right: '2px', fontSize: '8px', color: '#aaa' }}>1k</span>
-          <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '10px', color: '#0d47a1' }}>降水<span style={{fontSize: '8px', opacity: 0.7, marginLeft: '1px'}}>mm</span></div>
-        </div>
-
-        <div className="legend-cell" style={{ height: 'var(--lane-height-precip-prob)', flexDirection: 'column', justifyContent: 'center', fontSize: '10px', color: '#555' }}>
-          <div>降水概率<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>%</span></div>
-        </div>
-
-        <div className="legend-cell" style={{ height: 'var(--lane-height-cape)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
-          <div>对流 <span style={{fontSize: '8px', color: '#888'}}>J/kg</span></div>
-        </div>
+        {!compactMode && (
+          <div className="legend-cell" style={{ height: 'var(--lane-height-cape)', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
+            <div>对流 <span style={{fontSize: '8px', color: '#888'}}>J/kg</span></div>
+          </div>
+        )}
 
         {/* Wind Y-Axis Legend */}
-        <div className="legend-cell" style={{ height: 'var(--lane-height-wind)', position: 'relative' }}>
-          <span style={{ position: 'absolute', top: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>风速</span>
-          <span style={{ position: 'absolute', bottom: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '10px', color: '#777' }}>bft</span>
+        <div className="legend-cell" style={{ height: compactMode ? '36px' : 'var(--lane-height-wind)', position: 'relative' }}>
+          {compactMode ? (
+            <>
+              <div>风力</div>
+              <div style={{ fontSize: '8px', color: '#888' }}>bft</div>
+            </>
+          ) : (
+            <>
+              <span style={{ position: 'absolute', top: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>风速</span>
+              <span style={{ position: 'absolute', bottom: '5px', left: 0, width: '100%', textAlign: 'center', fontSize: '10px', color: '#777' }}>bft</span>
 
-          <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '9px', color: '#aaa' }}>{maxBft}</span>
-          <span style={{ position: 'absolute', top: '25px', right: '2px', fontSize: '9px', color: '#aaa' }}>{Math.round(maxBft/2)}</span>
-          <span style={{ position: 'absolute', top: '45px', right: '2px', fontSize: '9px', color: '#aaa' }}>0</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '9px', color: '#aaa' }}>{maxBft}</span>
+              <span style={{ position: 'absolute', top: '25px', right: '2px', fontSize: '9px', color: '#aaa' }}>{Math.round(maxBft/2)}</span>
+              <span style={{ position: 'absolute', top: '45px', right: '2px', fontSize: '9px', color: '#aaa' }}>0</span>
+            </>
+          )}
         </div>
 
-        {/* Pressure Legend */}
-        <div className="legend-cell" style={{ height: 'var(--lane-height-pressure)', position: 'relative' }}>
-          <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>气压<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>hPa</span></span>
-          <span style={{ position: 'absolute', top: '16px', right: '4px', fontSize: '9px', color: '#aaa' }}>{maxP}</span>
-          <span style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '9px', color: '#aaa' }}>{minP}</span>
-        </div>
+        {!compactMode && (
+          <div className="legend-cell" style={{ height: 'var(--lane-height-pressure)', position: 'relative' }}>
+            <span style={{ position: 'absolute', top: '2px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>气压<span style={{fontSize: '8px', color: '#888', marginLeft: '2px'}}>hPa</span></span>
+            <span style={{ position: 'absolute', top: '16px', right: '4px', fontSize: '9px', color: '#aaa' }}>{maxP}</span>
+            <span style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '9px', color: '#aaa' }}>{minP}</span>
+          </div>
+        )}
 
         <div className="legend-cell" style={{ height: '30px', flexDirection: 'column', justifyContent: 'center', fontSize: '11px', color: '#555' }}>
           <div>AQI</div>
@@ -265,7 +320,7 @@ export default function Dashboard({ testData }) {
         {hasData ? (
           <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
             <DashboardBackground data={data} />
-            <WeatherAmbientBackground data={data} />
+            <WeatherAmbientBackground data={data} compact={compactMode} />
             <LocationLane data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
             <TimeAxis data={data} switchInfo={switchInfo} onCityClick={handleCityClick} />
             <TwilightLane data={data} />
@@ -273,13 +328,13 @@ export default function Dashboard({ testData }) {
             <UVLane data={data} />
             <HumidityLane data={data} />
             <TemperatureTextLane data={data} />
-            <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />
-            <CloudEnsembleLane data={data} />
-            <CloudAndRainLane data={data} />
-            <PrecipitationProbLane data={data} />
-            <CapeLane data={data} />
-            <WindLane data={data} maxBft={maxBft} />
-            <PressureLane data={data} minP={minP} maxP={maxP} />
+            {!compactMode && <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+            {!compactMode && <CloudEnsembleLane data={data} />}
+            {!compactMode && <CloudAndRainLane data={data} />}
+            <PrecipitationProbLane data={data} compact={compactMode} />
+            {!compactMode && <CapeLane data={data} />}
+            <WindLane data={data} maxBft={maxBft} compact={compactMode} />
+            {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
             <AirQualityLane data={data} />
             <AerosolLane data={data} />
             {!loadingDone && (

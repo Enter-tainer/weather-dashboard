@@ -36,6 +36,9 @@ The focus is on **information density** — ensemble forecasts, CAPE, cloud laye
 - **Sunrise / sunset shading** — uses real sunrise/sunset times, not a naive 18:00–06:00 cutoff
 - **日出日落着色** — 用真实 sunrise/sunset 时间画夜间阴影，不是 18:00–06:00 一刀切
 
+- **Compact mode** — `?compact=1` collapses low-priority lanes (temperature, clouds, CAPE, pressure) into a dense single-scroll view; precipitation shows volume bars & wind shows Beaufort + arrow per cell
+- **紧凑模式** — `?compact=1` 折叠温度、云层、CAPE、气压等次要图表，降水显示量级条、风力显示蒲福级+风向箭头；适合快速扫视
+
 - **Long-range fallback** — beyond 15 days, auto-switches from deterministic models to ensemble mean
 - **远期降级** — 超过 15 天自动从确定性模型切到集合均值，不会直接报错
 
@@ -91,6 +94,12 @@ Two cities on the same date — a toggle button appears for quick comparison: / 
 ```
 /?route=Beijing~北京:2026-03-28;Shanghai~上海:2026-03-28
 ```
+
+### `compact` — Toggle compact mode / 紧凑模式
+
+Add `&compact=1` to collapse secondary lanes (temperature, clouds, CAPE, pressure) and show a condensed dashboard — precipitation bars and wind Beaufort indicators remain for quick weather scanning.
+
+加 `&compact=1` 折叠次要图表（温度、云层、CAPE、气压），保留降水和风力摘要，适合快速浏览。
 
 ### Without parameters / 不传参数的话
 

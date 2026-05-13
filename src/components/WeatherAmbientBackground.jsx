@@ -44,12 +44,14 @@ function computeDistribution(weatherCodeMembers) {
 
 const ALPHA = 0.22;
 const H_RADIUS_PX = COL_WIDTH * 1.2;
-const BG_HEIGHT = 233;
+const FULL_BG_HEIGHT = 233;
+const COMPACT_BG_HEIGHT = 123;
 
-export default function WeatherAmbientBackground({ data }) {
+export default function WeatherAmbientBackground({ data, compact = false }) {
   const totalWidth = data.length * COL_WIDTH;
+  const bgHeight = compact ? COMPACT_BG_HEIGHT : FULL_BG_HEIGHT;
 
-  const canvasRef = useCanvas(totalWidth, BG_HEIGHT, (ctx) => {
+  const canvasRef = useCanvas(totalWidth, bgHeight, (ctx) => {
     for (let i = 0; i < data.length; i++) {
       const dist = computeDistribution(data[i].weatherCodeMembers);
       if (!dist) continue;
@@ -58,8 +60,8 @@ export default function WeatherAmbientBackground({ data }) {
 
       let cumulative = 0;
       for (const seg of dist) {
-        const yCenter = (cumulative + seg.prob / 2) * BG_HEIGHT;
-        const vRadius = Math.max(seg.prob * BG_HEIGHT * 0.7, 8);
+        const yCenter = (cumulative + seg.prob / 2) * bgHeight;
+        const vRadius = Math.max(seg.prob * bgHeight * 0.7, 8);
         const [r, g, b] = WEATHER_COLORS[seg.cat];
 
         // Draw elliptical gradient matching CSS radial-gradient(Hpx Vpx at cx cy)
@@ -90,7 +92,7 @@ export default function WeatherAmbientBackground({ data }) {
       top: 'calc(24px + var(--lane-height-basic) + 12px)',
       left: 0,
       width: totalWidth,
-      height: 'calc(28px + var(--lane-height-uv) + var(--lane-height-humidity) + 35px + var(--lane-height-temp))',
+      height: `${bgHeight}px`,
       zIndex: 0,
       pointerEvents: 'none',
     }}>

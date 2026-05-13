@@ -46,6 +46,33 @@
   background-color: #ededed;
 }
 
+.compact-toggle-btn {
+  position: fixed;
+  top: 16px;
+  right: 64px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  color: #555;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.compact-toggle-btn:hover {
+  background: white;
+  color: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: scale(1.05);
+}
+
 .lanes-container {
   display: flex;
   flex-direction: column;

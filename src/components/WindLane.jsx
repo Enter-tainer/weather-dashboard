@@ -20,8 +20,9 @@ export function getBeaufort(speedKmh) {
 
 const COL_WIDTH = 22;
 const LANE_HEIGHT = 80;
+const COMPACT_LANE_HEIGHT = 36;
 
-export default function WindLane({ data, maxBft }) {
+export default function WindLane({ data, maxBft, compact = false }) {
   const width = data.length * COL_WIDTH;
 
   const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx) => {
@@ -57,6 +58,28 @@ export default function WindLane({ data, maxBft }) {
       }
     });
   }, [data, maxBft]);
+
+  if (compact) {
+    return (
+      <div className="lane wind-lane" style={{ height: `${COMPACT_LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <div className="lane-data">
+          {data.map((item, index) => {
+            const bft = getBeaufort(item.windSpeed);
+            return (
+              <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '1px' }}>
+                <span style={{ fontSize: '11px', lineHeight: 1, color: bft >= 6 ? '#b71c1c' : '#222', fontWeight: bft >= 4 ? 'bold' : 600 }}>
+                  {bft}
+                </span>
+                <svg width="9" height="9" viewBox="0 0 24 24" style={{ transform: `rotate(${item.windDir + 180}deg)`, color: bft >= 6 ? '#b71c1c' : '#555', opacity: 0.8 }}>
+                  <path d="M12 2L12 22M12 2L6 8M12 2L18 8" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="lane wind-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
