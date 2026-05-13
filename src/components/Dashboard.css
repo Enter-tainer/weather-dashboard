@@ -3,16 +3,18 @@
   height: 100vh;
   background-color: var(--bg-dark);
   color: var(--text-main);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: flex-start;
 }
 
 .legend-sidebar {
   width: var(--legend-width);
   flex-shrink: 0;
+  min-height: 100vh;
   background-color: #e8e8e8;
   display: flex;
   flex-direction: column;
@@ -22,6 +24,7 @@
 }
 
 .legend-cell {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -36,8 +39,10 @@
 
 .timeline-scroller {
   flex-grow: 1;
+  min-width: 0;
+  min-height: 100vh;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: clip;
   background-color: #ededed;
 }
 
@@ -70,6 +75,7 @@
 
 /* Base styles for all lanes */
 .lane {
+  flex-shrink: 0;
   display: flex;
   flex-direction: row;
   position: relative;
@@ -96,6 +102,7 @@
 }
 
 .lane-data {
+  flex-shrink: 0;
   display: flex;
   flex-direction: row;
   position: relative;
