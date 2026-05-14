@@ -47,6 +47,27 @@ export function withSurfaceLevel(item) {
   return surface ? [surface, ...levels] : levels;
 }
 
+/**
+ * Convert sounding levels to the format expected by the `skewt` npm package.
+ * skewt expects: { press, hght, temp, dwpt, wdir, wspd }
+ *   - wspd must be in **meters per second** (m/s); our data is in km/h.
+ *   - hght uses agl (or approximate height from pressure).
+ *   - Levels with null temp are filtered out.
+ */
+export function toSkewtFormat(levels) {
+  return levels
+    .filter(l => l.temp != null)
+    .map(l => ({
+      press: l.pressure,
+      hght: l.agl ?? APPROX_PRESSURE_HEIGHTS[l.pressure] ?? null,
+      temp: l.temp,
+      dwpt: l.dewPoint,
+      wdir: l.windDir,
+      wspd: l.windSpeed != null ? l.windSpeed / 3.6 : null, // km/h → m/s
+    }))
+    .filter(l => l.hght != null);
+}
+
 export function detectInversions(item) {
   const levels = withSurfaceLevel(item)
     .filter(level => level.temp != null)
