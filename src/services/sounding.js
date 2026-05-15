@@ -1,4 +1,4 @@
-export const SOUNDING_PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300];
+export const SOUNDING_PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200];
 
 export const APPROX_PRESSURE_HEIGHTS = {
   1000: 110,
@@ -13,6 +13,8 @@ export const APPROX_PRESSURE_HEIGHTS = {
   500: 5600,
   400: 7200,
   300: 9200,
+  250: 10800,
+  200: 12300,
 };
 
 export function dewPointFromRh(tempC, relativeHumidity) {
