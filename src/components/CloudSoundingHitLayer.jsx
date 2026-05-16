@@ -6,7 +6,7 @@ function formatHour(item) {
 
 export default function CloudSoundingHitLayer({
   data,
-  activeIndex,
+  activeTime,
   onSelect,
   bottomOffset = 0,
 }) {
@@ -27,9 +27,9 @@ export default function CloudSoundingHitLayer({
           type="button"
           className={[
             'cloud-sounding-hit-cell',
-            index === activeIndex ? 'is-active' : '',
+            item.time === activeTime ? 'is-active' : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => onSelect(index)}
+          onClick={() => onSelect(item)}
           title={`${item.cityName} ${formatHour(item)}:00 Skew-T`}
           aria-label={`打开 ${item.cityName} ${formatHour(item)}:00 的 Skew-T`}
         />

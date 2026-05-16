@@ -20,9 +20,9 @@ import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
 import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 
-function getInitialSoundingIndex() {
-  const value = Number(new URLSearchParams(window.location.search).get('sounding'));
-  return Number.isInteger(value) && value >= 0 ? value : null;
+function getInitialSoundingTime() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('sounding') || null;
 }
 
 export default function DashboardLanes({
@@ -36,36 +36,40 @@ export default function DashboardLanes({
 }) {
   const hasData = data && data.length > 0;
   const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
-  const [soundingIndex, setSoundingIndex] = useState(getInitialSoundingIndex);
-  const activeSoundingIndex = hasData && soundingIndex != null && soundingIndex < data.length ? soundingIndex : null;
+  const [soundingTime, setSoundingTime] = useState(getInitialSoundingTime);
 
-  const setUrlSoundingIndex = (index) => {
+  const soundingIndex = hasData && soundingTime != null
+    ? data.findIndex(d => d.time === soundingTime)
+    : -1;
+  const activeSoundingItem = soundingIndex >= 0 ? data[soundingIndex] : null;
+
+  const setUrlSoundingTime = (time) => {
     const url = new URL(window.location.href);
-    if (index == null) {
+    if (time == null) {
       url.searchParams.delete('sounding');
     } else {
-      url.searchParams.set('sounding', String(index));
+      url.searchParams.set('sounding', time);
     }
     window.history.replaceState({}, '', url.toString());
   };
 
-  const selectSoundingIndex = (index) => {
-    setSoundingIndex(index);
-    setUrlSoundingIndex(index);
+  const selectSoundingItem = (item) => {
+    setSoundingTime(item.time);
+    setUrlSoundingTime(item.time);
   };
 
   const closeSounding = () => {
-    setSoundingIndex(null);
-    setUrlSoundingIndex(null);
+    setSoundingTime(null);
+    setUrlSoundingTime(null);
   };
 
   const stepSounding = (direction) => {
-    setSoundingIndex(current => {
-      if (current == null || !hasData) return current;
-      const next = Math.max(0, Math.min(data.length - 1, current + direction));
-      setUrlSoundingIndex(next);
-      return next;
-    });
+    if (soundingIndex < 0) return;
+    const next = soundingIndex + direction;
+    if (next >= 0 && next < data.length) {
+      setSoundingTime(data[next].time);
+      setUrlSoundingTime(data[next].time);
+    }
   };
 
   return (
@@ -89,8 +93,8 @@ export default function DashboardLanes({
                 <CloudAndRainLane data={data} />
                 <CloudSoundingHitLayer
                   data={data}
-                  activeIndex={activeSoundingIndex}
-                  onSelect={selectSoundingIndex}
+                  activeTime={activeSoundingItem?.time ?? null}
+                  onSelect={selectSoundingItem}
                 />
               </div>
             )}
@@ -120,10 +124,10 @@ export default function DashboardLanes({
           </div>
         )}
       </div>
-      {activeSoundingIndex != null && data[activeSoundingIndex] && (
+      {activeSoundingItem && (
         <SoundingDrawer
-          item={data[activeSoundingIndex]}
-          index={activeSoundingIndex}
+          item={activeSoundingItem}
+          index={soundingIndex}
           total={data.length}
           onClose={closeSounding}
           onStep={stepSounding}
