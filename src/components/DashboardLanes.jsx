@@ -18,8 +18,7 @@ import WeatherAmbientBackground from './WeatherAmbientBackground';
 import TwilightLane from './TwilightLane';
 import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
-
-const COL_WIDTH = 22;
+import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 
 function getInitialSoundingIndex() {
   const value = Number(new URLSearchParams(window.location.search).get('sounding'));
@@ -84,26 +83,23 @@ export default function DashboardLanes({
             <HumidityLane data={data} />
             <TemperatureTextLane data={data} />
             {!compactMode && <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
-            {!compactMode && <CloudEnsembleLane data={data} />}
-            {!compactMode && <CloudAndRainLane data={data} />}
+            {!compactMode && (
+              <div className="cloud-sounding-region">
+                <CloudEnsembleLane data={data} />
+                <CloudAndRainLane data={data} />
+                <CloudSoundingHitLayer
+                  data={data}
+                  activeIndex={activeSoundingIndex}
+                  onSelect={selectSoundingIndex}
+                />
+              </div>
+            )}
             <PrecipitationProbLane data={data} compact={compactMode} />
             {!compactMode && <CapeLane data={data} />}
             <WindLane data={data} maxBft={maxBft} compact={compactMode} />
             {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
             <AirQualityLane data={data} />
             <AerosolLane data={data} />
-            <div className="sounding-hit-layer" style={{ width: `${data.length * COL_WIDTH}px` }}>
-              {data.map((item, index) => (
-                <button
-                  key={`sounding-hit-${index}`}
-                  type="button"
-                  className="sounding-hit-cell"
-                  onClick={() => selectSoundingIndex(index)}
-                  title={`${item.cityName} ${new Date(item.time).getHours()}:00 Skew-T`}
-                  aria-label={`打开 ${item.cityName} ${new Date(item.time).getHours()}:00 的 Skew-T`}
-                />
-              ))}
-            </div>
             {!loadingDone && (
               <div style={{
                 position: 'absolute',

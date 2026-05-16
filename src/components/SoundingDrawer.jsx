@@ -44,7 +44,7 @@ function SkewTChart({ item }) {
     }
 
     const chart = new SkewT(el, {
-      unit: 'ms',
+      unit: 'm/s',
     });
 
     const formatted = toSkewtFormat(soundingData);
@@ -70,11 +70,24 @@ function SkewTChart({ item }) {
 }
 
 export default function SoundingDrawer({ item, index, total, onClose, onStep }) {
+  const drawerRef = useRef(null);
   const inversions = useMemo(() => detectInversions(item), [item]);
   const spread = item.temperature != null && item.dewPoint != null ? item.temperature - item.dewPoint : null;
 
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      const drawer = drawerRef.current;
+      if (drawer && event.target instanceof Node && !drawer.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [onClose]);
+
   return (
-    <aside className="sounding-drawer" aria-label="Skew-T 探空图">
+    <aside className="sounding-drawer" ref={drawerRef} aria-label="Skew-T 探空图">
       <div className="sounding-header">
         <div>
           <div className="sounding-kicker">Sounding profile</div>
@@ -117,17 +130,6 @@ export default function SoundingDrawer({ item, index, total, onClose, onStep }) 
         </div>
       </div>
 
-      {inversions.length > 0 && (
-        <div className="sounding-inversions">
-          {inversions.map((inv, i) => (
-            <div key={i}>
-              逆温层 {formatHeight(inv.baseM)}-{formatHeight(inv.topM)}，
-              强度 {round(inv.strengthC, 1)}°C，
-              梯度 {round(inv.gradientCPer100m, 2)}°C/100m
-            </div>
-          ))}
-        </div>
-      )}
     </aside>
   );
 }

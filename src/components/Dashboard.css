@@ -153,17 +153,21 @@
   background-color: rgba(200, 205, 220, 0.5);
 }
 
-.sounding-hit-layer {
+.cloud-sounding-region {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cloud-sounding-hit-layer {
   position: absolute;
-  top: 24px;
-  bottom: 0;
+  top: 0;
   left: 0;
   display: flex;
-  z-index: 35;
+  z-index: 4;
   pointer-events: none;
 }
 
-.sounding-hit-cell {
+.cloud-sounding-hit-cell {
   width: var(--col-width-hour);
   height: 100%;
   flex: 0 0 var(--col-width-hour);
@@ -177,26 +181,29 @@
   position: relative;
 }
 
-.sounding-hit-cell::after {
+.cloud-sounding-hit-cell::before {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
+  inset: 0;
   background: rgba(214, 106, 0, 0);
-  transform: translateX(-50%);
-  transition: background 0.12s ease;
 }
 
-.sounding-hit-cell:hover::after,
-.sounding-hit-cell:focus-visible::after {
-  background: rgba(214, 106, 0, 0.42);
+.cloud-sounding-hit-cell:hover::before,
+.cloud-sounding-hit-cell:focus-visible::before {
+  background: rgba(255, 255, 255, 0.18);
 }
 
-.sounding-hit-cell:focus-visible {
-  outline: 2px solid rgba(214, 106, 0, 0.5);
-  outline-offset: -2px;
+.cloud-sounding-hit-cell.is-active::before {
+  background: rgba(214, 106, 0, 0.08);
+}
+
+.cloud-sounding-hit-cell.is-active:hover::before,
+.cloud-sounding-hit-cell.is-active:focus-visible::before {
+  background: rgba(214, 106, 0, 0.12);
+}
+
+.cloud-sounding-hit-cell:focus-visible {
+  outline: 0;
 }
 
 .sounding-drawer {
@@ -390,20 +397,10 @@
   color: #222;
 }
 
-.sounding-inversions,
 .sounding-empty {
   padding: 10px;
   font-size: 12px;
   line-height: 1.45;
-}
-
-.sounding-inversions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: #744100;
-  border-left: 3px solid rgba(214, 106, 0, 0.55);
-  background: rgba(214, 106, 0, 0.08);
 }
 
 .sounding-empty {
@@ -414,8 +411,18 @@
 
 @media (max-width: 640px) {
   .sounding-drawer {
-    width: calc(100vw - 12px);
-    padding: 12px;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-height: min(82dvh, 680px);
+    padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+    gap: 10px;
+    border-left: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.18);
   }
 
   .sounding-summary {
@@ -427,6 +434,11 @@
   }
 
   .sounding-chart {
-    min-height: 360px;
+    min-height: clamp(280px, 48dvh, 360px);
+    max-height: none;
+  }
+
+  .sounding-chart .skewt-container {
+    min-height: clamp(280px, 48dvh, 360px);
   }
 }
