@@ -47,7 +47,7 @@ export default function CloudEnsembleLane({ data }) {
 
   return (
     <div className="lane cloud-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'transparent' }}>
-      <div className="lane-data">
+      <div className="lane-data" style={{ position: 'relative', width: `${width}px` }}>
         <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px` }} />
       </div>
     </div>
