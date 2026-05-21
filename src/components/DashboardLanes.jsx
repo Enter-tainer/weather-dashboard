@@ -118,7 +118,7 @@ export default function DashboardLanes({
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '8px', color: '#888' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100vh', gap: '8px', color: '#888' }}>
             {!loadingDone && <div className="loading-spinner" />}
             {loadingDone && 'No data available'}
           </div>
