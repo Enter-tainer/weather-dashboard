@@ -127,14 +127,14 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }) {
       }
     }
 
-    // Temperature labels every 3 hours at top of lane
+    // Temperature value labels at bottom of lane (every 2h)
     ctx.fillStyle = '#444';
-    ctx.font = 'bold 9px system-ui';
+    ctx.font = '9px system-ui';
     ctx.textAlign = 'center';
-    for (let i = 0; i < data.length; i += 3) {
+    for (let i = 0; i < data.length; i += 2) {
       const ens = ensembles[i];
       const val = ens?.p50 != null ? ens.p50 : data[i].temperature;
-      ctx.fillText(`${Math.round(val)}°`, i * COL_WIDTH + COL_WIDTH / 2, labelH - 1);
+      ctx.fillText(`${Math.round(val)}`, i * COL_WIDTH + COL_WIDTH / 2, h - 3);
     }
   }, [data, minTemp, maxTemp, ensembles]);
 

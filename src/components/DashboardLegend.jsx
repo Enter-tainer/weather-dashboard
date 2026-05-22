@@ -17,12 +17,12 @@ function GitHubLegendCell() {
 }
 
 function TemperatureCurveLegend({ tempSteps, minTemp, maxTemp }) {
+  const H = 56;
   return (
-    <div className="legend-cell" style={{ height: 'var(--lane-height-temp)', position: 'relative' }}>
-      <span style={{ position: 'absolute', top: '8px', left: 0, width: '100%', textAlign: 'center', fontSize: '11px', color: '#555' }}>曲线</span>
+    <div className="legend-cell" style={{ height: `${H}px`, position: 'relative' }}>
       {tempSteps.map(t => {
-        const y = 110 - ((t - minTemp) / (maxTemp - minTemp)) * 110;
-        if (y >= 15 && y <= 95) {
+        const y = H - ((t - minTemp) / (maxTemp - minTemp)) * H;
+        if (y >= 12 && y <= H - 4) {
           return <span key={t} style={{ position: 'absolute', right: '4px', top: `${y - 6}px`, fontSize: '9px', color: '#999' }}>{t}°</span>;
         }
         return null;
