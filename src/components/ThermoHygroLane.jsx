@@ -234,7 +234,7 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }) {
   );
 }
 
-export default function ThermodynamicCandlestickLane({ data, minTemp, maxTemp }) {
+export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
   const totalWidth = data.length * COL_WIDTH;
   const ensembles = useMemo(() => data.map(d => getEnsemble(d)), [data]);
 
@@ -347,7 +347,7 @@ export default function ThermodynamicCandlestickLane({ data, minTemp, maxTemp })
   }, [data, minTemp, maxTemp, ensembles, activeIndex]);
 
   return (
-    <div className="lane thermodynamic-lane" style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}>
+    <div className="lane thermo-hygro-lane" style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}>
       <div className="lane-data" style={{ position: 'relative' }}>
         <canvas
           ref={canvasRef}
