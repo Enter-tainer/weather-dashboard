@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import TimeAxis from './TimeAxis';
 import WeatherIconLane from './WeatherIconLane';
-import TemperatureLane from './TemperatureLane';
+import TemperatureEnsembleLane from './TemperatureEnsembleLane';
 import TemperatureTextLane from './TemperatureTextLane';
 import CloudEnsembleLane from './CloudEnsembleLane';
 import CloudAndRainLane from './CloudAndRainLane';
@@ -86,7 +86,7 @@ export default function DashboardLanes({
             <UVLane data={data} />
             <HumidityLane data={data} />
             <TemperatureTextLane data={data} />
-            {!compactMode && <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+            {!compactMode && <TemperatureEnsembleLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
             {!compactMode && (
               <div className="cloud-sounding-region">
                 <CloudEnsembleLane data={data} />

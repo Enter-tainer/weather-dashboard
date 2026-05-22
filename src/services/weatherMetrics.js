@@ -25,6 +25,9 @@ export function calculateDashboardScales(data) {
     data.forEach(d => {
       if (d.temperature < minTemp) minTemp = d.temperature;
       if (d.temperature > maxTemp) maxTemp = d.temperature;
+      // Include ensemble percentile range in scale
+      if (d.tempEnsemble?.p10 != null && d.tempEnsemble.p10 < minTemp) minTemp = d.tempEnsemble.p10;
+      if (d.tempEnsemble?.p90 != null && d.tempEnsemble.p90 > maxTemp) maxTemp = d.tempEnsemble.p90;
       d.tempMembers?.forEach(m => {
         if (m < minTemp) minTemp = m;
         if (m > maxTemp) maxTemp = m;

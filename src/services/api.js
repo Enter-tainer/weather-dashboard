@@ -4,6 +4,18 @@ import { getCityDetails, reverseGeocode } from './geocoding.js';
 import { SOUNDING_PRESSURE_LEVELS, dewPointFromRh } from './sounding.js';
 import SunCalc from 'suncalc';
 
+// Compute a percentile from a sorted array using linear interpolation.
+// p is in 0..100 (e.g., 10 for P10, 50 for median).
+function percentile(sorted, p) {
+  if (!sorted || sorted.length === 0) return null;
+  if (sorted.length === 1) return sorted[0];
+  const k = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(k);
+  const hi = Math.ceil(k);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (k - lo) * (sorted[hi] - sorted[lo]);
+}
+
 // Estimate visibility (meters) from pollutant concentrations and relative humidity.
 // Uses Koschmieder equation: V = 3912 / β_total (km)
 // β components in 1/Mm (inverse megameters):
@@ -158,6 +170,16 @@ export async function fetchCityDataForDate(cityObj) {
       }
     }
 
+    // Compute ensemble percentiles for temperature (sorted members)
+    tempMembers.sort((a, b) => a - b);
+    const tempEnsemble = {
+      p10: percentile(tempMembers, 10),
+      p25: percentile(tempMembers, 25),
+      p50: percentile(tempMembers, 50),
+      p75: percentile(tempMembers, 75),
+      p90: percentile(tempMembers, 90),
+    };
+
     combined.push({
       cityName: originalName || name,
       time: forecastRes.hourly.time[i],
@@ -219,6 +241,7 @@ export async function fetchCityDataForDate(cityObj) {
       }).filter(level => level.temp != null),
 
       tempMembers,
+      tempEnsemble,
       precipMembers,
       windMembers,
       cloudMembers,
