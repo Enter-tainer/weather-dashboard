@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import TimeAxis from './TimeAxis';
 import WeatherIconLane from './WeatherIconLane';
-import TemperatureLane from './TemperatureLane';
+import ThermoHygroLane from './ThermoHygroLane';
 import TemperatureTextLane from './TemperatureTextLane';
 import CloudEnsembleLane from './CloudEnsembleLane';
 import CloudAndRainLane from './CloudAndRainLane';
 import PrecipitationProbLane from './PrecipitationProbLane';
-import HumidityLane from './HumidityLane';
 import UVLane from './UVLane';
 import PressureLane from './PressureLane';
 import CapeLane from './CapeLane';
@@ -84,9 +83,8 @@ export default function DashboardLanes({
             <TwilightLane data={data} />
             <WeatherIconLane data={data} />
             <UVLane data={data} />
-            <HumidityLane data={data} />
-            <TemperatureTextLane data={data} />
-            {!compactMode && <TemperatureLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+            {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+            {compactMode && <TemperatureTextLane data={data} />}
             {!compactMode && (
               <div className="cloud-sounding-region">
                 <CloudEnsembleLane data={data} />

@@ -25,6 +25,9 @@ export function calculateDashboardScales(data) {
     data.forEach(d => {
       if (d.temperature < minTemp) minTemp = d.temperature;
       if (d.temperature > maxTemp) maxTemp = d.temperature;
+      // Include ensemble percentile range in scale
+      if (d.tempEnsemble?.p10 != null && d.tempEnsemble.p10 < minTemp) minTemp = d.tempEnsemble.p10;
+      if (d.tempEnsemble?.p90 != null && d.tempEnsemble.p90 > maxTemp) maxTemp = d.tempEnsemble.p90;
       d.tempMembers?.forEach(m => {
         if (m < minTemp) minTemp = m;
         if (m > maxTemp) maxTemp = m;
@@ -60,9 +63,17 @@ export function calculateDashboardScales(data) {
 
   const tempSteps = [];
   if (minTemp !== Infinity) {
-    const minTempVal = Math.floor(minTemp / 5) * 5;
-    const maxTempVal = Math.ceil(maxTemp / 5) * 5;
-    for (let t = minTempVal; t <= maxTempVal; t += 5) tempSteps.push(t);
+    const range = maxTemp - minTemp;
+    // Auto-select step size so we get 4–6 labels
+    let step = 1;
+    if (range > 8) step = 2;
+    if (range > 15) step = 5;
+    if (range > 30) step = 10;
+    if (range > 60) step = 20;
+
+    const minT = Math.floor(minTemp / step) * step;
+    const maxT = Math.ceil(maxTemp / step) * step;
+    for (let t = minT; t <= maxT; t += step) tempSteps.push(t);
   }
 
   return { minTemp, maxTemp, minP, maxP, maxBft, tempSteps };
