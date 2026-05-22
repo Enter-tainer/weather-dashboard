@@ -31,6 +31,29 @@ function tempColor(temp) {
   return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 }
 
+// Pick text color based on bar background luminance (light bar → dark text, dark bar → white)
+function tempTextColor(temp) {
+  const t = Math.max(COLOR_STOPS[0][0], Math.min(COLOR_STOPS[COLOR_STOPS.length - 1][0], temp));
+  let r, g, b;
+  for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
+    const [t0, r0, g0, b0] = COLOR_STOPS[i];
+    const [t1, r1, g1, b1] = COLOR_STOPS[i + 1];
+    if (t <= t1) {
+      const ratio = (t - t0) / (t1 - t0);
+      r = lerp(r0, r1, ratio);
+      g = lerp(g0, g1, ratio);
+      b = lerp(b0, b1, ratio);
+      break;
+    }
+  }
+  if (r == null) {
+    [, r, g, b] = COLOR_STOPS[COLOR_STOPS.length - 1];
+  }
+  // Perceived luminance: 0.299R + 0.587G + 0.114B
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  return lum > 140 ? '#333' : '#fff';
+}
+
 // Compute percentile from a sorted array (linear interpolation)
 function percentile(sorted, p) {
   if (!sorted || sorted.length === 0) return null;
@@ -128,13 +151,13 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }) {
     }
 
     // Temperature value labels at bottom of lane (every 2h)
-    ctx.fillStyle = '#444';
     ctx.font = '9px system-ui';
     ctx.textAlign = 'center';
     for (let i = 0; i < data.length; i += 2) {
       const ens = ensembles[i];
-      const val = ens?.p50 != null ? ens.p50 : data[i].temperature;
-      ctx.fillText(`${Math.round(val)}`, i * COL_WIDTH + COL_WIDTH / 2, h - 3);
+      const temp = ens?.p50 != null ? ens.p50 : data[i].temperature;
+      ctx.fillStyle = tempTextColor(temp);
+      ctx.fillText(`${Math.round(temp)}`, i * COL_WIDTH + COL_WIDTH / 2, h - 3);
     }
   }, [data, minTemp, maxTemp, ensembles]);
 
