@@ -2,14 +2,16 @@ import { useMemo } from 'react';
 import { useCanvas } from '../hooks/useCanvas';
 
 const COL_WIDTH = 22;
-const LANE_HEIGHT = 88;
-const TOP_PAD = 17;   // room for data pill above bars
-const BOT_PAD = 13;   // room for humidity base below
-const PLOT_H = LANE_HEIGHT - TOP_PAD - BOT_PAD; // 58
+const LANE_HEIGHT = 80;
+const TOP_LABEL_H = 13;
+const BOT_LABEL_H = 12;
+const BAR_TOP = TOP_LABEL_H;
+const BAR_BOT = LANE_HEIGHT - BOT_LABEL_H;
+const BAR_H_MAX = BAR_BOT - BAR_TOP;
 const BAR_W = 12;
-const BAR_X = (COL_WIDTH - BAR_W) / 2; // 5
+const BAR_X = (COL_WIDTH - BAR_W) / 2;
 
-// ── Temperature color stops (same as existing) ──
+// ── Temperature color stops ──
 const COLOR_STOPS = [
   [-20, 20, 30, 180],
   [0, 40, 120, 220],
@@ -34,7 +36,6 @@ function tempColor(temp) {
   return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 }
 
-// Luminance for text contrast
 function tempLuminance(temp) {
   const t = Math.max(COLOR_STOPS[0][0], Math.min(COLOR_STOPS[COLOR_STOPS.length - 1][0], temp));
   for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
@@ -42,10 +43,7 @@ function tempLuminance(temp) {
     const [t1, r1, g1, b1] = COLOR_STOPS[i + 1];
     if (t <= t1) {
       const ratio = (t - t0) / (t1 - t0);
-      const r = lerp(r0, r1, ratio);
-      const g = lerp(g0, g1, ratio);
-      const b = lerp(b0, b1, ratio);
-      return 0.299 * r + 0.587 * g + 0.114 * b;
+      return 0.299 * lerp(r0, r1, ratio) + 0.587 * lerp(g0, g1, ratio) + 0.114 * lerp(b0, b1, ratio);
     }
   }
   const [, r, g, b] = COLOR_STOPS[COLOR_STOPS.length - 1];
@@ -85,8 +83,7 @@ export default function ThermodynamicCandlestickLane({ data, minTemp, maxTemp })
   const ensembles = useMemo(() => data.map(d => getEnsemble(d)), [data]);
 
   const tRange = maxTemp - minTemp || 1;
-  const tempToY = (t) => TOP_PAD + PLOT_H * (1 - (t - minTemp) / tRange);
-  const baselineY = TOP_PAD + PLOT_H;
+  const tempToY = (t) => BAR_BOT - ((t - minTemp) / tRange) * BAR_H_MAX;
 
   const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx, w, h) => {
 
@@ -97,58 +94,43 @@ export default function ThermodynamicCandlestickLane({ data, minTemp, maxTemp })
       const bx = i * COL_WIDTH + BAR_X;
 
       const yTemp = tempToY(d.temperature);
-      const barH = Math.max(2, baselineY - yTemp);
+      const barH = Math.max(2, BAR_BOT - yTemp);
 
-      // ── 1. Main temperature bar ──
-      const color = tempColor(d.temperature);
-      ctx.fillStyle = color;
+      // ── Temperature bar ──
+      ctx.fillStyle = tempColor(d.temperature);
       ctx.fillRect(bx, yTemp, BAR_W, barH);
 
-      // ── 2. Dew point anchor (blue dot inside/on bar) ──
-      const yDew = Math.min(baselineY - 2, Math.max(TOP_PAD, tempToY(d.dewPoint)));
+      // ── Dew point (tiny dot) ──
+      const yDew = Math.min(BAR_BOT - 2, Math.max(BAR_TOP + 2, tempToY(d.dewPoint)));
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx, yDew, 2.5, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = '#1565c0';
       ctx.beginPath();
-      ctx.arc(cx, yDew, 3.5, 0, Math.PI * 2);
+      ctx.arc(cx, yDew, 1.8, 0, Math.PI * 2);
       ctx.fill();
-      // white ring for visibility on dark bars
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
 
-      // ── 3. Feels-like marker ──
-      const yApp = Math.min(baselineY - 2, Math.max(TOP_PAD, tempToY(d.apparentTemp)));
+      // ── Feels-like side notch at apparent temp ──
+      const yApp = tempToY(d.apparentTemp);
       const feelsDiff = d.apparentTemp - d.temperature;
-
-      if (Math.abs(feelsDiff) >= 0.8) {
-        const markerColor = feelsDiff > 0 ? '#e65100' : '#0277bd';
-
-        // Connecting line (dashed) if marker floats above bar
-        if (feelsDiff > 0 && yApp < yTemp - 3) {
-          ctx.strokeStyle = markerColor;
-          ctx.lineWidth = 0.7;
-          ctx.setLineDash([2, 3]);
-          ctx.beginPath();
-          ctx.moveTo(cx, yTemp);
-          ctx.lineTo(cx, yApp + 2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-
-        // Horizontal tick
-        ctx.strokeStyle = markerColor;
-        ctx.lineWidth = 2;
+      if (Math.abs(feelsDiff) >= 0.8 && yApp >= BAR_TOP && yApp <= BAR_BOT) {
+        const isWarmer = feelsDiff > 0;
+        ctx.fillStyle = isWarmer ? '#e65100' : '#0277bd';
+        // Small triangle notch on left side of bar
         ctx.beginPath();
-        const tickW = feelsDiff < 0 ? 3 : 5; // narrower inside bar
-        ctx.moveTo(cx - tickW, yApp);
-        ctx.lineTo(cx + tickW, yApp);
-        ctx.stroke();
+        ctx.moveTo(bx - 1, yApp - 2);
+        ctx.lineTo(bx - 1, yApp + 2);
+        ctx.lineTo(bx - 5, yApp);
+        ctx.closePath();
+        ctx.fill();
       }
 
-      // ── 4. Ensemble error bar (subtle I-beam) ──
+      // ── Ensemble I-beam error bar ──
       if (ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90) {
-        const y10 = Math.max(TOP_PAD, tempToY(ens.p10));
-        const y90 = Math.min(baselineY, tempToY(ens.p90));
-        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        const y10 = Math.max(BAR_TOP, tempToY(ens.p10));
+        const y90 = Math.min(BAR_BOT, tempToY(ens.p90));
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
         ctx.lineWidth = 0.8;
         ctx.beginPath();
         ctx.moveTo(cx, y10);
@@ -161,35 +143,40 @@ export default function ThermodynamicCandlestickLane({ data, minTemp, maxTemp })
       }
     }
 
-    // ── 5. Top data pills (every 3h) ──
+    // ── Top labels: temperature + apparent temp (every 3h) ──
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
     for (let i = 0; i < data.length; i += 3) {
       const d = data[i];
       const cx = i * COL_WIDTH + COL_WIDTH / 2;
-      const feelsDiff = d.apparentTemp - d.temperature;
+      const lum = tempLuminance(d.temperature);
 
-      // Temperature number (large, color-coded)
+      // Main temperature
       ctx.font = 'bold 10px system-ui';
-      ctx.fillStyle = tempColor(d.temperature);
-      ctx.fillText(`${Math.round(d.temperature)}°`, cx, TOP_PAD - 2);
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = lum > 140 ? '#222' : '#fff';
+      ctx.fillText(`${Math.round(d.temperature)}°`, cx, TOP_LABEL_H - 2);
 
-      // Apparent temp offset indicator (right of temp)
-      ctx.font = '7px system-ui';
-      const appColor = Math.abs(feelsDiff) >= 2 ? '#d32f2f' : '#777';
-      ctx.fillStyle = appColor;
-      ctx.fillText(`体${Math.round(d.apparentTemp)}`, cx + 13, TOP_PAD - 2);
+      // Apparent temp (small, below main temp, only if differs meaningfully)
+      const feelsDiff = d.apparentTemp - d.temperature;
+      if (Math.abs(feelsDiff) >= 0.8) {
+        ctx.font = '7px system-ui';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = Math.abs(feelsDiff) >= 2
+          ? (feelsDiff > 0 ? '#e65100' : '#0277bd')
+          : '#888';
+        ctx.fillText(`${Math.round(d.apparentTemp)}°`, cx, TOP_LABEL_H - 1);
+      }
     }
     ctx.textBaseline = 'alphabetic';
 
-    // ── 6. Bottom humidity base (every 3h) ──
+    // ── Bottom labels: humidity every 3h ──
     ctx.font = '8px system-ui';
     ctx.textAlign = 'center';
     for (let i = 0; i < data.length; i += 3) {
       const d = data[i];
       const cx = i * COL_WIDTH + COL_WIDTH / 2;
-      ctx.fillStyle = '#555';
-      ctx.fillText(`${Math.round(d.humidity)}%|${Math.round(d.dewPoint)}°`, cx, LANE_HEIGHT - 2);
+      ctx.fillStyle = '#666';
+      ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
     }
 
   }, [data, minTemp, maxTemp, ensembles]);

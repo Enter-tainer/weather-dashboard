@@ -121,11 +121,12 @@ export default function DashboardLegend({ compactMode, scales }) {
       {!compactMode && (
         <div className="legend-cell" style={{ height: 'var(--lane-height-thermal)', position: 'relative' }}>
           <span style={{ position: 'absolute', top: '1px', left: 0, width: '100%', textAlign: 'center', fontSize: '10px', color: '#555' }}>热力</span>
-          <span style={{ position: 'absolute', bottom: '1px', left: 0, width: '100%', textAlign: 'center', fontSize: '8px', color: '#999' }}>💧%</span>
+          <span style={{ position: 'absolute', bottom: '1px', left: 0, width: '100%', textAlign: 'center', fontSize: '8px', color: '#999' }}>湿度%</span>
           {tempSteps.map(t => {
-            const H = 88;
-            const y = 17 + (88 - 17 - 13) * (1 - (t - minTemp) / (maxTemp - minTemp));
-            if (y >= 24 && y <= 75) {
+            const H = 80;
+            const PLOT = 80 - 13 - 12; // TOP_LABEL_H + BOT_LABEL_H
+            const y = 13 + PLOT * (1 - (t - minTemp) / (maxTemp - minTemp));
+            if (y >= 22 && y <= 68) {
               return <span key={t} style={{ position: 'absolute', right: '4px', top: `${y - 6}px`, fontSize: '9px', color: '#999' }}>{t}°</span>;
             }
             return null;
