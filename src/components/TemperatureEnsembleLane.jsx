@@ -151,13 +151,19 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }) {
     }
 
     // Temperature value labels at bottom of lane (every 2h)
-    ctx.font = '9px system-ui';
+    ctx.font = 'bold 9px system-ui';
     ctx.textAlign = 'center';
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
     for (let i = 0; i < data.length; i += 2) {
       const ens = ensembles[i];
       const temp = ens?.p50 != null ? ens.p50 : data[i].temperature;
+      const text = `${Math.round(temp)}`;
+      const tx = i * COL_WIDTH + COL_WIDTH / 2;
+      const ty = h - 3;
+      ctx.strokeText(text, tx, ty);
       ctx.fillStyle = tempTextColor(temp);
-      ctx.fillText(`${Math.round(temp)}`, i * COL_WIDTH + COL_WIDTH / 2, h - 3);
+      ctx.fillText(text, tx, ty);
     }
   }, [data, minTemp, maxTemp, ensembles]);
 
