@@ -103,8 +103,8 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }) {
       const x = i * COL_WIDTH + BAR_PAD;
       const cx = x + BAR_WIDTH / 2;
 
-      // Use ensemble P50 if available, otherwise fall back to main temperature
-      const temp = ens?.p50 != null ? ens.p50 : d.temperature;
+      // Use main forecast temperature for bar height (matches TemperatureTextLane above)
+      const temp = d.temperature;
       const bh = Math.max(2, barHeight(temp));
 
       // Draw temperature bar
@@ -156,8 +156,7 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }) {
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
     for (let i = 0; i < data.length; i += 2) {
-      const ens = ensembles[i];
-      const temp = ens?.p50 != null ? ens.p50 : data[i].temperature;
+      const temp = data[i].temperature;
       const text = `${Math.round(temp)}`;
       const tx = i * COL_WIDTH + COL_WIDTH / 2;
       const ty = h - 3;
