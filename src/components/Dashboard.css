@@ -404,7 +404,7 @@
 .sounding-chart .skewt-container {
   --skewt-temp-color: #c92f2f;
   --skewt-dwpt-color: #16845f;
-  --skewt-grid-color: var(--grid-line);
+  --skewt-grid-color: rgba(128, 128, 128, 0.12);
   --skewt-zero-color: var(--now-line);
   --skewt-axis-color: var(--text-muted);
   --skewt-barb-color: var(--text-light);
