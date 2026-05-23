@@ -35,7 +35,7 @@ export default function TimeAxis({ data }) {
            const leftPx = band.left * COL_WIDTH + COL_WIDTH / 2;
            const rightPx = band.right * COL_WIDTH + COL_WIDTH / 2;
            return (
-              <div key={`header-night-${idx}`} style={{ position: 'absolute', top: 0, left: `${leftPx}px`, width: `${rightPx - leftPx}px`, height: '100%', backgroundColor: 'rgba(0,0,0,0.06)', pointerEvents: 'none', zIndex: 0 }} />
+              <div key={`header-night-${idx}`} style={{ position: 'absolute', top: 0, left: `${leftPx}px`, width: `${rightPx - leftPx}px`, height: '100%', backgroundColor: 'var(--cell-night)', pointerEvents: 'none', zIndex: 0 }} />
            );
         })}
 
@@ -68,12 +68,12 @@ export default function TimeAxis({ data }) {
                   zIndex: 10
                 }}>
                   <div style={{ position: 'sticky', left: 0, width: 'max-content' }}>
-                    <div style={{ padding: '2px 4px', fontSize: '11px', color: '#333', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                    <div style={{ padding: '2px 4px', fontSize: '11px', color: 'var(--text-main)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                       {day.dateStr}
                     </div>
                   </div>
                   {day.moonPhase != null && (
-                    <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: '#777', whiteSpace: 'nowrap' }}>
+                    <div style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '9px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {getMoonPhaseName(day.moonPhase)} {Math.round(day.moonFraction * 100)}%
                     </div>
                   )}
@@ -83,10 +83,10 @@ export default function TimeAxis({ data }) {
               {/* Lane cells for this city */}
               {group.items.map(({ item, index }) => (
                 <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginTop: 'auto' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: 'auto' }}>
                     {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
                   </div>
-                  <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }} />
+                  <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'var(--lane-border)' : 'transparent' }} />
                 </div>
               ))}
             </div>
@@ -102,7 +102,7 @@ export default function TimeAxis({ data }) {
            const hh = ev.time.getHours().toString().padStart(2, '0');
            const isSunrise = ev.type === 'sunrise';
            const IconComp = isSunrise ? Sunrise : Sunset;
-           const color = isSunrise ? '#f57c00' : '#d84315';
+           const color = isSunrise ? 'var(--sunrise-color)' : 'var(--sunset-color)';
 
            return (
              <div key={`sun-${i}`} style={{
@@ -112,7 +112,7 @@ export default function TimeAxis({ data }) {
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 21
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px rgba(255,255,255,0.9)', paintOrder: 'stroke fill' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px var(--astro-label-stroke)', paintOrder: 'stroke fill' }}>
                    <IconComp size={10} color={color} /> {hh}:{mm}
                 </div>
                 <div style={{ height: '6px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />
@@ -128,7 +128,7 @@ export default function TimeAxis({ data }) {
            const mm = ev.time.getMinutes().toString().padStart(2, '0');
            const hh = ev.time.getHours().toString().padStart(2, '0');
            const isRise = ev.type === 'moonrise';
-           const color = isRise ? '#5c6bc0' : '#37474f';
+           const color = isRise ? 'var(--moonrise-color)' : 'var(--moonset-color)';
            const arrow = isRise ? '↑' : '↓';
 
            return (
@@ -139,7 +139,7 @@ export default function TimeAxis({ data }) {
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px rgba(255,255,255,0.9)', paintOrder: 'stroke fill' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px var(--astro-label-stroke)', paintOrder: 'stroke fill' }}>
                    <Moon size={10} color={color} />{arrow}{hh}:{mm}
                 </div>
                 <div style={{ height: '18px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />

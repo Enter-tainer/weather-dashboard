@@ -56,7 +56,7 @@ export default function UVLane({ data }) {
               {showText && (
                 <span style={{
                   fontSize: '10px',
-                  color: run.rounded > 2 && run.rounded <= 5 ? '#333' : '#fff',
+                  color: run.rounded <= 5 ? '#1d251f' : '#fff',
                   backgroundColor: getUvColor(run.rounded),
                   padding: '0 4px',
                   borderRadius: '4px',

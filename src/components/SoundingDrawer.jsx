@@ -72,10 +72,13 @@ function SkewTChart({ item }) {
 export default function SoundingDrawer({ item, index, total, onClose, onStep }) {
   const drawerRef = useRef(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
 
   const inversions = useMemo(() => detectInversions(item), [item]);
   const spread = item.temperature != null && item.dewPoint != null ? item.temperature - item.dewPoint : null;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Close on pointerdown outside the drawer (capture phase — fires before React handlers)
   useEffect(() => {

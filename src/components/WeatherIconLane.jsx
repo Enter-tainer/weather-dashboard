@@ -17,40 +17,40 @@ const WEATHER_NAMES = {
 };
 
 function getWeatherIcon(code, isNight, size = 18) {
-  const props = { size, color: '#444' };
+  const props = { size, color: 'var(--text-light)' };
 
   if (code === 0) return isNight ? <Moon {...props} color="#64748b" /> : <Sun {...props} color="#e69c00" />;
   if (code === 1) return isNight ? <CloudMoon {...props} color="#64748b" /> : <CloudSun {...props} color="#deba37" />;
-  if (code === 2) return <Cloud {...props} color={isNight ? "#64748b" : "#888"} />;
-  if (code === 3) return <Cloud {...props} color={isNight ? "#475569" : "#666"} />;
+  if (code === 2) return <Cloud {...props} color={isNight ? 'var(--moonrise-color)' : 'var(--text-muted)'} />;
+  if (code === 3) return <Cloud {...props} color={isNight ? 'var(--moonset-color)' : 'var(--text-light)'} />;
   if ([45, 48].includes(code)) return <CloudFog {...props} />;
 
-  if (code === 51) return <CloudDrizzle {...props} color="#93c5fd" />;
-  if (code === 53) return <CloudDrizzle {...props} color="#60a5fa" />;
-  if (code === 55) return <CloudDrizzle {...props} color="#3b82f6" />;
-  if (code === 56) return <CloudDrizzle {...props} color="#a78bfa" />;
-  if (code === 57) return <CloudDrizzle {...props} color="#8b5cf6" />;
+  if (code === 51) return <CloudDrizzle {...props} color="rgb(var(--precip-drizzle-rgb))" />;
+  if (code === 53) return <CloudDrizzle {...props} color="rgb(var(--precip-drizzle-rgb))" />;
+  if (code === 55) return <CloudDrizzle {...props} color="rgb(var(--precip-rain-rgb))" />;
+  if (code === 56) return <CloudDrizzle {...props} color="rgb(var(--precip-freezing-rgb))" />;
+  if (code === 57) return <CloudDrizzle {...props} color="rgb(var(--precip-freezing-rgb))" />;
 
-  if (code === 61) return isNight ? <CloudMoonRain {...props} color="#60a5fa" /> : <CloudSunRain {...props} color="#60a5fa" />;
-  if (code === 63) return <CloudRain {...props} color="#2563eb" />;
-  if (code === 65) return <CloudRainWind {...props} color="#1d4ed8" />;
-  if (code === 66) return <CloudRain {...props} color="#a78bfa" />;
-  if (code === 67) return <CloudRainWind {...props} color="#8b5cf6" />;
+  if (code === 61) return isNight ? <CloudMoonRain {...props} color="rgb(var(--precip-drizzle-rgb))" /> : <CloudSunRain {...props} color="rgb(var(--precip-drizzle-rgb))" />;
+  if (code === 63) return <CloudRain {...props} color="rgb(var(--precip-rain-rgb))" />;
+  if (code === 65) return <CloudRainWind {...props} color="rgb(var(--precip-rain-rgb))" />;
+  if (code === 66) return <CloudRain {...props} color="rgb(var(--precip-freezing-rgb))" />;
+  if (code === 67) return <CloudRainWind {...props} color="rgb(var(--precip-freezing-rgb))" />;
 
-  if (code === 71) return <CloudSnow {...props} color="#7dd3fc" />;
-  if (code === 73) return <CloudSnow {...props} color="#38bdf8" />;
-  if (code === 75) return <CloudSnow {...props} color="#0284c7" />;
-  if (code === 77) return <CloudSnow {...props} color="#0369a1" />;
+  if (code === 71) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
+  if (code === 73) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
+  if (code === 75) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
+  if (code === 77) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
 
-  if (code === 80) return isNight ? <CloudMoonRain {...props} color="#60a5fa" /> : <CloudSunRain {...props} color="#60a5fa" />;
-  if (code === 81) return <CloudRain {...props} color="#2563eb" />;
-  if (code === 82) return <CloudRainWind {...props} color="#1e40af" />;
-  if (code === 85) return <CloudSnow {...props} color="#38bdf8" />;
-  if (code === 86) return <CloudSnow {...props} color="#0284c7" />;
+  if (code === 80) return isNight ? <CloudMoonRain {...props} color="rgb(var(--precip-drizzle-rgb))" /> : <CloudSunRain {...props} color="rgb(var(--precip-drizzle-rgb))" />;
+  if (code === 81) return <CloudRain {...props} color="rgb(var(--precip-rain-rgb))" />;
+  if (code === 82) return <CloudRainWind {...props} color="rgb(var(--precip-rain-rgb))" />;
+  if (code === 85) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
+  if (code === 86) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
 
-  if (code === 95) return <CloudLightning {...props} color="#9333ea" />;
-  if (code === 96) return <CloudHail {...props} color="#7c3aed" />;
-  if (code === 99) return <CloudHail {...props} color="#6d28d9" />;
+  if (code === 95) return <CloudLightning {...props} color="rgb(var(--precip-thunder-rgb))" />;
+  if (code === 96) return <CloudHail {...props} color="rgb(var(--precip-thunder-rgb))" />;
+  if (code === 99) return <CloudHail {...props} color="rgb(var(--precip-thunder-rgb))" />;
 
   return <HelpCircle {...props} />;
 }
@@ -117,12 +117,12 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
       top: pos.y,
       transform: 'translate(-50%, -100%)',
       marginTop: '-4px',
-      background: 'rgba(40,40,40,0.95)',
+      background: 'var(--tooltip-bg)',
       borderRadius: '6px',
       padding: '6px 8px',
       zIndex: 1000,
       whiteSpace: 'nowrap',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.32)',
       display: 'flex',
       flexDirection: 'column',
       gap: '3px',
@@ -131,15 +131,15 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
-        borderBottom: '1px solid rgba(255,255,255,0.15)',
+        borderBottom: '1px solid var(--tooltip-border)',
         paddingBottom: '3px',
         marginBottom: '1px',
       }}>
         {getWeatherIcon(forecastCode, isNight, 14)}
-        <span style={{ fontSize: '10px', color: '#fff', fontWeight: 500 }}>
+        <span style={{ fontSize: '10px', color: 'var(--tooltip-text)', fontWeight: 500 }}>
           {WEATHER_NAMES[forecastCode] || `#${forecastCode}`}
         </span>
-        <span style={{ fontSize: '9px', color: '#999' }}>预报</span>
+        <span style={{ fontSize: '9px', color: 'var(--tooltip-subtle)' }}>预报</span>
       </div>
       {topCodes.map((entry) => (
         <div key={entry.code} style={{
@@ -149,10 +149,10 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
           opacity: 0.4 + 0.6 * entry.probability,
         }}>
           {getWeatherIcon(entry.code, isNight, 14)}
-          <span style={{ fontSize: '10px', color: '#ddd' }}>
+          <span style={{ fontSize: '10px', color: 'var(--tooltip-muted)' }}>
             {WEATHER_NAMES[entry.code] || `#${entry.code}`}
           </span>
-          <span style={{ fontSize: '10px', color: '#aaa', marginLeft: '2px' }}>
+          <span style={{ fontSize: '10px', color: 'var(--tooltip-subtle)', marginLeft: '2px' }}>
             {Math.round(entry.probability * 100)}%
           </span>
         </div>
@@ -167,7 +167,7 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
         height: 0,
         borderLeft: '4px solid transparent',
         borderRight: '4px solid transparent',
-        borderTop: '4px solid rgba(40,40,40,0.95)',
+        borderTop: '4px solid var(--tooltip-bg)',
       }} />
     </div>,
     document.body
@@ -201,12 +201,12 @@ export default function WeatherIconLane({ data }) {
       <div className="lane-data" style={{ position: 'relative' }}>
         {data.map((item, index) => {
           const ci = cellInfo[index];
-          const bgColor = ci?.colorIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.04)';
+          const bgColor = ci?.colorIdx % 2 === 0 ? 'transparent' : 'var(--weather-stripe)';
 
           return (
             <div key={index} className="lane-cell" style={{
               backgroundColor: bgColor,
-              borderLeft: ci?.isStart ? '1px solid rgba(0,0,0,0.08)' : 'none',
+              borderLeft: ci?.isStart ? '1px solid var(--weather-run-border)' : 'none',
             }} />
           );
         })}

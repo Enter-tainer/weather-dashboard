@@ -54,7 +54,7 @@ describe('SoundingDrawer', () => {
     it('does NOT call onClose when clicking a non-drawer child inside backdrop', () => {
       // Future-proof: if a toast or overlay lives inside backdrop, clicking it
       // should NOT close — only clicks directly on the backdrop layer itself.
-      const { container } = render(
+      render(
         <SoundingDrawer item={makeItem()} index={0} total={24} onClose={onClose} onStep={onStep} />
       );
       const backdrop = screen.getByLabelText('关闭 Skew-T 面板');

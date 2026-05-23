@@ -1,4 +1,5 @@
 import { useCanvas } from '../hooks/useCanvas';
+import { cssVar } from '../services/themeColors';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -51,16 +52,20 @@ function aodBarColor(aod) {
   return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a.toFixed(2)})`;
 }
 
-function aodTextColor(aod) {
-  if (aod < 0.45) return '#335';
-  if (aod < 0.8) return '#443';
-  return '#fff';
+function getAodTextStyle() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  return {
+    fill: cssVar('--aod-text', isDark ? '#ffffff' : '#111111'),
+    stroke: cssVar('--aod-text-stroke', isDark ? '#000000' : 'rgba(255,255,255,0.85)'),
+  };
 }
 
 export default function AerosolLane({ data }) {
   const totalWidth = data.length * COL_WIDTH;
 
   const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx, w, h) => {
+    const textStyle = getAodTextStyle();
+
     for (let i = 0; i < data.length; i++) {
       const d = data[i];
       const x = i * COL_WIDTH;
@@ -78,9 +83,12 @@ export default function AerosolLane({ data }) {
 
       // Text label for notable values
       if (d.aod != null && d.aod >= 0.1) {
-        ctx.fillStyle = aodTextColor(d.aod);
         ctx.font = '9px system-ui';
         ctx.textAlign = 'center';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = textStyle.stroke;
+        ctx.strokeText(d.aod.toFixed(2), x + COL_WIDTH / 2, 11);
+        ctx.fillStyle = textStyle.fill;
         ctx.fillText(d.aod.toFixed(2), x + COL_WIDTH / 2, 11);
       }
     }

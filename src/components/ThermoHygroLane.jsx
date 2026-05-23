@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect, useCallback, createRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvas } from '../hooks/useCanvas';
+import { cssVar } from '../services/themeColors';
 
 const COL_WIDTH = 22;
 const LANE_HEIGHT = 80;
@@ -35,20 +36,6 @@ function tempColor(temp) {
   }
   const [, r, g, b] = COLOR_STOPS[COLOR_STOPS.length - 1];
   return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
-}
-
-function tempLuminance(temp) {
-  const t = Math.max(COLOR_STOPS[0][0], Math.min(COLOR_STOPS[COLOR_STOPS.length - 1][0], temp));
-  for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
-    const [t0, r0, g0, b0] = COLOR_STOPS[i];
-    const [t1, r1, g1, b1] = COLOR_STOPS[i + 1];
-    if (t <= t1) {
-      const ratio = (t - t0) / (t1 - t0);
-      return 0.299 * lerp(r0, r1, ratio) + 0.587 * lerp(g0, g1, ratio) + 0.114 * lerp(b0, b1, ratio);
-    }
-  }
-  const [, r, g, b] = COLOR_STOPS[COLOR_STOPS.length - 1];
-  return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
 // ── Ensemble helpers ──
@@ -123,12 +110,12 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }) {
 
   const timeStr = d.time ? new Date(d.time).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
   const feelsDiff = d.apparentTemp - d.temperature;
-  const feelsColor = Math.abs(feelsDiff) >= 2 ? (feelsDiff > 0 ? '#e65100' : '#0277bd') : '#888';
+  const feelsColor = Math.abs(feelsDiff) >= 2 ? (feelsDiff > 0 ? 'var(--sunrise-color)' : 'var(--precip-prob-40)') : 'var(--tooltip-subtle)';
 
   const rowStyle = { display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '10px' };
-  const labelStyle = { color: '#999' };
-  const valStyle = { color: '#fff', fontWeight: 500 };
-  const dimValStyle = { color: '#ccc', fontWeight: 400 };
+  const labelStyle = { color: 'var(--tooltip-subtle)' };
+  const valStyle = { color: 'var(--tooltip-text)', fontWeight: 500 };
+  const dimValStyle = { color: 'var(--tooltip-muted)', fontWeight: 400 };
 
   return createPortal(
     <div ref={ref} style={{
@@ -136,12 +123,12 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }) {
       left: pos.x,
       top: pos.y,
       transform: pos.showBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
-      background: 'rgba(40,40,40,0.95)',
+      background: 'var(--tooltip-bg)',
       borderRadius: '6px',
       padding: '6px 8px',
       zIndex: 1000,
       whiteSpace: 'nowrap',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.32)',
       display: 'flex',
       flexDirection: 'column',
       gap: '2px',
@@ -150,11 +137,11 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }) {
       {/* Time header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px',
-        borderBottom: '1px solid rgba(255,255,255,0.15)',
+        borderBottom: '1px solid var(--tooltip-border)',
         paddingBottom: '3px', marginBottom: '1px',
       }}>
-        <span style={{ fontSize: '10px', color: '#ddd', fontWeight: 500 }}>{timeStr}</span>
-        {d.cityName && <span style={{ fontSize: '9px', color: '#888' }}>{d.cityName}</span>}
+        <span style={{ fontSize: '10px', color: 'var(--tooltip-muted)', fontWeight: 500 }}>{timeStr}</span>
+        {d.cityName && <span style={{ fontSize: '9px', color: 'var(--tooltip-subtle)' }}>{d.cityName}</span>}
       </div>
 
       {/* Temperature */}
@@ -207,7 +194,7 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }) {
       {ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90 && (
         <div style={{
           ...rowStyle,
-          borderTop: '1px solid rgba(255,255,255,0.1)',
+          borderTop: '1px solid var(--tooltip-border)',
           paddingTop: '2px', marginTop: '1px',
         }}>
           <span style={labelStyle}>集合</span>
@@ -221,8 +208,8 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }) {
       <div style={{
         position: 'absolute',
         ...(pos.showBelow
-          ? { top: '-4px', borderBottom: '4px solid rgba(40,40,40,0.95)', borderTop: 'none' }
-          : { bottom: '-4px', borderTop: '4px solid rgba(40,40,40,0.95)', borderBottom: 'none' }),
+          ? { top: '-4px', borderBottom: '4px solid var(--tooltip-bg)', borderTop: 'none' }
+          : { bottom: '-4px', borderTop: '4px solid var(--tooltip-bg)', borderBottom: 'none' }),
         left: '50%',
         transform: 'translateX(-50%)',
         width: 0, height: 0,
@@ -245,7 +232,14 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
   const tRange = maxTemp - minTemp || 1;
   const tempToY = (t) => BAR_BOT - ((t - minTemp) / tRange) * BAR_H_MAX;
 
-  const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx, w, h) => {
+  const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx) => {
+    const cellHover = cssVar('--cell-hover', 'rgba(255,255,255,0.12)');
+    const ensembleLine = cssVar('--temperature-ensemble-line', 'rgba(0,0,0,0.25)');
+    const mutedLabel = cssVar('--chart-label-muted', '#666');
+    const warmFeels = cssVar('--sunrise-color', '#e65100');
+    const coolFeels = cssVar('--precip-prob-40', '#0277bd');
+    const tempLabel = cssVar('--thermo-label-text', '#222');
+    const neutralFeels = cssVar('--thermo-apparent-neutral', '#888');
 
     for (let i = 0; i < data.length; i++) {
       const d = data[i];
@@ -258,7 +252,7 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
 
       // ── Highlight for hover/active cell ──
       if (i === activeIndex) {
-        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillStyle = cellHover;
         ctx.fillRect(i * COL_WIDTH, 0, COL_WIDTH, LANE_HEIGHT);
       }
 
@@ -282,7 +276,7 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
       const feelsDiff = d.apparentTemp - d.temperature;
       if (Math.abs(feelsDiff) >= 0.8 && yApp >= BAR_TOP && yApp <= BAR_BOT) {
         const isWarmer = feelsDiff > 0;
-        ctx.fillStyle = isWarmer ? '#e65100' : '#0277bd';
+        ctx.fillStyle = isWarmer ? warmFeels : coolFeels;
         ctx.beginPath();
         ctx.moveTo(bx - 1, yApp - 2);
         ctx.lineTo(bx - 1, yApp + 2);
@@ -295,7 +289,7 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
       if (ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90) {
         const y10 = Math.max(BAR_TOP, tempToY(ens.p10));
         const y90 = Math.min(BAR_BOT, tempToY(ens.p90));
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.strokeStyle = ensembleLine;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
         ctx.moveTo(cx, y10);
@@ -313,12 +307,11 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
     for (let i = 0; i < data.length; i += 3) {
       const d = data[i];
       const cx = i * COL_WIDTH + COL_WIDTH / 2;
-      const lum = tempLuminance(d.temperature);
 
       // Main temperature
       ctx.font = 'bold 10px system-ui';
       ctx.textBaseline = 'bottom';
-      ctx.fillStyle = lum > 140 ? '#222' : '#fff';
+      ctx.fillStyle = tempLabel;
       ctx.fillText(`${Math.round(d.temperature)}°`, cx, TOP_LABEL_H - 2);
 
       // Apparent temp (small, below main temp, only if differs meaningfully)
@@ -327,8 +320,8 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
         ctx.font = '7px system-ui';
         ctx.textBaseline = 'top';
         ctx.fillStyle = Math.abs(feelsDiff) >= 2
-          ? (feelsDiff > 0 ? '#e65100' : '#0277bd')
-          : '#888';
+          ? (feelsDiff > 0 ? warmFeels : coolFeels)
+          : neutralFeels;
         ctx.fillText(`${Math.round(d.apparentTemp)}°`, cx, TOP_LABEL_H - 1);
       }
     }
@@ -340,7 +333,7 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }) {
     for (let i = 0; i < data.length; i += 3) {
       const d = data[i];
       const cx = i * COL_WIDTH + COL_WIDTH / 2;
-      ctx.fillStyle = '#666';
+      ctx.fillStyle = mutedLabel;
       ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
     }
 

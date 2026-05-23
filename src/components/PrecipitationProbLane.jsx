@@ -2,19 +2,19 @@ import './Dashboard.css';
 
 // Gradient from light blue (low prob) to dark blue (high prob)
 function probColor(prob) {
-  if (prob >= 80) return '#01579b';
-  if (prob >= 60) return '#0277bd';
-  if (prob >= 40) return '#0288d1';
-  if (prob >= 20) return '#039be5';
-  return '#4fc3f7';
+  if (prob >= 80) return 'var(--precip-prob-80)';
+  if (prob >= 60) return 'var(--precip-prob-60)';
+  if (prob >= 40) return 'var(--precip-prob-40)';
+  if (prob >= 20) return 'var(--precip-prob-20)';
+  return 'var(--precip-prob-low)';
 }
 
 function precipColor(code, alpha = 0.6) {
-  if ([95, 96, 99].includes(code)) return `rgba(107, 33, 168, ${alpha})`;
-  if ([56, 57, 66, 67].includes(code)) return `rgba(139, 92, 246, ${alpha})`;
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(56, 189, 248, ${alpha})`;
-  if ([51, 53, 55].includes(code)) return `rgba(96, 165, 250, ${alpha})`;
-  return `rgba(13, 71, 161, ${alpha})`;
+  if ([95, 96, 99].includes(code)) return `rgba(var(--precip-thunder-rgb), ${alpha})`;
+  if ([56, 57, 66, 67].includes(code)) return `rgba(var(--precip-freezing-rgb), ${alpha})`;
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(var(--precip-snow-rgb), ${alpha})`;
+  if ([51, 53, 55].includes(code)) return `rgba(var(--precip-drizzle-rgb), ${alpha})`;
+  return `rgba(var(--precip-rain-rgb), ${alpha})`;
 }
 
 function formatPrecip(value) {
@@ -62,7 +62,7 @@ export default function PrecipitationProbLane({ data, compact = false }) {
                       lineHeight: 1,
                       color: precipColor(item.weatherCode, 1),
                       fontWeight: 'bold',
-                      WebkitTextStroke: '2px rgba(255,255,255,0.9)',
+                      WebkitTextStroke: '2px var(--label-stroke)',
                       paintOrder: 'stroke fill',
                       zIndex: 1,
                     }}

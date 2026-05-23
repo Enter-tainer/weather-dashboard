@@ -4,6 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (() => {
+        const key = 'weather-dashboard-theme';
+        const modes = new Set(['auto', 'light', 'dark']);
+        let mode = 'auto';
+        const queryMode = new URLSearchParams(window.location.search).get('theme');
+        const hasQueryMode = modes.has(queryMode);
+        if (hasQueryMode) mode = queryMode;
+        try {
+          const stored = window.localStorage.getItem(key);
+          if (!hasQueryMode && modes.has(stored)) mode = stored;
+        } catch {}
+        const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = mode === 'auto' ? (systemDark ? 'dark' : 'light') : mode;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.themeMode = mode;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <title>weather-dashboard</title>
   </head>
   <body>

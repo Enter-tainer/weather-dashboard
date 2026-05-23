@@ -1,4 +1,5 @@
 import { useCanvas } from '../hooks/useCanvas';
+import { cssVar } from '../services/themeColors';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -17,7 +18,7 @@ export default function CloudEnsembleLane({ data }) {
     if (data[0].cloudMembers && data[0].cloudMembers.length > 0) {
       ctx.lineJoin = 'round';
       ctx.lineWidth = 15;
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.05)';
+      ctx.strokeStyle = cssVar('--cloud-ensemble-member-line', 'rgba(100, 100, 100, 0.05)');
 
       const numMembers = data[0].cloudMembers.length;
       for (let m = 0; m < numMembers; m++) {
@@ -35,7 +36,7 @@ export default function CloudEnsembleLane({ data }) {
     // Main Line
     ctx.beginPath();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(80, 80, 80, 0.8)';
+    ctx.strokeStyle = cssVar('--cloud-ensemble-main-line', 'rgba(80, 80, 80, 0.8)');
     for (let i = 0; i < data.length; i++) {
       const x = getX(i);
       const y = getY(data[i].cloudCover);
@@ -46,7 +47,7 @@ export default function CloudEnsembleLane({ data }) {
   }, [data]);
 
   return (
-    <div className="lane cloud-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'transparent' }}>
+    <div className="lane cloud-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid var(--lane-border)', backgroundColor: 'transparent' }}>
       <div className="lane-data" style={{ position: 'relative', width: `${width}px` }}>
         <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px` }} />
       </div>

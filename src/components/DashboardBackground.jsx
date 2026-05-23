@@ -14,14 +14,14 @@ export default function DashboardBackground({ data }) {
          const leftPx = band.left * COL_WIDTH + COL_WIDTH / 2;
          const rightPx = band.right * COL_WIDTH + COL_WIDTH / 2;
          return (
-            <div key={`night-${idx}`} style={{ position: 'absolute', top: 0, left: `${leftPx}px`, width: `${rightPx - leftPx}px`, height: '100%', backgroundColor: 'rgba(0,0,0,0.035)' }} />
+            <div key={`night-${idx}`} style={{ position: 'absolute', top: 0, left: `${leftPx}px`, width: `${rightPx - leftPx}px`, height: '100%', backgroundColor: 'var(--cell-night)' }} />
          );
       })}
       
       {/* Grid Lines */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex' }}>
          {data.map((_, index) => (
-            <div key={`grid-${index}`} style={{ width: `${COL_WIDTH}px`, height: '100%', borderRight: '1px solid rgba(0,0,0,0.02)' }} />
+            <div key={`grid-${index}`} style={{ width: `${COL_WIDTH}px`, height: '100%', borderRight: '1px solid var(--grid-line)' }} />
          ))}
       </div>
     </div>

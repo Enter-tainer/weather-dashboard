@@ -16,14 +16,116 @@
   --col-width-hour: 22px;
   --legend-width: 48px;
   
-  /* Color Palette - adapted for Windy-like theme */
+  color-scheme: light;
+
+  /* Weather dashboard theme */
   --bg-dark: #202020;
   --bg-main: #dfdfdf;
   --bg-clouds: #c0c0c0;
-  
+  --timeline-bg: #ededed;
+  --legend-bg: #e8e8e8;
+  --legend-border: rgba(0, 0, 0, 0.1);
+  --lane-border: rgba(0, 0, 0, 0.05);
+  --grid-line: rgba(0, 0, 0, 0.02);
+  --cell-day: rgba(255, 255, 255, 0.4);
+  --cell-night: rgba(200, 205, 220, 0.5);
+  --cell-hover: rgba(255, 255, 255, 0.34);
+  --weather-stripe: rgba(0, 0, 0, 0.04);
+  --weather-run-border: rgba(0, 0, 0, 0.08);
+
   --text-main: #333333;
-  --text-light: #666666;
+  --text-light: #555555;
+  --text-muted: #666666;
+  --text-subtle: #666666;
+  --text-faint: #666666;
   --text-inverse: #ffffff;
+  --metric-text: #444444;
+  --metric-text-strong: #333333;
+
+  --control-bg: rgba(255, 255, 255, 0.82);
+  --control-bg-hover: #ffffff;
+  --control-fg: #555555;
+  --control-fg-hover: #000000;
+  --control-border: rgba(0, 0, 0, 0.1);
+  --control-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --control-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.16);
+
+  --modal-backdrop: rgba(0, 0, 0, 0.42);
+  --modal-surface: #ffffff;
+  --modal-surface-muted: #fbfbfb;
+  --modal-section-bg: #fafafa;
+  --input-bg: #ffffff;
+  --input-border: #dddddd;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-button-bg: #3b82f6;
+  --primary-button-hover: #2563eb;
+  --primary-button-text: #ffffff;
+  --danger: #d92843;
+  --danger-bg: #fae0e4;
+
+  --tooltip-bg: rgba(35, 39, 37, 0.96);
+  --tooltip-border: rgba(255, 255, 255, 0.16);
+  --tooltip-text: #f4f6f4;
+  --tooltip-muted: #c6cec8;
+  --tooltip-subtle: #98a39c;
+  --label-stroke: rgba(255, 255, 255, 0.92);
+
+  --now-line: rgba(156, 57, 46, 0.48);
+  --now-label-bg: rgba(248, 247, 242, 0.72);
+  --now-label-border: rgba(132, 50, 41, 0.16);
+  --now-label-text: rgba(118, 45, 39, 0.82);
+
+  --sunrise-color: #f57c00;
+  --sunset-color: #d84315;
+  --moonrise-color: #5c6bc0;
+  --moonset-color: #37474f;
+  --astro-label-stroke: rgba(255, 255, 255, 0.9);
+  --twilight-day: #ffffff;
+  --twilight-warm-day: #ffe0b2;
+  --twilight-golden: #ff9800;
+  --twilight-blue: #3949ab;
+  --twilight-nautical: #1a237e;
+  --twilight-night: #0d0d1a;
+
+  --cloud-layer-bg: rgba(230, 232, 235, 0.3);
+  --cloud-grid-line: rgba(0, 0, 0, 0.12);
+  --cloud-grid-boundary: rgba(0, 0, 0, 0.25);
+  --cloud-fill-rgb: 90, 90, 100;
+  --cloud-fill-alpha-scale: 0.85;
+  --cloud-ensemble-member-line: rgba(100, 100, 100, 0.05);
+  --cloud-ensemble-main-line: rgba(74, 80, 78, 0.84);
+  --chart-line-rgb: 100, 100, 100;
+  --chart-line-main: rgba(50, 50, 50, 0.9);
+  --chart-label-muted: #666666;
+  --temperature-ensemble-line: rgba(0, 0, 0, 0.25);
+  --blh-line: rgba(170, 108, 47, 0.66);
+  --wind-member-fill: rgba(0, 150, 136, 0.05);
+  --wind-main-fill: rgba(0, 137, 123, 0.5);
+  --precip-prob-low: #4fc3f7;
+  --precip-prob-20: #039be5;
+  --precip-prob-40: #0288d1;
+  --precip-prob-60: #0277bd;
+  --precip-prob-80: #01579b;
+  --precip-rain-rgb: 13, 71, 161;
+  --precip-drizzle-rgb: 96, 165, 250;
+  --precip-snow-rgb: 56, 189, 248;
+  --precip-freezing-rgb: 139, 92, 246;
+  --precip-thunder-rgb: 107, 33, 168;
+  --cape-low-bg: rgba(255, 235, 59, 0.15);
+  --cape-mid-bg: rgba(255, 170, 50, 0.2);
+  --cape-high-bg: rgba(244, 100, 80, 0.22);
+  --cape-severe-bg: rgba(170, 80, 190, 0.25);
+  --visibility-good-bg: rgba(0, 228, 0, 0.08);
+  --visibility-moderate-bg: rgba(255, 230, 0, 0.15);
+  --visibility-poor-bg: rgba(255, 160, 50, 0.18);
+  --visibility-severe-bg: rgba(255, 80, 80, 0.22);
+  --aod-text: #111111;
+  --aod-text-stroke: rgba(255, 255, 255, 0.85);
+  --thermo-label-text: #222222;
+  --thermo-apparent-neutral: #666666;
+  --spinner-track: rgba(0, 0, 0, 0.12);
+  --spinner-head: #66736a;
   
   /* Temperature chart curve colors */
   --color-temp-line: #d32f2f;
@@ -49,6 +151,125 @@
   --aqi-hazardous: rgba(160, 0, 50, 0.35);
 }
 
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-dark: #0d100e;
+  --bg-main: #151a17;
+  --bg-clouds: #242b27;
+  --timeline-bg: #151a17;
+  --legend-bg: #19211d;
+  --legend-border: rgba(230, 241, 234, 0.12);
+  --lane-border: rgba(226, 236, 229, 0.1);
+  --grid-line: rgba(238, 248, 241, 0.06);
+  --cell-day: rgba(255, 255, 255, 0.055);
+  --cell-night: rgba(0, 0, 0, 0.22);
+  --cell-hover: rgba(255, 255, 255, 0.09);
+  --weather-stripe: rgba(255, 255, 255, 0.035);
+  --weather-run-border: rgba(237, 247, 240, 0.1);
+
+  --text-main: #e7eee8;
+  --text-light: #bac8bf;
+  --text-muted: #9daca3;
+  --text-subtle: #87968d;
+  --text-faint: #74837a;
+  --metric-text: #d5e0d8;
+  --metric-text-strong: #f0f5f1;
+
+  --control-bg: rgba(30, 40, 34, 0.88);
+  --control-bg-hover: #26342c;
+  --control-fg: #c8d6ce;
+  --control-fg-hover: #f4faf6;
+  --control-border: rgba(232, 241, 234, 0.16);
+  --control-shadow: 0 2px 10px rgba(0, 0, 0, 0.34);
+  --control-shadow-hover: 0 5px 16px rgba(0, 0, 0, 0.42);
+
+  --modal-backdrop: rgba(0, 0, 0, 0.62);
+  --modal-surface: #1a211d;
+  --modal-surface-muted: #151b18;
+  --modal-section-bg: #131914;
+  --input-bg: #101512;
+  --input-border: #334038;
+  --primary: #86c8ff;
+  --primary-hover: #a8d7ff;
+  --primary-button-bg: #1f6aa5;
+  --primary-button-hover: #287dbd;
+  --primary-button-text: #ffffff;
+  --danger: #ff7171;
+  --danger-bg: rgba(255, 113, 113, 0.16);
+
+  --tooltip-bg: rgba(20, 25, 22, 0.97);
+  --tooltip-border: rgba(231, 241, 234, 0.15);
+  --tooltip-text: #f0f6f2;
+  --tooltip-muted: #c4d0c7;
+  --tooltip-subtle: #93a198;
+  --label-stroke: rgba(11, 15, 13, 0.94);
+
+  --now-line: rgba(239, 137, 102, 0.58);
+  --now-label-bg: rgba(30, 23, 19, 0.82);
+  --now-label-border: rgba(238, 143, 108, 0.26);
+  --now-label-text: rgba(255, 187, 156, 0.92);
+
+  --sunrise-color: #f2a341;
+  --sunset-color: #f17a52;
+  --moonrise-color: #9fb4ff;
+  --moonset-color: #b8c3c7;
+  --astro-label-stroke: rgba(11, 15, 13, 0.9);
+  --twilight-day: #4d5a66;
+  --twilight-warm-day: #6a5d4e;
+  --twilight-golden: #bd7131;
+  --twilight-blue: #33486f;
+  --twilight-nautical: #1c2c52;
+  --twilight-night: #080b12;
+
+  --cloud-layer-bg: rgba(35, 42, 38, 0.48);
+  --cloud-grid-line: rgba(221, 233, 224, 0.12);
+  --cloud-grid-boundary: rgba(231, 239, 232, 0.24);
+  --cloud-fill-rgb: 174, 183, 180;
+  --cloud-fill-alpha-scale: 0.56;
+  --cloud-ensemble-member-line: rgba(205, 216, 209, 0.08);
+  --cloud-ensemble-main-line: rgba(210, 221, 214, 0.78);
+  --chart-line-rgb: 182, 194, 186;
+  --chart-line-main: rgba(226, 236, 229, 0.88);
+  --chart-label-muted: #9daca3;
+  --temperature-ensemble-line: rgba(233, 243, 236, 0.28);
+  --blh-line: rgba(219, 155, 81, 0.72);
+  --wind-member-fill: rgba(74, 196, 175, 0.08);
+  --wind-main-fill: rgba(76, 187, 168, 0.58);
+  --precip-prob-low: #7ed6ff;
+  --precip-prob-20: #5fc7f7;
+  --precip-prob-40: #46b3ee;
+  --precip-prob-60: #7db9ff;
+  --precip-prob-80: #a7c8ff;
+  --precip-rain-rgb: 106, 169, 255;
+  --precip-drizzle-rgb: 122, 189, 255;
+  --precip-snow-rgb: 139, 220, 255;
+  --precip-freezing-rgb: 184, 148, 255;
+  --precip-thunder-rgb: 204, 145, 255;
+  --cape-low-bg: rgba(250, 220, 92, 0.2);
+  --cape-mid-bg: rgba(255, 167, 72, 0.25);
+  --cape-high-bg: rgba(255, 111, 96, 0.29);
+  --cape-severe-bg: rgba(202, 128, 222, 0.34);
+  --visibility-good-bg: rgba(80, 213, 116, 0.16);
+  --visibility-moderate-bg: rgba(245, 211, 79, 0.18);
+  --visibility-poor-bg: rgba(250, 164, 71, 0.22);
+  --visibility-severe-bg: rgba(247, 91, 91, 0.26);
+  --aod-text: #ffffff;
+  --aod-text-stroke: #000000;
+  --thermo-label-text: #f2f6f1;
+  --thermo-apparent-neutral: #c9d5cd;
+  --spinner-track: rgba(255, 255, 255, 0.18);
+  --spinner-head: #c9d6ce;
+
+  --aqi-good: rgba(80, 213, 116, 0.24);
+  --aqi-moderate: rgba(245, 211, 79, 0.26);
+  --aqi-sg: rgba(250, 164, 71, 0.3);
+  --aqi-unhealthy: rgba(247, 91, 91, 0.34);
+  --aqi-vu: rgba(183, 113, 205, 0.36);
+  --aqi-hazardous: rgba(190, 70, 100, 0.42);
+  --color-temp-line: #ff8a65;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -57,7 +278,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  background-color: var(--bg-dark); /* dark outside the dashboard */
+  background-color: var(--bg-dark);
   color: var(--text-main);
   /* Scrollbar styling */
   scrollbar-width: thin;
@@ -73,12 +294,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #555;
+  background: var(--text-faint);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #777;
+  background: var(--text-subtle);
 }
 
 h1, h2, h3, h4, p {
@@ -88,8 +309,8 @@ h1, h2, h3, h4, p {
 .loading-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(0,0,0,0.1);
-  border-top-color: #888;
+  border: 2px solid var(--spinner-track);
+  border-top-color: var(--spinner-head);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

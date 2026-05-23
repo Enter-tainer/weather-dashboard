@@ -97,6 +97,7 @@ export function useCanvas(width, height, draw, deps = []) {
     window.addEventListener('focus', scheduleResumeRedraw);
     window.addEventListener('resize', scheduleRedraw);
     window.addEventListener('orientationchange', scheduleResumeRedraw);
+    window.addEventListener('weather-theme-change', scheduleResumeRedraw);
     canvas?.addEventListener('contextlost', handleContextLost);
     canvas?.addEventListener('contextrestored', scheduleResumeRedraw);
 
@@ -106,6 +107,7 @@ export function useCanvas(width, height, draw, deps = []) {
       window.removeEventListener('focus', scheduleResumeRedraw);
       window.removeEventListener('resize', scheduleRedraw);
       window.removeEventListener('orientationchange', scheduleResumeRedraw);
+      window.removeEventListener('weather-theme-change', scheduleResumeRedraw);
       canvas?.removeEventListener('contextlost', handleContextLost);
       canvas?.removeEventListener('contextrestored', scheduleResumeRedraw);
 

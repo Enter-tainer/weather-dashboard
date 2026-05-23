@@ -1,4 +1,5 @@
 import { useCanvas } from '../hooks/useCanvas';
+import { cssVar } from '../services/themeColors';
 import './Dashboard.css';
 
 const COL_WIDTH = 22;
@@ -42,32 +43,44 @@ const BOUNDARY_ALTS = new Set([2000, 6000]);
 
 // Precipitation color by weather code type
 function precipColor(code, alpha = 0.6) {
-  if ([95, 96, 99].includes(code)) return `rgba(107, 33, 168, ${alpha})`; // thunderstorm — purple
-  if ([56, 57, 66, 67].includes(code)) return `rgba(139, 92, 246, ${alpha})`; // freezing — violet
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(56, 189, 248, ${alpha})`; // snow — light blue
-  if ([51, 53, 55].includes(code)) return `rgba(96, 165, 250, ${alpha})`; // drizzle — medium blue
-  return `rgba(13, 71, 161, ${alpha})`; // rain (default) — dark blue
+  if ([95, 96, 99].includes(code)) return `rgba(${cssVar('--precip-thunder-rgb', '107, 33, 168')}, ${alpha})`;
+  if ([56, 57, 66, 67].includes(code)) return `rgba(${cssVar('--precip-freezing-rgb', '139, 92, 246')}, ${alpha})`;
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(${cssVar('--precip-snow-rgb', '56, 189, 248')}, ${alpha})`;
+  if ([51, 53, 55].includes(code)) return `rgba(${cssVar('--precip-drizzle-rgb', '96, 165, 250')}, ${alpha})`;
+  return `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, ${alpha})`;
+}
+
+function precipCssColor(code, alpha = 0.6) {
+  if ([95, 96, 99].includes(code)) return `rgba(var(--precip-thunder-rgb), ${alpha})`;
+  if ([56, 57, 66, 67].includes(code)) return `rgba(var(--precip-freezing-rgb), ${alpha})`;
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(var(--precip-snow-rgb), ${alpha})`;
+  if ([51, 53, 55].includes(code)) return `rgba(var(--precip-drizzle-rgb), ${alpha})`;
+  return `rgba(var(--precip-rain-rgb), ${alpha})`;
 }
 
 // Uniform cloud color — only alpha varies with coverage
-function cloudColor(cover) {
-  const alpha = (cover / 100) * 0.85;
-  return `rgba(90, 90, 100, ${alpha})`;
+function cloudColor(cover, rgb, alphaScale) {
+  const alpha = (cover / 100) * alphaScale;
+  return `rgba(${rgb}, ${alpha})`;
 }
 
 export default function CloudAndRainLane({ data }) {
   const width = data.length * COL_WIDTH;
 
   const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
-    // Light background tint
-    ctx.fillStyle = 'rgba(230, 232, 235, 0.3)';
+    const cloudFillRgb = cssVar('--cloud-fill-rgb', '90, 90, 100');
+    const cloudFillAlphaScale = Number.parseFloat(cssVar('--cloud-fill-alpha-scale', '0.85')) || 0.85;
+
+    ctx.fillStyle = cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
     ctx.fillRect(0, 0, w, h);
 
     // Altitude grid lines (cloud boundaries thicker)
     for (const alt of GRID_ALTS) {
       const isBoundary = BOUNDARY_ALTS.has(alt);
       ctx.setLineDash(isBoundary ? [6, 4] : [4, 6]);
-      ctx.strokeStyle = isBoundary ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.12)';
+      ctx.strokeStyle = isBoundary
+        ? cssVar('--cloud-grid-boundary', 'rgba(0,0,0,0.25)')
+        : cssVar('--cloud-grid-line', 'rgba(0,0,0,0.12)');
       ctx.lineWidth = isBoundary ? 1.2 : 0.5;
       const y = altToY(alt);
       ctx.beginPath();
@@ -96,7 +109,7 @@ export default function CloudAndRainLane({ data }) {
           const yBot = altToY(altLow);
           if (yBot - yTop <= 0) continue;
 
-          ctx.fillStyle = cloudColor(cover);
+          ctx.fillStyle = cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
           ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
         }
       } else {
@@ -111,14 +124,14 @@ export default function CloudAndRainLane({ data }) {
           const yTop = altToY(layer.altHigh);
           const yBot = altToY(layer.altLow);
 
-          ctx.fillStyle = cloudColor(layer.cover);
+          ctx.fillStyle = cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
           ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
         }
       }
 
       // Ensemble precipitation (background)
       if (d.precipMembers && d.precipMembers.length > 0) {
-        ctx.fillStyle = 'rgba(33, 150, 243, 0.05)';
+        ctx.fillStyle = `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, 0.08)`;
         d.precipMembers.forEach(precip => {
           if (precip > 0.1) {
             const barHeight = Math.min(40, precip * 4);
@@ -138,7 +151,7 @@ export default function CloudAndRainLane({ data }) {
     // Boundary layer height — dashed line across all hours
     ctx.setLineDash([3, 3]);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(180, 120, 60, 0.6)';
+    ctx.strokeStyle = cssVar('--blh-line', 'rgba(180, 120, 60, 0.6)');
     ctx.beginPath();
     let started = false;
     for (let i = 0; i < data.length; i++) {
@@ -164,10 +177,10 @@ export default function CloudAndRainLane({ data }) {
               <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: `${barHeight + 2}px` }}>
                  {item.precipitation > 0 && (
                     <span style={{
-                      color: precipColor(item.weatherCode, 1),
+                      color: precipCssColor(item.weatherCode, 1),
                       fontSize: '9px',
                       fontWeight: 'bold',
-                      WebkitTextStroke: '2px white',
+                      WebkitTextStroke: '2px var(--label-stroke)',
                       paintOrder: 'stroke fill'
                     }}>
                       {item.precipitation.toFixed(1)}

@@ -4,14 +4,14 @@ export default function CapeLane({ data }) {
   // CAPE J/kg ranges. Usually <1000 is mild, 1000-2000 is moderate, >2000 is severe
   const getCapeColor = (cape) => {
     if (cape < 100) return 'transparent';
-    if (cape < 500) return 'rgba(255, 235, 59, 0.15)'; // light yellow
-    if (cape < 1000) return 'rgba(255, 170, 50, 0.2)'; // soft orange
-    if (cape < 2000) return 'rgba(244, 100, 80, 0.22)'; // soft red
-    return 'rgba(170, 80, 190, 0.25)'; // soft purple
+    if (cape < 500) return 'var(--cape-low-bg)';
+    if (cape < 1000) return 'var(--cape-mid-bg)';
+    if (cape < 2000) return 'var(--cape-high-bg)';
+    return 'var(--cape-severe-bg)';
   };
 
   return (
-    <div className="lane cape-lane" style={{ height: 'var(--lane-height-cape)', backgroundColor: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+    <div className="lane cape-lane" style={{ height: 'var(--lane-height-cape)', backgroundColor: 'transparent', borderBottom: '1px solid var(--lane-border)' }}>
       <div className="lane-data">
         {data.map((item, index) => {
            const cape = item.cape;
@@ -19,7 +19,7 @@ export default function CapeLane({ data }) {
            return (
              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                {cape > 0 && (
-                 <span style={{ fontSize: '8px', color: '#444', fontWeight: 'bold' }}>{Math.round(cape)}</span>
+                 <span style={{ fontSize: '8px', color: 'var(--metric-text-strong)', fontWeight: 'bold' }}>{Math.round(cape)}</span>
                 )}
              </div>
            );

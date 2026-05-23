@@ -15,7 +15,7 @@ export default function LocationLane({ data, switchInfo, onCityClick }) {
   }
 
   return (
-    <div className="lane location-lane" style={{ height: '24px', borderBottom: 'none', backgroundColor: '#e5e5e5' }}>
+    <div className="lane location-lane" style={{ height: '24px', borderBottom: 'none', backgroundColor: 'var(--legend-bg)' }}>
       <div className="lane-data" style={{ position: 'relative', width: `${data.length * COL_WIDTH}px` }}>
         {cityGroups.map((group) => {
           const slot = switchInfo && switchInfo[group.cityName];
@@ -28,17 +28,17 @@ export default function LocationLane({ data, switchInfo, onCityClick }) {
                   onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}
                   style={{
                     padding: '2px 8px',
-                    backgroundColor: 'rgba(232, 232, 232, 0.95)',
+                    backgroundColor: 'var(--legend-bg)',
                     fontWeight: 'bold', fontSize: '13px',
                     whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px',
                     cursor: isSwitchable ? 'pointer' : 'default',
-                    userSelect: 'none', color: '#333'
+                    userSelect: 'none', color: 'var(--text-main)'
                   }}
                 >
-                  <MapPin size={12} color="#d32f2f" />
+                  <MapPin size={12} color="var(--color-temp-line)" />
                   {group.cityName}
                   {isSwitchable && (
-                    <span style={{ fontSize: '9px', color: '#999', marginLeft: '4px' }}>
+                    <span style={{ fontSize: '9px', color: 'var(--text-subtle)', marginLeft: '4px' }}>
                       {slot.activeIndex + 1}/{slot.entries.length}
                     </span>
                   )}
