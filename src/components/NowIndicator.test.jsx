@@ -35,12 +35,28 @@ function makeData(hours, start, cityName = '测试城') {
 // ---------------------------------------------------------------------------
 const ONE_HOUR_MS = 3600000;
 
-function computeExpectedPosition(data, nowMs) {
+function parseLocalTime(timeStr) {
+  const [datePart, timePart] = timeStr.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm] = timePart.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
+}
+
+function getLocalNowMs() {
+  const now = new Date();
+  return new Date(
+    now.getFullYear(), now.getMonth(), now.getDate(),
+    now.getHours(), now.getMinutes(), 0, 0
+  ).getTime();
+}
+
+function computeExpectedPosition(data, fakeNowDate) {
+  const nowMs = getLocalNowMsAt(fakeNowDate);
   for (let i = 0; i < data.length; i++) {
-    const itemTimeMs = new Date(data[i].time).getTime();
+    const itemTimeMs = parseLocalTime(data[i].time);
     if (i === 0 && nowMs < itemTimeMs) return null;
     if (i < data.length - 1) {
-      const nextTimeMs = new Date(data[i + 1].time).getTime();
+      const nextTimeMs = parseLocalTime(data[i + 1].time);
       if (nowMs >= itemTimeMs && nowMs < nextTimeMs) {
         const interval = nextTimeMs - itemTimeMs;
         const fraction = interval > 0 ? (nowMs - itemTimeMs) / interval : 0;
@@ -56,24 +72,21 @@ function computeExpectedPosition(data, nowMs) {
   return null;
 }
 
+/** Same as getLocalNowMs but at a fixed date */
+function getLocalNowMsAt(date) {
+  return new Date(
+    date.getFullYear(), date.getMonth(), date.getDate(),
+    date.getHours(), date.getMinutes(), 0, 0
+  ).getTime();
+}
+
 describe('NowIndicator', () => {
-  let dateNowSpy;
-
-  beforeEach(() => {
-    dateNowSpy = vi.spyOn(Date, 'now');
-  });
-
-  afterEach(() => {
-    dateNowSpy.mockRestore();
-  });
-
   // ── basic visibility ────────────────────────────────────────────────
 
   it('renders line and label when now is within data range', () => {
+    vi.setSystemTime(new Date('2026-05-23T12:30:00'));
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start);
-    // now is at 12:30 — halfway through index 12
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T12:30').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
@@ -82,24 +95,30 @@ describe('NowIndicator', () => {
     expect(line).not.toBeNull();
     expect(label).not.toBeNull();
     expect(label.textContent).toBe('现在');
+
+    vi.useRealTimers();
   });
 
   it('returns null when now is before the first data point', () => {
+    vi.setSystemTime(new Date('2026-05-23T08:00:00'));
     const start = new Date('2026-05-23T10:00');
     const data = makeData(24, start);
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T08:00').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     expect(container.querySelector('.now-indicator-line')).toBeNull();
+
+    vi.useRealTimers();
   });
 
   it('returns null when now is after the last data point + 1 hour', () => {
+    vi.setSystemTime(new Date('2026-05-24T01:00:00'));
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start); // last item at 23:00, extends to 24:00
-    dateNowSpy.mockReturnValue(new Date('2026-05-24T01:00').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     expect(container.querySelector('.now-indicator-line')).toBeNull();
+
+    vi.useRealTimers();
   });
 
   it('returns null for empty data array', () => {
@@ -108,10 +127,13 @@ describe('NowIndicator', () => {
   });
 
   it('returns null for data with fewer than 2 items', () => {
+    vi.setSystemTime(new Date('2026-05-23T00:30:00'));
     const data = makeData(1, new Date('2026-05-23T00:00'));
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T00:30').getTime());
+
     const { container } = render(<NowIndicator data={data} />);
     expect(container.querySelector('.now-indicator-line')).toBeNull();
+
+    vi.useRealTimers();
   });
 
   it('returns null when data is null', () => {
@@ -122,27 +144,29 @@ describe('NowIndicator', () => {
   // ── position calculation ────────────────────────────────────────────
 
   it('positions line correctly at exact hour boundary', () => {
+    const fakeNow = new Date('2026-05-23T10:00:00');
+    vi.setSystemTime(fakeNow);
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start);
-    // now = exactly 10:00 → item index 10, fraction 0
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T10:00').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
-    const expectedPx = computeExpectedPosition(data, new Date('2026-05-23T10:00').getTime());
+    const expectedPx = computeExpectedPosition(data, fakeNow);
 
     expect(line.style.left).toBe(`${expectedPx}px`);
+
+    vi.useRealTimers();
   });
 
   it('positions line correctly between two hours (interpolation)', () => {
+    const fakeNow = new Date('2026-05-23T05:15:00');
+    vi.setSystemTime(fakeNow);
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start);
-    // now = 05:15 — 25% between index 5 and 6
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T05:15').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
-    const expectedPx = computeExpectedPosition(data, new Date('2026-05-23T05:15').getTime());
+    const expectedPx = computeExpectedPosition(data, fakeNow);
 
     expect(line.style.left).toBe(`${expectedPx}px`);
     // Verify interpolation is working (should be between index 5 and 6 centers)
@@ -150,28 +174,32 @@ describe('NowIndicator', () => {
     const i6center = LEGEND_WIDTH + (6 + 0.5) * COL_WIDTH; // 48 + 6.5*22 = 191
     expect(parseFloat(line.style.left)).toBeGreaterThan(i5center);
     expect(parseFloat(line.style.left)).toBeLessThan(i6center);
+
+    vi.useRealTimers();
   });
 
   it('positions line at the last item when now is just after it', () => {
+    const fakeNow = new Date('2026-05-23T04:30:00');
+    vi.setSystemTime(fakeNow);
     const start = new Date('2026-05-23T00:00');
     const data = makeData(5, start); // 00:00 to 04:00
-    // now = 04:30 — past index 4 but within 1 hour extension
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T04:30').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
     expect(line).not.toBeNull();
 
-    const expectedPx = computeExpectedPosition(data, new Date('2026-05-23T04:30').getTime());
+    const expectedPx = computeExpectedPosition(data, fakeNow);
     expect(line.style.left).toBe(`${expectedPx}px`);
+
+    vi.useRealTimers();
   });
 
   // ── label ───────────────────────────────────────────────────────────
 
   it('renders "现在" label at the same x position', () => {
+    vi.setSystemTime(new Date('2026-05-23T14:00:00'));
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start);
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T14:00').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
@@ -179,30 +207,34 @@ describe('NowIndicator', () => {
 
     expect(label.style.left).toBe(line.style.left);
     expect(label.style.transform).toBe('translateX(-50%)');
+
+    vi.useRealTimers();
   });
 
   // ── edge: data spanning midnight / multiple days ────────────────────
 
   it('works correctly with multi-day data', () => {
+    const fakeNow = new Date('2026-05-23T08:30:00');
+    vi.setSystemTime(fakeNow);
     const start = new Date('2026-05-22T00:00');
     const data = makeData(48, start); // two full days
-    // now is May 23 at 08:30 → index 32.5
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T08:30').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
-    const expectedPx = computeExpectedPosition(data, new Date('2026-05-23T08:30').getTime());
+    const expectedPx = computeExpectedPosition(data, fakeNow);
 
     expect(line).not.toBeNull();
     expect(line.style.left).toBe(`${expectedPx}px`);
+
+    vi.useRealTimers();
   });
 
   // ── styling ─────────────────────────────────────────────────────────
 
   it('line has correct inline styles for visual appearance', () => {
+    vi.setSystemTime(new Date('2026-05-23T12:00:00'));
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start);
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T12:00').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const line = container.querySelector('.now-indicator-line');
@@ -212,12 +244,14 @@ describe('NowIndicator', () => {
     expect(line.style.borderLeft).toBe('1px dashed rgba(190, 45, 35, 0.25)');
     expect(line.style.pointerEvents).toBe('none');
     expect(parseInt(line.style.zIndex)).toBeGreaterThanOrEqual(100);
+
+    vi.useRealTimers();
   });
 
   it('label has correct visual styles', () => {
+    vi.setSystemTime(new Date('2026-05-23T12:00:00'));
     const start = new Date('2026-05-23T00:00');
     const data = makeData(24, start);
-    dateNowSpy.mockReturnValue(new Date('2026-05-23T12:00').getTime());
 
     const { container } = render(<NowIndicator data={data} />);
     const label = container.querySelector('.now-indicator-label');
@@ -228,5 +262,7 @@ describe('NowIndicator', () => {
     expect(label.style.fontWeight).toBe('500');
     expect(label.style.pointerEvents).toBe('none');
     expect(parseInt(label.style.zIndex)).toBe(101);
+
+    vi.useRealTimers();
   });
 });

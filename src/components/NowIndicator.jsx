@@ -1,23 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const COL_WIDTH = 22;
 const LEGEND_WIDTH = 48; // var(--legend-width)
 
 /**
+ * Parse a "YYYY-MM-DDTHH:MM" timestamp as local-time epoch (ms).
+ *
+ * Avoids new Date(string) which has inconsistent behaviour across JS
+ * engines — some treat no-timezone ISO-ish strings as UTC, others as
+ * local time.  Explicit component construction guarantees local-time
+ * interpretation everywhere, matching the browser's timezone.
+ */
+function parseLocalTime(timeStr) {
+  const [datePart, timePart] = timeStr.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm] = timePart.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
+}
+
+/**
+ * Current wall-clock time as local-time epoch, built from explicit
+ * components so the tick value and data timestamps share the same
+ * timezone interpretation.
+ */
+function getLocalNowMs() {
+  const now = new Date();
+  return new Date(
+    now.getFullYear(), now.getMonth(), now.getDate(),
+    now.getHours(), now.getMinutes(), 0, 0
+  ).getTime();
+}
+
+/**
  * Renders a vertical "now" indicator line on the weather dashboard timeline.
  * Finds the current time's position in the data array and draws a vertical
- * line that spans all lanes.
+ * dashed line that spans all lanes.
  *
  * - Only shows when the current time falls within the data time range.
  * - Updates position every 60 seconds.
  * - Interpolates between hourly data points for smooth positioning.
  */
 export default function NowIndicator({ data }) {
-  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
+  const [nowTimestamp, setNowTimestamp] = useState(() => getLocalNowMs());
+  const nowRef = useRef(nowTimestamp);
+  nowRef.current = nowTimestamp;
 
   // Tick every 60 seconds so the line moves as time passes
   useEffect(() => {
-    const timer = setInterval(() => setNowTimestamp(Date.now()), 60000);
+    const timer = setInterval(() => {
+      const t = getLocalNowMs();
+      if (t !== nowRef.current) setNowTimestamp(t);
+    }, 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -28,14 +61,14 @@ export default function NowIndicator({ data }) {
   let positionPx = null;
 
   for (let i = 0; i < data.length; i++) {
-    const itemTimeMs = new Date(data[i].time).getTime();
+    const itemTimeMs = parseLocalTime(data[i].time);
 
     // Before the first data point — hide
     if (i === 0 && nowTimestamp < itemTimeMs) break;
 
     // Between item[i] and item[i+1]
     if (i < data.length - 1) {
-      const nextTimeMs = new Date(data[i + 1].time).getTime();
+      const nextTimeMs = parseLocalTime(data[i + 1].time);
       if (nowTimestamp >= itemTimeMs && nowTimestamp < nextTimeMs) {
         const intervalMs = nextTimeMs - itemTimeMs;
         const fraction = intervalMs > 0 ? (nowTimestamp - itemTimeMs) / intervalMs : 0;
