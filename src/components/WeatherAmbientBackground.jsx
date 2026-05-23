@@ -44,8 +44,14 @@ function computeDistribution(weatherCodeMembers) {
 
 const ALPHA = 0.22;
 const H_RADIUS_PX = COL_WIDTH * 1.2;
-const FULL_BG_HEIGHT = 233;
-const COMPACT_BG_HEIGHT = 123;
+const WEATHER_ICON_LANE_HEIGHT = 28;
+const UV_LANE_HEIGHT = 25;
+const THERMO_HYGRO_LANE_HEIGHT = 80;
+const COMPACT_TEMP_LANE_HEIGHT = 35;
+
+// From below the twilight strip through weather icon, UV, and temperature/humidity.
+const FULL_BG_HEIGHT = WEATHER_ICON_LANE_HEIGHT + UV_LANE_HEIGHT + THERMO_HYGRO_LANE_HEIGHT;
+const COMPACT_BG_HEIGHT = WEATHER_ICON_LANE_HEIGHT + UV_LANE_HEIGHT + COMPACT_TEMP_LANE_HEIGHT;
 
 export default function WeatherAmbientBackground({ data, compact = false }) {
   const totalWidth = data.length * COL_WIDTH;
