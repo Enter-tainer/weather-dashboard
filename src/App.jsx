@@ -1,16 +1,16 @@
+import { useMemo } from 'react';
 import Dashboard from './components/Dashboard';
+import { useSearchParam } from './hooks/useSearchParam';
 import { generateMockTimeline } from './services/mockData';
 
 function App() {
-  const params = new URLSearchParams(window.location.search);
-  const isTest = params.get('test') === 'weather';
+  const testMode = useSearchParam('test');
+  const testData = useMemo(
+    () => (testMode === 'weather' ? generateMockTimeline() : undefined),
+    [testMode],
+  );
 
-  if (isTest) {
-    const mockData = generateMockTimeline();
-    return <Dashboard testData={mockData} />;
-  }
-
-  return <Dashboard />;
+  return <Dashboard testData={testData} />;
 }
 
 export default App;

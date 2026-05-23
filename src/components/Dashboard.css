@@ -85,10 +85,35 @@
 .lanes-container {
   display: flex;
   flex-direction: column;
-  /* Width will be set inline based on items count */
+  width: fit-content;
+  min-width: 100%;
   min-height: min-content;
   position: relative;
+  transition: opacity 0.2s ease;
   will-change: transform;
+}
+
+.lanes-container.is-switching {
+  opacity: 0.5;
+}
+
+.timeline-loading-indicator {
+  position: absolute;
+  right: -40px;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.timeline-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  gap: 8px;
+  color: var(--text-muted);
 }
 
 .loading-state, .error-state {

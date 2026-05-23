@@ -1,10 +1,43 @@
-import { useState, useEffect } from 'react';
-import { Settings, X, Plus, Trash2, MapPin } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Settings, X, Plus, Trash2 } from 'lucide-react';
 import { parseRoute, stringifyRoute, generate7Days } from '../services/urlParser';
 import { reverseGeocode } from '../services/geocoding';
+import { updateSearchParams } from '../services/urlState';
 import './RouteEditor.css';
 
 const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
+const DEFAULT_CITY = 'Beijing';
+
+function createEntryId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return Math.random().toString(36).slice(2);
+}
+
+function withEditorId(entry) {
+  return { ...entry, _id: createEntryId() };
+}
+
+function sortEntriesByDate(entries) {
+  return [...entries].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getEntryLocation(entry) {
+  return entry.city || entry.originalName || DEFAULT_CITY;
+}
+
+function groupEntriesByDate(entries) {
+  const groups = new Map();
+
+  for (const entry of entries) {
+    if (!groups.has(entry.date)) groups.set(entry.date, []);
+    groups.get(entry.date).push(entry);
+  }
+
+  return [...groups.entries()].sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
+}
 
 export default function RouteEditor() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,35 +46,42 @@ export default function RouteEditor() {
 
   // Load existing configuration when opening the modal
   useEffect(() => {
-    if (isOpen) {
-      parseRoute().then(data => {
-        setEntries(data.map(d => ({ ...d, _id: Math.random().toString(36) })));
-      }).catch(e => console.error(e));
-    }
+    if (!isOpen) return undefined;
+
+    let cancelled = false;
+
+    parseRoute()
+      .then(data => {
+        if (!cancelled) setEntries(data.map(withEditorId));
+      })
+      .catch(error => console.error(error));
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
-  const handleApply = (newEntries) => {
-    // Sort before applying
-    const sorted = [...newEntries].sort((a,b) => a.date > b.date ? 1 : (a.date < b.date ? -1 : 0));
+  const handleApply = useCallback((newEntries) => {
+    const sorted = sortEntriesByDate(newEntries);
     const routeStr = stringifyRoute(sorted);
-    const url = new URL(window.location);
-    url.searchParams.set('route', routeStr);
-    url.searchParams.delete('test'); // Clean up test if any
-    window.history.pushState({}, '', url.toString());
-    window.location.reload(); // Quick refresh to apply new route
-  };
+    updateSearchParams((params) => {
+      params.set('route', routeStr);
+      params.delete('test');
+    }, { history: 'push' });
+    window.location.reload();
+  }, []);
 
-  const applyQuickMode = () => {
+  const applyQuickMode = useCallback(() => {
     if (!quickCity.trim()) return;
     const newRoute = generate7Days(quickCity.trim(), null, quickCity.trim());
     handleApply(newRoute);
-  };
+  }, [handleApply, quickCity]);
 
-  const updateEntry = (id, updates) => {
+  const updateEntry = useCallback((id, updates) => {
     setEntries(current => current.map(e => e._id === id ? { ...e, ...updates } : e));
-  };
+  }, []);
 
-  const updateLocation = (id, value) => {
+  const updateLocation = useCallback((id, value) => {
     const val = value.trim();
     if (COORD_RE.test(val)) {
       const [lat, lon] = val.split(',').map(Number);
@@ -60,41 +100,48 @@ export default function RouteEditor() {
     } else {
       updateEntry(id, { city: value, lat: undefined, lon: undefined });
     }
-  };
+  }, [updateEntry]);
 
-  const removeEntry = (id) => {
-    setEntries(entries.filter(e => e._id !== id));
-  };
+  const removeEntry = useCallback((id) => {
+    setEntries(current => current.filter(e => e._id !== id));
+  }, []);
 
-  const updateDateGroup = (oldDate, newDate) => {
-    setEntries(entries.map(e => e.date === oldDate ? { ...e, date: newDate } : e));
-  };
+  const updateDateGroup = useCallback((oldDate, newDate) => {
+    setEntries(current => current.map(e => e.date === oldDate ? { ...e, date: newDate } : e));
+  }, []);
 
-  const addEntryForDate = (date) => {
-    const group = entries.filter(e => e.date === date);
-    const lastCity = group.length > 0 ? (group[group.length-1].city || group[group.length-1].originalName) : 'Beijing';
-    setEntries([...entries, { city: lastCity, originalName: lastCity, date, _id: Math.random().toString(36) }]);
-  };
+  const addEntryForDate = useCallback((date) => {
+    setEntries(current => {
+      const group = current.filter(e => e.date === date);
+      const lastCity = group.length > 0 ? getEntryLocation(group[group.length - 1]) : DEFAULT_CITY;
 
-  const addNewDate = () => {
-    let nextDate = new Date().toLocaleDateString('en-CA');
-    if (entries.length > 0) {
-      const sorted = [...entries].sort((a,b) => a.date > b.date ? 1 : -1);
-      const lastDate = new Date(sorted[sorted.length - 1].date);
-      lastDate.setDate(lastDate.getDate() + 1);
-      nextDate = lastDate.toLocaleDateString('en-CA');
-    }
-    const sorted = [...entries].sort((a,b) => a.date > b.date ? 1 : -1);
-    const lastCity = sorted.length > 0 ? (sorted[sorted.length-1].city || sorted[sorted.length-1].originalName) : 'Beijing';
-    setEntries([...entries, { city: lastCity, originalName: lastCity, date: nextDate, _id: Math.random().toString(36) }]);
-  };
+      return [
+        ...current,
+        withEditorId({ city: lastCity, originalName: lastCity, date }),
+      ];
+    });
+  }, []);
 
-  const groupedDates = entries.reduce((acc, entry) => {
-    if (!acc[entry.date]) acc[entry.date] = [];
-    acc[entry.date].push(entry);
-    return acc;
-  }, {});
-  const sortedDates = Object.keys(groupedDates).sort((a,b) => (a>b?1:(a<b?-1:0)));
+  const addNewDate = useCallback(() => {
+    setEntries(current => {
+      let nextDate = new Date().toLocaleDateString('en-CA');
+      const sorted = sortEntriesByDate(current);
+
+      if (sorted.length > 0) {
+        const lastDate = new Date(sorted[sorted.length - 1].date);
+        lastDate.setDate(lastDate.getDate() + 1);
+        nextDate = lastDate.toLocaleDateString('en-CA');
+      }
+
+      const lastCity = sorted.length > 0 ? getEntryLocation(sorted[sorted.length - 1]) : DEFAULT_CITY;
+      return [
+        ...current,
+        withEditorId({ city: lastCity, originalName: lastCity, date: nextDate }),
+      ];
+    });
+  }, []);
+
+  const dateGroups = useMemo(() => groupEntriesByDate(entries), [entries]);
 
   return (
     <>
@@ -131,7 +178,7 @@ export default function RouteEditor() {
             <div className="route-editor-section">
               <h4>高级模式 (多段行程拼接)</h4>
               <div className="entries-list">
-                {sortedDates.map(date => (
+                {dateGroups.map(([date, group]) => (
                   <div key={date} className="date-group">
                     <div className="date-header">
                        <input 
@@ -141,7 +188,7 @@ export default function RouteEditor() {
                          className="date-input-bold"
                        />
                     </div>
-                    {groupedDates[date].map(entry => (
+                    {group.map(entry => (
                       <div key={entry._id} className="entry-row">
                         <div className="entry-inputs">
                            <input 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getSearchParam } from '../services/urlState';
 
 export const THEME_MODES = ['auto', 'light', 'dark'];
 const THEME_STORAGE_KEY = 'weather-dashboard-theme';
@@ -8,7 +9,7 @@ function isThemeMode(value) {
 }
 
 function getStoredMode() {
-  const queryMode = new URLSearchParams(window.location.search).get('theme');
+  const queryMode = getSearchParam('theme');
   if (isThemeMode(queryMode)) return queryMode;
 
   try {

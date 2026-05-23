@@ -1,30 +1,20 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { setSearchParam } from '../services/urlState';
+import { useSearchParam } from './useSearchParam';
 
 const COMPACT_VALUES = new Set(['1', 'true', 'yes', 'on']);
 
-function isCompactFromSearch(search) {
-  const params = new URLSearchParams(search);
-  return COMPACT_VALUES.has((params.get('compact') || '').toLowerCase());
+function isCompactValue(value) {
+  return COMPACT_VALUES.has((value || '').toLowerCase());
 }
 
 export function useCompactMode() {
-  const [compactMode, setCompactMode] = useState(() => isCompactFromSearch(window.location.search));
+  const compactParam = useSearchParam('compact');
+  const compactMode = useMemo(() => isCompactValue(compactParam), [compactParam]);
 
   const toggleCompactMode = useCallback(() => {
-    setCompactMode(current => {
-      const next = !current;
-      const url = new URL(window.location.href);
-
-      if (next) {
-        url.searchParams.set('compact', '1');
-      } else {
-        url.searchParams.delete('compact');
-      }
-
-      window.history.replaceState({}, '', url.toString());
-      return next;
-    });
-  }, []);
+    setSearchParam('compact', compactMode ? null : '1');
+  }, [compactMode]);
 
   return { compactMode, toggleCompactMode };
 }

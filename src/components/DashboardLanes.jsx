@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import TimeAxis from './TimeAxis';
 import WeatherIconLane from './WeatherIconLane';
 import ThermoHygroLane from './ThermoHygroLane';
@@ -19,10 +18,86 @@ import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
 import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
+import { useSoundingSelection } from '../hooks/useSoundingSelection';
 
-function getInitialSoundingTime() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('sounding') || null;
+function EmptyTimelineState({ loadingDone }) {
+  return (
+    <div className="timeline-empty-state">
+      {!loadingDone && <div className="loading-spinner" />}
+      {loadingDone && 'No data available'}
+    </div>
+  );
+}
+
+function LoadingMoreIndicator() {
+  return (
+    <div className="timeline-loading-indicator">
+      <div className="loading-spinner" />
+    </div>
+  );
+}
+
+function TimelineLanes({
+  data,
+  loadingDone,
+  switching,
+  switchInfo,
+  onCityClick,
+  compactMode,
+  scales,
+}) {
+  const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
+  const {
+    activeSoundingItem,
+    closeSounding,
+    selectSoundingItem,
+    soundingIndex,
+    stepSounding,
+  } = useSoundingSelection(data);
+
+  return (
+    <>
+      <div className={['lanes-container', switching ? 'is-switching' : ''].filter(Boolean).join(' ')}>
+        <DashboardBackground data={data} />
+        <WeatherAmbientBackground data={data} compact={compactMode} />
+        <LocationLane data={data} switchInfo={switchInfo} onCityClick={onCityClick} />
+        <TimeAxis data={data} />
+        <TwilightLane data={data} />
+        <WeatherIconLane data={data} />
+        <UVLane data={data} />
+        {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+        {compactMode && <TemperatureTextLane data={data} />}
+        {!compactMode && (
+          <div className="cloud-sounding-region">
+            <CloudEnsembleLane data={data} />
+            <CloudAndRainLane data={data} />
+            <CloudSoundingHitLayer
+              data={data}
+              activeTime={activeSoundingItem?.time ?? null}
+              onSelect={selectSoundingItem}
+            />
+          </div>
+        )}
+        <PrecipitationProbLane data={data} compact={compactMode} />
+        {!compactMode && <CapeLane data={data} />}
+        <WindLane data={data} maxBft={maxBft} compact={compactMode} />
+        {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
+        <AirQualityLane data={data} />
+        <AerosolLane data={data} />
+        <CurrentTimeIndicator data={data} />
+        {!loadingDone && <LoadingMoreIndicator />}
+      </div>
+      {activeSoundingItem && (
+        <SoundingDrawer
+          item={activeSoundingItem}
+          index={soundingIndex}
+          total={data.length}
+          onClose={closeSounding}
+          onStep={stepSounding}
+        />
+      )}
+    </>
+  );
 }
 
 export default function DashboardLanes({
@@ -35,104 +110,22 @@ export default function DashboardLanes({
   scales,
 }) {
   const hasData = data && data.length > 0;
-  const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
-  const [soundingTime, setSoundingTime] = useState(getInitialSoundingTime);
-
-  const soundingIndex = hasData && soundingTime != null
-    ? data.findIndex(d => d.time === soundingTime)
-    : -1;
-  const activeSoundingItem = soundingIndex >= 0 ? data[soundingIndex] : null;
-
-  const setUrlSoundingTime = (time) => {
-    const url = new URL(window.location.href);
-    if (time == null) {
-      url.searchParams.delete('sounding');
-    } else {
-      url.searchParams.set('sounding', time);
-    }
-    window.history.replaceState({}, '', url.toString());
-  };
-
-  const selectSoundingItem = (item) => {
-    setSoundingTime(item.time);
-    setUrlSoundingTime(item.time);
-  };
-
-  const closeSounding = () => {
-    setSoundingTime(null);
-    setUrlSoundingTime(null);
-  };
-
-  const stepSounding = (direction) => {
-    if (soundingIndex < 0) return;
-    const next = soundingIndex + direction;
-    if (next >= 0 && next < data.length) {
-      setSoundingTime(data[next].time);
-      setUrlSoundingTime(data[next].time);
-    }
-  };
 
   return (
-    <>
-      <div className="timeline-scroller">
-        {hasData ? (
-          <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-            <DashboardBackground data={data} />
-            <WeatherAmbientBackground data={data} compact={compactMode} />
-            <LocationLane data={data} switchInfo={switchInfo} onCityClick={onCityClick} />
-            <TimeAxis data={data} />
-            <TwilightLane data={data} />
-            <WeatherIconLane data={data} />
-            <UVLane data={data} />
-            {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
-            {compactMode && <TemperatureTextLane data={data} />}
-            {!compactMode && (
-              <div className="cloud-sounding-region">
-                <CloudEnsembleLane data={data} />
-                <CloudAndRainLane data={data} />
-                <CloudSoundingHitLayer
-                  data={data}
-                  activeTime={activeSoundingItem?.time ?? null}
-                  onSelect={selectSoundingItem}
-                />
-              </div>
-            )}
-            <PrecipitationProbLane data={data} compact={compactMode} />
-            {!compactMode && <CapeLane data={data} />}
-            <WindLane data={data} maxBft={maxBft} compact={compactMode} />
-            {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
-            <AirQualityLane data={data} />
-            <AerosolLane data={data} />
-            <CurrentTimeIndicator data={data} />
-            {!loadingDone && (
-              <div style={{
-                position: 'absolute',
-                right: '-40px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                display: 'flex',
-                alignItems: 'center',
-              }}>
-                <div className="loading-spinner" />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100vh', gap: '8px', color: 'var(--text-muted)' }}>
-            {!loadingDone && <div className="loading-spinner" />}
-            {loadingDone && 'No data available'}
-          </div>
-        )}
-      </div>
-      {activeSoundingItem && (
-        <SoundingDrawer
-          item={activeSoundingItem}
-          index={soundingIndex}
-          total={data.length}
-          onClose={closeSounding}
-          onStep={stepSounding}
+    <div className="timeline-scroller">
+      {hasData ? (
+        <TimelineLanes
+          data={data}
+          loadingDone={loadingDone}
+          switching={switching}
+          switchInfo={switchInfo}
+          onCityClick={onCityClick}
+          compactMode={compactMode}
+          scales={scales}
         />
+      ) : (
+        <EmptyTimelineState loadingDone={loadingDone} />
       )}
-    </>
+    </div>
   );
 }
