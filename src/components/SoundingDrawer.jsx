@@ -71,6 +71,9 @@ function SkewTChart({ item }) {
 
 export default function SoundingDrawer({ item, index, total, onClose, onStep }) {
   const drawerRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   const inversions = useMemo(() => detectInversions(item), [item]);
   const spread = item.temperature != null && item.dewPoint != null ? item.temperature - item.dewPoint : null;
 
@@ -79,22 +82,22 @@ export default function SoundingDrawer({ item, index, total, onClose, onStep }) 
     const handlePointerDown = (event) => {
       const drawer = drawerRef.current;
       if (drawer && event.target instanceof Node && !drawer.contains(event.target)) {
-        onClose();
+        onCloseRef.current();
       }
     };
 
     document.addEventListener('pointerdown', handlePointerDown, true);
     return () => document.removeEventListener('pointerdown', handlePointerDown, true);
-  }, [onClose]);
+  }, []);
 
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, []);
 
   // Lock body scroll while drawer is open
   useEffect(() => {
