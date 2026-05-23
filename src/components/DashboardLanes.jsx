@@ -18,6 +18,7 @@ import TwilightLane from './TwilightLane';
 import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
 import CloudSoundingHitLayer from './CloudSoundingHitLayer';
+import NowIndicator from './NowIndicator';
 
 function getInitialSoundingTime() {
   const params = new URLSearchParams(window.location.search);
@@ -78,6 +79,7 @@ export default function DashboardLanes({
           <div className="lanes-container" style={{ width: 'fit-content', minWidth: '100%', position: 'relative', opacity: switching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
             <DashboardBackground data={data} />
             <WeatherAmbientBackground data={data} compact={compactMode} />
+            <NowIndicator data={data} />
             <LocationLane data={data} switchInfo={switchInfo} onCityClick={onCityClick} />
             <TimeAxis data={data} />
             <TwilightLane data={data} />
