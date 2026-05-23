@@ -18,6 +18,7 @@ import TwilightLane from './TwilightLane';
 import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
 import CloudSoundingHitLayer from './CloudSoundingHitLayer';
+import CurrentTimeIndicator from './CurrentTimeIndicator';
 
 function getInitialSoundingTime() {
   const params = new URLSearchParams(window.location.search);
@@ -102,6 +103,7 @@ export default function DashboardLanes({
             {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
             <AirQualityLane data={data} />
             <AerosolLane data={data} />
+            <CurrentTimeIndicator data={data} />
             {!loadingDone && (
               <div style={{
                 position: 'absolute',

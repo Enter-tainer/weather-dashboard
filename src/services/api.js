@@ -148,6 +148,24 @@ export async function fetchCityDataForDate(cityObj) {
     forecastRes = { hourly: mockHourly };
   }
 
+  // Use utc_offset_seconds from API response for reliable timezone handling.
+  // API returns local times without offset; JS Date parses them as browser-local.
+  // driftMs = target_offset - browser_offset (the gap between the two).
+  const targetOffsetMs = (forecastRes?.utc_offset_seconds ?? ensembleRes?.utc_offset_seconds ?? 0) * 1000;
+  const browserOffsetMs = -new Date(date + 'T12:00:00').getTimezoneOffset() * 60000;
+  const driftMs = targetOffsetMs - browserOffsetMs;
+  const toUtc = (localStr) => new Date(new Date(localStr).getTime() - driftMs);
+  const fromUtc = (utcDate) => new Date(utcDate.getTime() + driftMs);
+
+  // Resolve the IANA timezone name for toLocaleString (handles timezone='auto')
+  const resolvedTz = forecastRes?.timezone || ensembleRes?.timezone || timezone;
+  const localTime = (utcDate) => {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: resolvedTz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(utcDate);
+    const h = parseInt(parts.find(p => p.type === 'hour').value);
+    const m = parseInt(parts.find(p => p.type === 'minute').value);
+    return { localHour: h, localMinute: m };
+  };
+
   const hoursCount = forecastRes.hourly.time.length;
   const elevation = forecastRes?.elevation ?? ensembleRes?.elevation ?? 0;
   const combined = [];
@@ -183,6 +201,9 @@ export async function fetchCityDataForDate(cityObj) {
     combined.push({
       cityName: originalName || name,
       time: forecastRes.hourly.time[i],
+      timeUtcMs: toUtc(forecastRes.hourly.time[i]).getTime(),
+      timezone: resolvedTz,
+      utcOffsetSeconds: targetOffsetMs / 1000,
       hour: new Date(forecastRes.hourly.time[i]).getHours(),
       
       weatherCode: forecastRes.hourly.weather_code[i],
@@ -259,24 +280,6 @@ export async function fetchCityDataForDate(cityObj) {
       aod: aqRes?.hourly?.aerosol_optical_depth?.[i] ?? null,
     });
   }
-
-  // Use utc_offset_seconds from API response for reliable timezone handling.
-  // API returns local times without offset; JS Date parses them as browser-local.
-  // driftMs = target_offset - browser_offset (the gap between the two).
-  const targetOffsetMs = (forecastRes?.utc_offset_seconds ?? ensembleRes?.utc_offset_seconds ?? 0) * 1000;
-  const browserOffsetMs = -new Date(date + 'T12:00:00').getTimezoneOffset() * 60000;
-  const driftMs = targetOffsetMs - browserOffsetMs;
-  const toUtc = (localStr) => new Date(new Date(localStr).getTime() - driftMs);
-  const fromUtc = (utcDate) => new Date(utcDate.getTime() + driftMs);
-
-  // Resolve the IANA timezone name for toLocaleString (handles timezone='auto')
-  const resolvedTz = forecastRes?.timezone || ensembleRes?.timezone || timezone;
-  const localTime = (utcDate) => {
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: resolvedTz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(utcDate);
-    const h = parseInt(parts.find(p => p.type === 'hour').value);
-    const m = parseInt(parts.find(p => p.type === 'minute').value);
-    return { localHour: h, localMinute: m };
-  };
 
   // Sun, moon & twilight events via SunCalc
   const dateObj = toUtc(date + 'T12:00:00');

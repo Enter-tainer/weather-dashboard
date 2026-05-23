@@ -214,6 +214,47 @@
   cursor: default;
 }
 
+.current-time-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+
+.current-time-indicator-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(160, 54, 45, 0.42) 0,
+    rgba(160, 54, 45, 0.42) 4px,
+    transparent 4px,
+    transparent 9px
+  );
+}
+
+.current-time-indicator-label {
+  position: sticky;
+  top: 3px;
+  width: max-content;
+  transform: translateX(-50%);
+  padding: 1px 5px 2px;
+  border: 1px solid rgba(120, 40, 34, 0.12);
+  border-radius: 5px;
+  background: rgba(245, 245, 242, 0.58);
+  color: rgba(115, 45, 40, 0.74);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .sounding-drawer {
   position: fixed;
   top: 0;
