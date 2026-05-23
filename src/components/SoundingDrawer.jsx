@@ -71,23 +71,56 @@ function SkewTChart({ item }) {
 
 export default function SoundingDrawer({ item, index, total, onClose, onStep }) {
   const drawerRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   const inversions = useMemo(() => detectInversions(item), [item]);
   const spread = item.temperature != null && item.dewPoint != null ? item.temperature - item.dewPoint : null;
 
+  // Close on pointerdown outside the drawer (capture phase — fires before React handlers)
   useEffect(() => {
     const handlePointerDown = (event) => {
       const drawer = drawerRef.current;
       if (drawer && event.target instanceof Node && !drawer.contains(event.target)) {
-        onClose();
+        onCloseRef.current();
       }
     };
 
     document.addEventListener('pointerdown', handlePointerDown, true);
     return () => document.removeEventListener('pointerdown', handlePointerDown, true);
-  }, [onClose]);
+  }, []);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onCloseRef.current();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Lock body scroll while drawer is open
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = original; };
+  }, []);
+
+  const handleBackdropClick = (e) => {
+    // Only close when clicking the backdrop itself (not the drawer)
+    if (e.target === e.currentTarget) onClose();
+  };
 
   return (
-    <aside className="sounding-drawer" ref={drawerRef} aria-label="Skew-T 探空图">
+    <div
+      className="sounding-backdrop"
+      onClick={handleBackdropClick}
+      aria-label="关闭 Skew-T 面板"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }}
+    >
+    <aside className="sounding-drawer" ref={drawerRef} aria-label="Skew-T 探空图" onClick={(e) => e.stopPropagation()}>
       <div className="sounding-header">
         <div>
           <div className="sounding-kicker">Sounding profile</div>
@@ -131,5 +164,6 @@ export default function SoundingDrawer({ item, index, total, onClose, onStep }) 
       </div>
 
     </aside>
+    </div>
   );
 }
