@@ -57,7 +57,7 @@ export default function NowIndicator({ data }) {
 
   return (
     <>
-      {/* Vertical line spanning all lanes */}
+      {/* Vertical dashed line spanning all lanes */}
       <div
         className="now-indicator-line"
         style={{
@@ -65,13 +65,13 @@ export default function NowIndicator({ data }) {
           top: 0,
           bottom: 0,
           left: `${positionPx}px`,
-          width: '2px',
-          backgroundColor: 'rgba(220, 50, 50, 0.45)',
+          width: 0,
+          borderLeft: '1px dashed rgba(190, 45, 35, 0.25)',
           zIndex: 100,
           pointerEvents: 'none',
         }}
       />
-      {/* Label badge at the top */}
+      {/* Subtle label badge at the top */}
       <div
         className="now-indicator-label"
         style={{
@@ -79,12 +79,12 @@ export default function NowIndicator({ data }) {
           top: '4px',
           left: `${positionPx}px`,
           transform: 'translateX(-50%)',
-          backgroundColor: 'rgba(220, 50, 50, 0.85)',
-          color: 'white',
-          fontSize: '10px',
-          fontWeight: 'bold',
-          padding: '1px 6px',
-          borderRadius: '3px',
+          backgroundColor: 'rgba(190, 45, 35, 0.55)',
+          color: 'rgba(255, 255, 255, 0.85)',
+          fontSize: '9px',
+          fontWeight: 500,
+          padding: '1px 4px',
+          borderRadius: '2px',
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
           zIndex: 101,

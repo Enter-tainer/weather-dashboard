@@ -208,7 +208,8 @@ describe('NowIndicator', () => {
     const line = container.querySelector('.now-indicator-line');
 
     expect(line.style.position).toBe('absolute');
-    expect(line.style.width).toBe('2px');
+    expect(line.style.width).toBe('0px');
+    expect(line.style.borderLeft).toBe('1px dashed rgba(190, 45, 35, 0.25)');
     expect(line.style.pointerEvents).toBe('none');
     expect(parseInt(line.style.zIndex)).toBeGreaterThanOrEqual(100);
   });
@@ -223,6 +224,8 @@ describe('NowIndicator', () => {
 
     expect(label.style.position).toBe('absolute');
     expect(label.textContent).toBe('现在');
+    expect(label.style.fontSize).toBe('9px');
+    expect(label.style.fontWeight).toBe('500');
     expect(label.style.pointerEvents).toBe('none');
     expect(parseInt(label.style.zIndex)).toBe(101);
   });
