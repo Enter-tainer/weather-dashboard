@@ -294,7 +294,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(520px, calc(100vw - 20px));
+  width: min(620px, calc(100vw - 20px));
   overflow: auto;
   z-index: 1200;
   display: flex;
@@ -391,6 +391,12 @@
   gap: 8px;
 }
 
+.sounding-chart-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .sounding-chart {
   width: 100%;
   min-height: 430px;
@@ -447,6 +453,244 @@
 .sounding-swatch.inversion {
   height: 8px;
   background: rgba(245, 124, 0, 0.35);
+}
+
+.cloud-profile-section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sounding-section-heading {
+  min-width: 0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sounding-section-title {
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cloud-profile-headline {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 2px;
+  min-width: 80px;
+  color: var(--text-muted);
+}
+
+.cloud-profile-headline span {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-subtle);
+}
+
+.cloud-profile-headline strong {
+  font-size: 12px;
+  line-height: 1.1;
+  color: var(--text-main);
+  text-align: right;
+}
+
+.cloud-profile-chart {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--control-border);
+  background: var(--modal-surface-muted);
+}
+
+.cloud-profile-plot {
+  display: grid;
+  gap: 1px;
+}
+
+.cloud-profile-level-row {
+  --cloud-profile-cover: 0%;
+  --cloud-profile-alpha: 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 120px;
+  gap: 10px;
+  align-items: center;
+  min-height: 25px;
+  padding: 3px 6px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--cloud-fill-rgb), calc(var(--cloud-profile-alpha) * 0.14)) 0%,
+      transparent 68%
+    );
+}
+
+.cloud-profile-level-row:nth-child(even) {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--cloud-fill-rgb), calc(var(--cloud-profile-alpha) * 0.14)) 0%,
+      transparent 68%
+    ),
+    rgba(128, 128, 128, 0.035);
+}
+
+.cloud-profile-height {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 6px;
+  row-gap: 2px;
+  align-items: center;
+}
+
+.cloud-profile-band {
+  grid-row: span 2;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--control-border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+  background: var(--modal-section-bg);
+}
+
+.cloud-profile-height strong {
+  min-width: 0;
+  display: block;
+  font-size: 12px;
+  line-height: 1.1;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.cloud-profile-height div > span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cloud-profile-cover {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 8px;
+  align-items: center;
+}
+
+.cloud-profile-track {
+  width: 100%;
+  height: 16px;
+  overflow: hidden;
+  border: 1px solid var(--control-border);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent calc(25% - 1px),
+      var(--lane-border) calc(25% - 1px),
+      var(--lane-border) 25%
+    ),
+    var(--modal-section-bg);
+}
+
+.cloud-profile-fill {
+  width: var(--cloud-profile-cover);
+  height: 100%;
+  min-width: 0;
+  background: rgba(var(--cloud-fill-rgb), var(--cloud-profile-alpha));
+}
+
+.cloud-profile-cover strong {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-main);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cloud-profile-metrics {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.cloud-profile-metrics span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.cloud-profile-metrics b {
+  flex: 0 0 auto;
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.cloud-profile-readouts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 10px;
+  border-top: 1px solid var(--lane-border);
+}
+
+.cloud-profile-readouts > div {
+  min-width: 0;
+  padding: 8px 9px 0;
+  border-right: 1px solid var(--lane-border);
+}
+
+.cloud-profile-readouts > div:last-child {
+  border-right: 0;
+}
+
+.cloud-profile-readouts span,
+.cloud-profile-readouts em {
+  display: block;
+  min-width: 0;
+  color: var(--text-subtle);
+  font-size: 10px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-profile-readouts strong {
+  display: block;
+  margin: 3px 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-profile-readouts em {
+  font-style: normal;
 }
 
 .sounding-summary {
@@ -523,5 +767,95 @@
 
   .sounding-chart .skewt-container {
     min-height: clamp(280px, 48dvh, 360px);
+  }
+
+  .cloud-profile-chart {
+    padding: 7px;
+  }
+
+  .cloud-profile-level-row {
+    grid-template-columns: 68px minmax(0, 1fr) 76px;
+    gap: 6px;
+    min-height: 23px;
+    padding: 2px 3px;
+  }
+
+  .cloud-profile-height {
+    grid-template-columns: 16px minmax(0, 1fr);
+    column-gap: 4px;
+  }
+
+  .cloud-profile-band {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+
+  .cloud-profile-height strong {
+    font-size: 11px;
+  }
+
+  .cloud-profile-height div > span {
+    font-size: 9px;
+  }
+
+  .cloud-profile-cover {
+    grid-template-columns: minmax(0, 1fr) 30px;
+    gap: 5px;
+  }
+
+  .cloud-profile-track {
+    height: 14px;
+  }
+
+  .cloud-profile-cover strong {
+    font-size: 10px;
+  }
+
+  .cloud-profile-metrics {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .cloud-profile-metrics span {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .cloud-profile-metrics b {
+    font-size: 8px;
+  }
+
+  .cloud-profile-readouts {
+    margin-top: 7px;
+  }
+
+  .cloud-profile-readouts > div {
+    padding: 6px 6px 0;
+  }
+
+  .cloud-profile-readouts span,
+  .cloud-profile-readouts em {
+    font-size: 9px;
+  }
+
+  .cloud-profile-readouts strong {
+    font-size: 11px;
+  }
+
+  .cloud-profile-headline {
+    min-width: 70px;
+  }
+
+  .cloud-profile-headline strong {
+    font-size: 11px;
+  }
+
+  .sounding-section-title {
+    font-size: 14px;
+  }
+
+  .sounding-kicker {
+    font-size: 9px;
   }
 }

@@ -169,6 +169,7 @@ describe('SoundingDrawer', () => {
   describe('rendering', () => {
     it('shows title and city', () => {
       render(<SoundingDrawer item={makeItem()} index={0} total={24} onClose={onClose} onStep={onStep} />);
+      expect(screen.getByText('Sounding detail')).toBeTruthy();
       expect(screen.getByText('Skew-T Log-P')).toBeTruthy();
       expect(screen.getByText(/Beijing/)).toBeTruthy();
     });
@@ -176,6 +177,86 @@ describe('SoundingDrawer', () => {
     it('handles an empty sounding profile gracefully', () => {
       render(<SoundingDrawer item={makeItem({ soundingLevels: [] })} index={0} total={24} onClose={onClose} onStep={onStep} />);
       expect(screen.getByText('Skew-T Log-P')).toBeTruthy();
+    });
+
+    it('shows detailed cloud-layer profile values', () => {
+      render(
+        <SoundingDrawer
+          item={makeItem({
+            cloudByLevel: [
+              { pressure: 850, cover: 72, altitude: 1500 },
+              { pressure: 700, cover: 35, altitude: 3000 },
+            ],
+            soundingLevels: [
+              {
+                pressure: 850,
+                temp: 10.2,
+                dewPoint: 7.1,
+                relativeHumidity: 82,
+                altitude: 1500,
+                agl: 1450,
+                windSpeed: 22,
+                windDir: 250,
+              },
+              {
+                pressure: 700,
+                temp: 1.5,
+                dewPoint: -5.2,
+                relativeHumidity: 61,
+                altitude: 3000,
+                agl: 2950,
+                windSpeed: 35,
+                windDir: 270,
+              },
+            ],
+          })}
+          index={0}
+          total={24}
+          onClose={onClose}
+          onStep={onStep}
+        />
+      );
+
+      expect(screen.getByText('高度层云况')).toBeTruthy();
+      expect(screen.getAllByText('72% · 1.5 km').length).toBeGreaterThan(0);
+      expect(screen.getByText('850 hPa')).toBeTruthy();
+      expect(screen.getByText('10.2°')).toBeTruthy();
+      expect(screen.getByText('82%')).toBeTruthy();
+      expect(screen.getByText(/22km\/h 250°/)).toBeTruthy();
+      expect(screen.getByText('Cloud base')).toBeTruthy();
+      expect(screen.getByText('Moist layer')).toBeTruthy();
+    });
+
+    it('puts cloud-layer details before the Skew-T chart section', () => {
+      render(<SoundingDrawer item={makeItem()} index={0} total={24} onClose={onClose} onStep={onStep} />);
+
+      const cloudTitle = screen.getByText('高度层云况');
+      const skewTitle = screen.getByText('Skew-T Log-P');
+      const order = cloudTitle.compareDocumentPosition(skewTitle);
+
+      expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('falls back to low mid high cloud layers when pressure-level cloud data is absent', () => {
+      render(
+        <SoundingDrawer
+          item={makeItem({
+            cloudLow: 20,
+            cloudMid: 55,
+            cloudHigh: 80,
+            soundingLevels: [],
+          })}
+          index={0}
+          total={24}
+          onClose={onClose}
+          onStep={onStep}
+        />
+      );
+
+      expect(screen.getAllByText('80% · 8.0 km').length).toBeGreaterThan(0);
+      expect(screen.getByText('高云')).toBeTruthy();
+      expect(screen.getByText('中云')).toBeTruthy();
+      expect(screen.getByText('低云')).toBeTruthy();
     });
   });
 
