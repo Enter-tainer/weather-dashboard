@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCanvasCaptureContext, type CanvasCaptureRegistration } from './canvasCaptureContext';
 
 export type CanvasDraw = (ctx: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -18,16 +19,32 @@ export function useCanvas(
   draw: CanvasDraw,
   deps: readonly unknown[] = [],
 ): React.RefObject<HTMLCanvasElement | null> {
+  const captureContext = useCanvasCaptureContext();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawRef = useRef(draw);
   const sizeRef = useRef({ width, height });
   const frameRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
+  const captureRegistrationRef = useRef<CanvasCaptureRegistration | null>(null);
 
   useLayoutEffect(() => {
     drawRef.current = draw;
     sizeRef.current = { width, height };
   });
+
+  useLayoutEffect(() => {
+    if (!captureContext) return undefined;
+
+    const registration = captureContext.registerCanvas();
+    captureRegistrationRef.current = registration;
+
+    return () => {
+      registration.unregister();
+      if (captureRegistrationRef.current === registration) {
+        captureRegistrationRef.current = null;
+      }
+    };
+  }, [captureContext]);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -44,6 +61,7 @@ export function useCanvas(
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawRef.current(ctx, currentWidth, currentHeight);
+    captureRegistrationRef.current?.markDrawn();
   }, []);
 
   const scheduleRedraw = useCallback(() => {

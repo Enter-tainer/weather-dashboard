@@ -13,9 +13,10 @@ interface LocationLaneProps {
   data: WeatherPoint[];
   switchInfo: SwitchInfo;
   onCityClick: (cityName: string) => void;
+  interactive?: boolean;
 }
 
-export default function LocationLane({ data, switchInfo, onCityClick }: LocationLaneProps) {
+export default function LocationLane({ data, switchInfo, onCityClick, interactive = true }: LocationLaneProps) {
   const COL_WIDTH = 22;
 
   const cityGroups: CityGroup[] = [];
@@ -36,7 +37,7 @@ export default function LocationLane({ data, switchInfo, onCityClick }: Location
       <div className="lane-data" style={{ position: 'relative', width: `${data.length * COL_WIDTH}px` }}>
         {cityGroups.map((group) => {
           const slot = switchInfo && switchInfo[group.cityName];
-          const isSwitchable = !!slot;
+          const isSwitchable = interactive && !!slot;
           
           return (
             <div key={`loc-${group.startIndex}`} style={{ position: 'absolute', left: `${group.startIndex * COL_WIDTH}px`, width: `${group.items.length * COL_WIDTH}px`, height: '100%', display: 'block' }}>

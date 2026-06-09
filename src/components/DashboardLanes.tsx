@@ -18,9 +18,12 @@ import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
 import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
+import TimelineCaptureOverlay from './TimelineCaptureOverlay';
 import { useSoundingSelection } from '../hooks/useSoundingSelection';
 import type { SwitchInfo } from '../hooks/useDashboardData';
+import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
+import type { RefObject } from 'react';
 
 interface EmptyTimelineStateProps {
   loadingDone: boolean;
@@ -34,10 +37,29 @@ interface DashboardLanesProps {
   onCityClick: (cityName: string) => void;
   compactMode: boolean;
   scales: DashboardScales;
+  scrollerRef?: RefObject<HTMLDivElement | null>;
+  captureMode?: boolean;
+  captureSelection?: CaptureSelection | null;
+  onCaptureSelectionChange?: (selection: CaptureSelection) => void;
 }
 
 interface TimelineLanesProps extends Omit<DashboardLanesProps, 'data'> {
   data: WeatherTimeline;
+}
+
+export type DashboardLaneRenderMode = 'interactive' | 'capture';
+
+export interface DashboardLaneStackProps {
+  data: WeatherTimeline;
+  compactMode: boolean;
+  scales: DashboardScales;
+  switchInfo: SwitchInfo;
+  onCityClick?: (cityName: string) => void;
+  loadingDone?: boolean;
+  switching?: boolean;
+  renderMode?: DashboardLaneRenderMode;
+  activeSoundingTime?: string | null;
+  onSelectSounding?: (item: WeatherTimeline[number]) => void;
 }
 
 function EmptyTimelineState({ loadingDone }: EmptyTimelineStateProps) {
@@ -57,6 +79,72 @@ function LoadingMoreIndicator() {
   );
 }
 
+function noopCityClick() {
+  // Screenshot renders are intentionally non-interactive.
+}
+
+export function DashboardLaneStack({
+  data,
+  compactMode,
+  scales,
+  switchInfo,
+  onCityClick = noopCityClick,
+  loadingDone = true,
+  switching = false,
+  renderMode = 'interactive',
+  activeSoundingTime = null,
+  onSelectSounding,
+}: DashboardLaneStackProps) {
+  const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
+  const interactive = renderMode === 'interactive';
+
+  return (
+    <div
+      className={[
+        'lanes-container',
+        switching ? 'is-switching' : '',
+        renderMode === 'capture' ? 'is-capture-render' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      <DashboardBackground data={data} />
+      <WeatherAmbientBackground data={data} compact={compactMode} />
+      <LocationLane
+        data={data}
+        switchInfo={switchInfo}
+        onCityClick={onCityClick}
+        interactive={interactive}
+      />
+      <TimeAxis data={data} />
+      <TwilightLane data={data} />
+      <WeatherIconLane data={data} />
+      <UVLane data={data} />
+      {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+      {compactMode && <TemperatureTextLane data={data} />}
+      {!compactMode && (
+        <div className="cloud-sounding-region">
+          <CloudEnsembleLane data={data} />
+          <CloudAndRainLane data={data} />
+          {interactive && onSelectSounding && (
+            <CloudSoundingHitLayer
+              data={data}
+              activeTime={activeSoundingTime}
+              onSelect={onSelectSounding}
+            />
+          )}
+        </div>
+      )}
+      <PrecipitationProbLane data={data} compact={compactMode} />
+      {!compactMode && <CapeLane data={data} />}
+      <WindLane data={data} maxBft={maxBft} compact={compactMode} />
+      {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
+      <AirQualityLane data={data} />
+      <AerosolLane data={data} />
+      {interactive && <CurrentTimeIndicator data={data} />}
+      {interactive && !loadingDone && <LoadingMoreIndicator />}
+    </div>
+  );
+}
+
 function TimelineLanes({
   data,
   loadingDone,
@@ -65,8 +153,8 @@ function TimelineLanes({
   onCityClick,
   compactMode,
   scales,
+  captureMode = false,
 }: TimelineLanesProps) {
-  const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
   const {
     activeSoundingItem,
     closeSounding,
@@ -77,37 +165,19 @@ function TimelineLanes({
 
   return (
     <>
-      <div className={['lanes-container', switching ? 'is-switching' : ''].filter(Boolean).join(' ')}>
-        <DashboardBackground data={data} />
-        <WeatherAmbientBackground data={data} compact={compactMode} />
-        <LocationLane data={data} switchInfo={switchInfo} onCityClick={onCityClick} />
-        <TimeAxis data={data} />
-        <TwilightLane data={data} />
-        <WeatherIconLane data={data} />
-        <UVLane data={data} />
-        {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
-        {compactMode && <TemperatureTextLane data={data} />}
-        {!compactMode && (
-          <div className="cloud-sounding-region">
-            <CloudEnsembleLane data={data} />
-            <CloudAndRainLane data={data} />
-            <CloudSoundingHitLayer
-              data={data}
-              activeTime={activeSoundingItem?.time ?? null}
-              onSelect={selectSoundingItem}
-            />
-          </div>
-        )}
-        <PrecipitationProbLane data={data} compact={compactMode} />
-        {!compactMode && <CapeLane data={data} />}
-        <WindLane data={data} maxBft={maxBft} compact={compactMode} />
-        {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
-        <AirQualityLane data={data} />
-        <AerosolLane data={data} />
-        <CurrentTimeIndicator data={data} />
-        {!loadingDone && <LoadingMoreIndicator />}
-      </div>
-      {activeSoundingItem && (
+      <DashboardLaneStack
+        data={data}
+        loadingDone={loadingDone}
+        switching={switching}
+        switchInfo={switchInfo}
+        onCityClick={onCityClick}
+        compactMode={compactMode}
+        scales={scales}
+        renderMode="interactive"
+        activeSoundingTime={activeSoundingItem?.time ?? null}
+        onSelectSounding={selectSoundingItem}
+      />
+      {!captureMode && activeSoundingItem && (
         <SoundingDrawer
           item={activeSoundingItem}
           index={soundingIndex}
@@ -128,21 +198,35 @@ export default function DashboardLanes({
   onCityClick,
   compactMode,
   scales,
+  scrollerRef,
+  captureMode = false,
+  captureSelection = null,
+  onCaptureSelectionChange,
 }: DashboardLanesProps) {
   const hasData = data && data.length > 0;
 
   return (
-    <div className="timeline-scroller">
+    <div className="timeline-scroller" ref={scrollerRef}>
       {hasData ? (
-        <TimelineLanes
-          data={data}
-          loadingDone={loadingDone}
-          switching={switching}
-          switchInfo={switchInfo}
-          onCityClick={onCityClick}
-          compactMode={compactMode}
-          scales={scales}
-        />
+        <>
+          <TimelineLanes
+            data={data}
+            loadingDone={loadingDone}
+            switching={switching}
+            switchInfo={switchInfo}
+            onCityClick={onCityClick}
+            compactMode={compactMode}
+            scales={scales}
+            captureMode={captureMode}
+          />
+          {captureMode && captureSelection && onCaptureSelectionChange && (
+            <TimelineCaptureOverlay
+              dataLength={data.length}
+              selection={captureSelection}
+              onSelectionChange={onCaptureSelectionChange}
+            />
+          )}
+        </>
       ) : (
         <EmptyTimelineState loadingDone={loadingDone} />
       )}

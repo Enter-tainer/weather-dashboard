@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type Ref } from 'react';
 import { Settings, X, Plus, Trash2 } from 'lucide-react';
 import { parseRoute, stringifyRoute, generate7Days } from '../services/urlParser';
 import { reverseGeocode } from '../services/geocoding';
@@ -11,6 +11,14 @@ const DEFAULT_CITY = 'Beijing';
 
 interface EditorRouteEntry extends RouteEntry {
   _id: string;
+}
+
+export interface RouteEditorHandle {
+  open: () => void;
+}
+
+interface RouteEditorProps {
+  ref?: Ref<RouteEditorHandle>;
 }
 
 function createEntryId(): string {
@@ -44,10 +52,14 @@ function groupEntriesByDate(entries: EditorRouteEntry[]): Array<[string, EditorR
   return [...groups.entries()].sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
 }
 
-export default function RouteEditor() {
+export default function RouteEditor({ ref }: RouteEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [entries, setEntries] = useState<EditorRouteEntry[]>([]);
   const [quickCity, setQuickCity] = useState('');
+
+  useImperativeHandle(ref, () => ({
+    open: () => setIsOpen(true),
+  }), []);
 
   // Load existing configuration when opening the modal
   useEffect(() => {
