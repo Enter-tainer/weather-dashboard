@@ -348,6 +348,10 @@
   position: relative;
 }
 
+.location-lane {
+  content-visibility: visible;
+}
+
 .lane-cell {
   width: var(--col-width-hour);
   flex-shrink: 0;
