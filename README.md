@@ -1,6 +1,10 @@
 # Weather Dashboard / 天气面板
 
-![Dashboard Screenshot](./demo.webp)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./demo-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./demo-light.webp">
+  <img alt="Dashboard Screenshot" src="./demo-light.webp">
+</picture>
 
 A [Windy](https://www.windy.com/)-style weather dashboard built with React + Canvas. All data comes from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
 

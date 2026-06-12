@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "vite build && wrangler deploy"
+    "deploy": "vite build && wrangler deploy",
+    "fixture:fetch": "tsx scripts/fetch-fixture.ts",
+    "demo:update": "tsx scripts/capture-screenshot.ts"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -37,6 +39,8 @@
     "globals": "^17.4.0",
     "jiti": "^2.7.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.57.0",
+    "tsx": "^4.19.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4",
     "vite": "^8.0.1",

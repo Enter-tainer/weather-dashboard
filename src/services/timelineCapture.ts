@@ -198,7 +198,7 @@ export function captureFileName(data: WeatherTimeline, selection: CaptureSelecti
   const last = data[normalized.endIndex - 1];
   const start = first ? formatDateTimeForFile(first.time) : 'start';
   const end = last ? formatDateTimeForFile(last.time) : 'end';
-  return `weather-${start}-${end}.png`;
+  return `weather-${start}-${end}.webp`;
 }
 
 export function captureRangeLabel(data: WeatherTimeline): string {

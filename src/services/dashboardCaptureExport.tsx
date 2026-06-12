@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { toPng } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 import DashboardCaptureRender from '../components/DashboardCaptureRender';
 import type { CanvasCaptureStatus } from '../hooks/canvasCaptureContext';
 import type { SwitchInfo } from '../hooks/useDashboardData';
@@ -23,14 +23,16 @@ function nextFrame(): Promise<void> {
   });
 }
 
-function downloadDataUrl(dataUrl: string, fileName: string): void {
+function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = dataUrl;
+  link.href = url;
   link.download = fileName;
   link.rel = 'noopener';
   document.body.appendChild(link);
   link.click();
   link.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function waitForCanvasReady(getStatus: () => CanvasCaptureStatus, getLastChange: () => number): Promise<void> {
@@ -90,7 +92,7 @@ export async function exportDashboardCapture({
     const rect = captureNode.getBoundingClientRect();
     const width = Math.ceil(rect.width);
     const height = Math.ceil(rect.height);
-    const dataUrl = await toPng(captureNode, {
+    const canvas = await toCanvas(captureNode, {
       width,
       height,
       canvasWidth: width,
@@ -106,7 +108,14 @@ export async function exportDashboardCapture({
       cacheBust: true,
     });
 
-    downloadDataUrl(dataUrl, captureFileName(data, selection));
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error('WebP encoding failed'));
+      }, 'image/webp', 0.85);
+    });
+
+    downloadBlob(blob, captureFileName(data, selection));
   } finally {
     root.unmount();
     host.remove();

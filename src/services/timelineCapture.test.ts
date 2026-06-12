@@ -140,6 +140,6 @@ describe('timeline capture slicing', () => {
 
     expect(captureLocationLabel(sliced)).toBe('City A -> City B');
     expect(captureRangeLabel(sliced)).toBe('3/27 01:00 - 3/27 03:00');
-    expect(captureFileName(timeline, { startIndex: 1, endIndex: 4 })).toBe('weather-20260327-01-20260327-03.png');
+    expect(captureFileName(timeline, { startIndex: 1, endIndex: 4 })).toBe('weather-20260327-01-20260327-03.webp');
   });
 });

@@ -1,0 +1,79 @@
+import { useEffect, useMemo, useState } from 'react';
+import Dashboard from './components/Dashboard';
+import CapturePage from './components/CapturePage';
+import { useSearchParam } from './hooks/useSearchParam';
+import type { MoonEventList, NightBand, SunEvent, WeatherTimeline } from './types/weather';
+
+interface AppDevProps {
+  testData: WeatherTimeline | undefined;
+}
+
+interface FixtureBundle {
+  points: WeatherTimeline;
+  sunEvents?: SunEvent[];
+  moonEvents?: MoonEventList;
+  nightBands?: NightBand[];
+}
+
+function reviveDates(events: { time: string | Date }[]): void {
+  for (const e of events) {
+    if (typeof e.time === 'string') e.time = new Date(e.time);
+  }
+}
+
+function attachMeta(points: WeatherTimeline, bundle: FixtureBundle): WeatherTimeline {
+  if (bundle.sunEvents) {
+    reviveDates(bundle.sunEvents);
+    points.sunEvents = bundle.sunEvents as SunEvent[];
+  }
+  if (bundle.moonEvents) {
+    reviveDates(bundle.moonEvents);
+    points.moonEvents = bundle.moonEvents as MoonEventList;
+  }
+  if (bundle.nightBands) points.nightBands = bundle.nightBands;
+  return points;
+}
+
+export default function AppDev({ testData: propTestData }: AppDevProps) {
+  const fixtureName = useSearchParam('fixture');
+  const captureParam = useSearchParam('capture');
+  const [fixtureData, setFixtureData] = useState<WeatherTimeline>();
+
+  useEffect(() => {
+    if (!fixtureName) {
+      setFixtureData(undefined);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    fetch(`/fixtures/${encodeURIComponent(fixtureName)}.json`)
+      .then(r => {
+        if (!r.ok) throw new Error(`Fixture not found: ${fixtureName}`);
+        return r.json() as Promise<FixtureBundle>;
+      })
+      .then(bundle => {
+        if (!cancelled) setFixtureData(attachMeta(bundle.points, bundle));
+      })
+      .catch(err => {
+        console.error(`Failed to load fixture "${fixtureName}":`, err);
+      });
+
+    return () => { cancelled = true; };
+  }, [fixtureName]);
+
+  const testData = useMemo<WeatherTimeline | undefined>(() => {
+    if (fixtureName) {
+      if (fixtureData) return fixtureData;
+      return [] as unknown as WeatherTimeline;
+    }
+    return propTestData;
+  }, [fixtureName, fixtureData, propTestData]);
+
+  const captureHours = captureParam ? Number(captureParam) : 0;
+  if (captureHours > 0 && testData && testData.length > 0) {
+    return <CapturePage data={testData} hours={captureHours} />;
+  }
+
+  return <Dashboard testData={testData} />;
+}
