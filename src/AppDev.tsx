@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Dashboard from './components/Dashboard';
 import CapturePage from './components/CapturePage';
+import OgImagePage from './components/OgImagePage';
 import { useSearchParam } from './hooks/useSearchParam';
 import type { MoonEventList, NightBand, SunEvent, WeatherTimeline } from './types/weather';
 
@@ -37,6 +38,8 @@ function attachMeta(points: WeatherTimeline, bundle: FixtureBundle): WeatherTime
 export default function AppDev({ testData: propTestData }: AppDevProps) {
   const fixtureName = useSearchParam('fixture');
   const captureParam = useSearchParam('capture');
+  const ogParam = useSearchParam('og');
+  const ogHoursParam = useSearchParam('ogHours');
   const [fixtureData, setFixtureData] = useState<WeatherTimeline>();
 
   useEffect(() => {
@@ -71,6 +74,11 @@ export default function AppDev({ testData: propTestData }: AppDevProps) {
   }, [fixtureName, fixtureData, propTestData]);
 
   const captureHours = captureParam ? Number(captureParam) : 0;
+  const ogHours = ogHoursParam ? Number(ogHoursParam) : 72;
+  if (ogParam === '1' && testData && testData.length > 0) {
+    return <OgImagePage data={testData} hours={ogHours} />;
+  }
+
   if (captureHours > 0 && testData && testData.length > 0) {
     return <CapturePage data={testData} hours={captureHours} />;
   }
