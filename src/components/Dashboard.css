@@ -48,6 +48,7 @@
 }
 
 .compact-toggle-btn,
+.time-compact-toggle-btn,
 .theme-toggle-btn,
 .capture-mode-btn {
   position: fixed;
@@ -72,15 +73,20 @@
   right: 64px;
 }
 
-.theme-toggle-btn {
+.time-compact-toggle-btn {
   right: 112px;
 }
 
-.capture-mode-btn {
+.theme-toggle-btn {
   right: 160px;
 }
 
+.capture-mode-btn {
+  right: 208px;
+}
+
 .compact-toggle-btn:hover,
+.time-compact-toggle-btn:hover,
 .theme-toggle-btn:hover,
 .capture-mode-btn:hover:not(:disabled) {
   background: var(--control-bg-hover);
@@ -125,7 +131,7 @@
   top: 0;
   right: 0;
   width: 40px;
-  height: 232px;
+  height: 280px;
   pointer-events: none;
 }
 
@@ -163,6 +169,10 @@
   top: 192px;
 }
 
+.mobile-tool-action:nth-child(5) {
+  top: 240px;
+}
+
 .mobile-tool-action:disabled {
   opacity: 0.5;
 }
@@ -170,6 +180,7 @@
 @media (max-width: 600px) {
   .theme-toggle-btn,
   .compact-toggle-btn,
+  .time-compact-toggle-btn,
   .capture-mode-btn,
   .route-editor-btn {
     display: none;

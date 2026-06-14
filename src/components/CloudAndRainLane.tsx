@@ -1,9 +1,9 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
+import { DEFAULT_HOUR_WIDTH, getHourCenter, getHourLeft, getTimelineWidth } from '../services/timelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
-const COL_WIDTH = 22;
 const LANE_HEIGHT = 150;
 const MAX_ALT = 10000; // meters
 
@@ -28,6 +28,7 @@ const ALT_BREAKS = [
 // Map altitude (meters) to Y pixel using piecewise linear scale
 interface CloudAndRainLaneProps {
   data: WeatherPoint[];
+  hourWidth?: number;
 }
 
 function altToY(alt: number): number {
@@ -78,8 +79,10 @@ function cloudColor(cover: number, rgb: string, alphaScale: number): string {
   return `rgba(${rgb}, ${alpha})`;
 }
 
-export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
-  const width = data.length * COL_WIDTH;
+export default function CloudAndRainLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: CloudAndRainLaneProps) {
+  const width = getTimelineWidth(data.length, hourWidth);
+  const precipBarWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
+  const showPrecipLabels = hourWidth >= 12;
 
   const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const cloudFillRgb = cssVar('--cloud-fill-rgb', '90, 90, 100');
@@ -108,7 +111,7 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
     for (let i = 0; i < data.length; i++) {
       const d = data[i];
       if (!d) continue;
-      const x = i * COL_WIDTH;
+      const x = getHourLeft(i, hourWidth);
 
       if (d.cloudByLevel) {
         for (let li = 0; li < d.cloudByLevel.length - 1; li++) {
@@ -127,7 +130,7 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
           if (yBot - yTop <= 0) continue;
 
           ctx.fillStyle = cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
-          ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
+          ctx.fillRect(x, yTop, hourWidth + 1, yBot - yTop);
         }
       } else {
         // Fallback: use low/mid/high cloud cover
@@ -142,7 +145,7 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
           const yBot = altToY(layer.altLow);
 
           ctx.fillStyle = cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
-          ctx.fillRect(x, yTop, COL_WIDTH + 1, yBot - yTop);
+          ctx.fillRect(x, yTop, hourWidth + 1, yBot - yTop);
         }
       }
 
@@ -152,7 +155,7 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
         d.precipMembers.forEach(precip => {
           if (precip > 0.1) {
             const barHeight = Math.min(40, precip * 4);
-            ctx.fillRect(x, h - barHeight, COL_WIDTH, barHeight);
+            ctx.fillRect(x, h - barHeight, hourWidth, barHeight);
           }
         });
       }
@@ -161,7 +164,7 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
       if (d.precipitation > 0) {
         const barHeight = Math.min(40, d.precipitation * 4);
         ctx.fillStyle = precipColor(d.weatherCode, 0.5);
-        ctx.fillRect(x + COL_WIDTH / 2 - 4, h - barHeight, 8, barHeight);
+        ctx.fillRect(x + hourWidth / 2 - precipBarWidth / 2, h - barHeight, precipBarWidth, barHeight);
       }
     }
 
@@ -174,14 +177,14 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
     for (let i = 0; i < data.length; i++) {
       const blh = data[i]?.boundaryLayerHeight;
       if (blh == null) { started = false; continue; }
-      const x = i * COL_WIDTH + COL_WIDTH / 2;
+      const x = getHourCenter(i, hourWidth);
       const y = altToY(blh);
       if (!started) { ctx.moveTo(x, y); started = true; }
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
     ctx.setLineDash([]);
-  }, [data]);
+  }, [data, hourWidth, precipBarWidth]);
 
   return (
     <div className="lane cloud-rain-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>
@@ -192,7 +195,7 @@ export default function CloudAndRainLane({ data }: CloudAndRainLaneProps) {
             const barHeight = item.precipitation > 0 ? Math.min(40, item.precipitation * 4) : 0;
             return (
               <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: `${barHeight + 2}px` }}>
-                 {item.precipitation > 0 && (
+                 {showPrecipLabels && item.precipitation > 0 && (
                     <span style={{
                       color: precipCssColor(item.weatherCode, 1),
                       fontSize: '9px',

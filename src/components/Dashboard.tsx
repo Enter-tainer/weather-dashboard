@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Download, X } from 'lucide-react';
 import RouteEditor, { type RouteEditorHandle } from './RouteEditor';
 import CompactToggle from './CompactToggle';
+import TimeCompactToggle from './TimeCompactToggle';
 import ThemeToggle from './ThemeToggle';
 import DashboardLegend from './DashboardLegend';
 import DashboardLanes from './DashboardLanes';
 import MobileToolMenu from './MobileToolMenu';
 import { useCompactMode } from '../hooks/useCompactMode';
+import { useTimeCompactMode } from '../hooks/useTimeCompactMode';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { exportDashboardCapture } from '../services/dashboardCaptureExport';
@@ -16,6 +18,7 @@ import {
   type CaptureSelection,
 } from '../services/timelineCapture';
 import { calculateDashboardScales } from '../services/weatherMetrics';
+import { aggregateTimelineByHours } from '../services/timeAggregation';
 import type { WeatherTimeline } from '../types/weather';
 
 import './Dashboard.css';
@@ -31,6 +34,7 @@ export default function Dashboard({ testData }: DashboardProps) {
   const [captureSelection, setCaptureSelection] = useState<CaptureSelection | null>(null);
   const [captureStatus, setCaptureStatus] = useState<'idle' | 'exporting' | 'error'>('idle');
   const { compactMode, toggleCompactMode } = useCompactMode();
+  const { timeStepHours, toggleTimeCompactMode } = useTimeCompactMode();
   const { mode, effectiveTheme, cycleThemeMode } = useThemeMode();
   const {
     data,
@@ -39,27 +43,34 @@ export default function Dashboard({ testData }: DashboardProps) {
     switchInfo,
     handleCityClick,
   } = useDashboardData(testData);
-  const scales = useMemo(() => calculateDashboardScales(data), [data]);
-  const hasData = Array.isArray(data) && data.length > 0;
+  const displayData = useMemo(() => {
+    if (!data || data.length === 0) return data;
+    return aggregateTimelineByHours(data, timeStepHours);
+  }, [data, timeStepHours]);
+  const scales = useMemo(() => calculateDashboardScales(displayData), [displayData]);
+  const hasData = Array.isArray(displayData) && displayData.length > 0;
   const activeCaptureSelection = useMemo(() => {
-    if (!captureMode || !captureSelection || !data || data.length === 0) {
+    if (!captureMode || !captureSelection || !displayData || displayData.length === 0) {
       return null;
     }
-    return normalizeCaptureSelection(captureSelection, data.length);
-  }, [captureMode, captureSelection, data]);
+    return normalizeCaptureSelection(captureSelection, displayData.length);
+  }, [captureMode, captureSelection, displayData]);
 
   const enterCaptureMode = useCallback(() => {
-    if (!data || data.length === 0) return;
+    if (!displayData || displayData.length === 0) return;
 
     const scroller = scrollerRef.current;
     const selection = scroller
-      ? captureSelectionFromCurrentDay(scroller.scrollLeft, data)
-      : normalizeCaptureSelection({ startIndex: 0, endIndex: Math.min(24, data.length) }, data.length);
+      ? captureSelectionFromCurrentDay(scroller.scrollLeft, displayData)
+      : normalizeCaptureSelection({
+        startIndex: 0,
+        endIndex: Math.min(Math.ceil(24 / timeStepHours), displayData.length),
+      }, displayData.length);
 
     setCaptureSelection(selection);
     setCaptureMode(true);
     setCaptureStatus('idle');
-  }, [data]);
+  }, [displayData, timeStepHours]);
 
   const exitCaptureMode = useCallback(() => {
     setCaptureMode(false);
@@ -81,22 +92,23 @@ export default function Dashboard({ testData }: DashboardProps) {
   }, [captureMode, exitCaptureMode]);
 
   const updateCaptureSelection = useCallback((selection: CaptureSelection) => {
-    if (!data) return;
-    setCaptureSelection(normalizeCaptureSelection(selection, data.length));
-  }, [data]);
+    if (!displayData) return;
+    setCaptureSelection(normalizeCaptureSelection(selection, displayData.length));
+  }, [displayData]);
 
   const openRouteEditor = useCallback(() => {
     routeEditorRef.current?.open();
   }, []);
 
   const exportCapture = useCallback(() => {
-    if (!data || !activeCaptureSelection || captureStatus === 'exporting') return;
+    if (!displayData || !activeCaptureSelection || captureStatus === 'exporting') return;
 
     setCaptureStatus('exporting');
     exportDashboardCapture({
-      data,
+      data: displayData,
       selection: activeCaptureSelection,
       compactMode,
+      hoursPerColumn: timeStepHours,
       scales,
       switchInfo,
     })
@@ -107,7 +119,7 @@ export default function Dashboard({ testData }: DashboardProps) {
         console.error('Failed to export weather capture:', error);
         setCaptureStatus('error');
       });
-  }, [activeCaptureSelection, captureStatus, compactMode, data, exitCaptureMode, scales, switchInfo]);
+  }, [activeCaptureSelection, captureStatus, compactMode, displayData, exitCaptureMode, scales, switchInfo, timeStepHours]);
 
   return (
     <div className="dashboard-wrapper">
@@ -115,6 +127,7 @@ export default function Dashboard({ testData }: DashboardProps) {
         <>
           <ThemeToggle mode={mode} effectiveTheme={effectiveTheme} onToggle={cycleThemeMode} />
           <CompactToggle compactMode={compactMode} onToggle={toggleCompactMode} />
+          <TimeCompactToggle timeStepHours={timeStepHours} onToggle={toggleTimeCompactMode} />
           <RouteEditor ref={routeEditorRef} />
           <button
             type="button"
@@ -132,6 +145,8 @@ export default function Dashboard({ testData }: DashboardProps) {
             onThemeToggle={cycleThemeMode}
             compactMode={compactMode}
             onCompactToggle={toggleCompactMode}
+            timeStepHours={timeStepHours}
+            onTimeCompactToggle={toggleTimeCompactMode}
             onOpenRouteEditor={openRouteEditor}
             onEnterCaptureMode={enterCaptureMode}
             captureDisabled={!hasData}
@@ -164,12 +179,13 @@ export default function Dashboard({ testData }: DashboardProps) {
       )}
       <DashboardLegend compactMode={compactMode} scales={scales} />
       <DashboardLanes
-        data={data}
+        data={displayData}
         loadingDone={loadingDone}
         switching={switching}
         switchInfo={switchInfo}
         onCityClick={handleCityClick}
         compactMode={compactMode}
+        hoursPerColumn={timeStepHours}
         scales={scales}
         scrollerRef={scrollerRef}
         captureMode={captureMode}

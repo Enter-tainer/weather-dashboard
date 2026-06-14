@@ -20,10 +20,14 @@ import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
 import TimelineCaptureOverlay from './TimelineCaptureOverlay';
 import { useSoundingSelection } from '../hooks/useSoundingSelection';
+import {
+  DEFAULT_HOUR_WIDTH,
+  getTimelineHourWidth,
+} from '../services/timelineLayout';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
-import type { RefObject } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 
 interface EmptyTimelineStateProps {
   loadingDone: boolean;
@@ -36,6 +40,7 @@ interface DashboardLanesProps {
   switchInfo: SwitchInfo;
   onCityClick: (cityName: string) => void;
   compactMode: boolean;
+  hoursPerColumn?: number;
   scales: DashboardScales;
   scrollerRef?: RefObject<HTMLDivElement | null>;
   captureMode?: boolean;
@@ -52,6 +57,7 @@ export type DashboardLaneRenderMode = 'interactive' | 'capture';
 export interface DashboardLaneStackProps {
   data: WeatherTimeline;
   compactMode: boolean;
+  hoursPerColumn?: number;
   scales: DashboardScales;
   switchInfo: SwitchInfo;
   onCityClick?: (cityName: string) => void;
@@ -61,6 +67,10 @@ export interface DashboardLaneStackProps {
   activeSoundingTime?: string | null;
   onSelectSounding?: (item: WeatherTimeline[number]) => void;
 }
+
+type TimelineStyle = CSSProperties & {
+  '--col-width-hour'?: string;
+};
 
 function EmptyTimelineState({ loadingDone }: EmptyTimelineStateProps) {
   return (
@@ -86,6 +96,7 @@ function noopCityClick() {
 export function DashboardLaneStack({
   data,
   compactMode,
+  hoursPerColumn = 1,
   scales,
   switchInfo,
   onCityClick = noopCityClick,
@@ -97,6 +108,10 @@ export function DashboardLaneStack({
 }: DashboardLaneStackProps) {
   const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
   const interactive = renderMode === 'interactive';
+  const hourWidth = getTimelineHourWidth();
+  const timelineStyle: TimelineStyle = {
+    '--col-width-hour': `${hourWidth}px`,
+  };
 
   return (
     <div
@@ -105,41 +120,44 @@ export function DashboardLaneStack({
         switching ? 'is-switching' : '',
         renderMode === 'capture' ? 'is-capture-render' : '',
       ].filter(Boolean).join(' ')}
+      style={timelineStyle}
     >
-      <DashboardBackground data={data} />
-      <WeatherAmbientBackground data={data} compact={compactMode} />
+      <DashboardBackground data={data} hourWidth={hourWidth} />
+      <WeatherAmbientBackground data={data} compact={compactMode} hourWidth={hourWidth} />
       <LocationLane
         data={data}
         switchInfo={switchInfo}
         onCityClick={onCityClick}
         interactive={interactive}
+        hourWidth={hourWidth}
       />
-      <TimeAxis data={data} />
-      <TwilightLane data={data} />
+      <TimeAxis data={data} hourWidth={hourWidth} hoursPerColumn={hoursPerColumn} />
+      <TwilightLane data={data} hourWidth={hourWidth} />
       <WeatherIconLane data={data} />
       <UVLane data={data} />
-      {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} />}
+      {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} hourWidth={hourWidth} />}
       {compactMode && <TemperatureTextLane data={data} />}
       {!compactMode && (
         <div className="cloud-sounding-region">
-          <CloudEnsembleLane data={data} />
-          <CloudAndRainLane data={data} />
+          <CloudEnsembleLane data={data} hourWidth={hourWidth} />
+          <CloudAndRainLane data={data} hourWidth={hourWidth} />
           {interactive && onSelectSounding && (
             <CloudSoundingHitLayer
               data={data}
               activeTime={activeSoundingTime}
               onSelect={onSelectSounding}
+              hourWidth={hourWidth}
             />
           )}
         </div>
       )}
       <PrecipitationProbLane data={data} compact={compactMode} />
       {!compactMode && <CapeLane data={data} />}
-      <WindLane data={data} maxBft={maxBft} compact={compactMode} />
-      {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} />}
+      <WindLane data={data} maxBft={maxBft} compact={compactMode} hourWidth={hourWidth} />
+      {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} hourWidth={hourWidth} />}
       <AirQualityLane data={data} />
-      <AerosolLane data={data} />
-      {interactive && <CurrentTimeIndicator data={data} />}
+      <AerosolLane data={data} hourWidth={hourWidth} />
+      {interactive && <CurrentTimeIndicator data={data} hourWidth={hourWidth} />}
       {interactive && !loadingDone && <LoadingMoreIndicator />}
     </div>
   );
@@ -152,6 +170,7 @@ function TimelineLanes({
   switchInfo,
   onCityClick,
   compactMode,
+  hoursPerColumn = 1,
   scales,
   captureMode = false,
 }: TimelineLanesProps) {
@@ -172,6 +191,7 @@ function TimelineLanes({
         switchInfo={switchInfo}
         onCityClick={onCityClick}
         compactMode={compactMode}
+        hoursPerColumn={hoursPerColumn}
         scales={scales}
         renderMode="interactive"
         activeSoundingTime={activeSoundingItem?.time ?? null}
@@ -197,6 +217,7 @@ export default function DashboardLanes({
   switchInfo,
   onCityClick,
   compactMode,
+  hoursPerColumn = 1,
   scales,
   scrollerRef,
   captureMode = false,
@@ -204,6 +225,7 @@ export default function DashboardLanes({
   onCaptureSelectionChange,
 }: DashboardLanesProps) {
   const hasData = data && data.length > 0;
+  const hourWidth = getTimelineHourWidth();
 
   return (
     <div className="timeline-scroller" ref={scrollerRef}>
@@ -216,6 +238,7 @@ export default function DashboardLanes({
             switchInfo={switchInfo}
             onCityClick={onCityClick}
             compactMode={compactMode}
+            hoursPerColumn={hoursPerColumn}
             scales={scales}
             captureMode={captureMode}
           />
@@ -224,6 +247,8 @@ export default function DashboardLanes({
               dataLength={data.length}
               selection={captureSelection}
               onSelectionChange={onCaptureSelectionChange}
+              hourWidth={hourWidth || DEFAULT_HOUR_WIDTH}
+              hoursPerColumn={hoursPerColumn}
             />
           )}
         </>

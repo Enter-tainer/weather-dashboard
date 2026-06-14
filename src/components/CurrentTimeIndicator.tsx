@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { WeatherPoint } from '../types/weather';
+import { DEFAULT_HOUR_WIDTH, getHourCenter } from '../services/timelineLayout';
 
-const COL_WIDTH = 22;
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 
 interface CurrentTimeIndicatorProps {
   data: WeatherPoint[];
+  hourWidth?: number;
 }
 
 function getItemTimeMs(item: WeatherPoint): number | null {
@@ -25,7 +26,7 @@ function formatClock(date: Date): string {
   });
 }
 
-function getIndicatorPosition(data: WeatherPoint[], nowMs: number): number | null {
+function getIndicatorPosition(data: WeatherPoint[], nowMs: number, hourWidth: number): number | null {
   for (let i = 0; i < data.length; i++) {
     const item = data[i];
     if (!item) continue;
@@ -43,14 +44,14 @@ function getIndicatorPosition(data: WeatherPoint[], nowMs: number): number | nul
 
     if (nowMs >= startMs && nowMs < endMs) {
       const fraction = Math.max(0, Math.min(1, (nowMs - startMs) / (endMs - startMs)));
-      return (i + fraction) * COL_WIDTH + COL_WIDTH / 2;
+      return getHourCenter(i + fraction, hourWidth);
     }
   }
 
   return null;
 }
 
-export default function CurrentTimeIndicator({ data }: CurrentTimeIndicatorProps) {
+export default function CurrentTimeIndicator({ data, hourWidth = DEFAULT_HOUR_WIDTH }: CurrentTimeIndicatorProps) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -69,8 +70,8 @@ export default function CurrentTimeIndicator({ data }: CurrentTimeIndicatorProps
 
   const left = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return null;
-    return getIndicatorPosition(data, now.getTime());
-  }, [data, now]);
+    return getIndicatorPosition(data, now.getTime(), hourWidth);
+  }, [data, now, hourWidth]);
 
   if (left == null) return null;
 

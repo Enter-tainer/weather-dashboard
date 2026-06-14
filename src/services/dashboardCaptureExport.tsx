@@ -10,6 +10,7 @@ interface ExportDashboardCaptureOptions {
   data: WeatherTimeline;
   selection: CaptureSelection;
   compactMode: boolean;
+  hoursPerColumn?: number;
   scales: DashboardScales;
   switchInfo: SwitchInfo;
 }
@@ -53,6 +54,7 @@ export async function exportDashboardCapture({
   data,
   selection,
   compactMode,
+  hoursPerColumn = 1,
   scales,
   switchInfo,
 }: ExportDashboardCaptureOptions): Promise<void> {
@@ -69,6 +71,7 @@ export async function exportDashboardCapture({
       data={data}
       selection={selection}
       compactMode={compactMode}
+      hoursPerColumn={hoursPerColumn}
       scales={scales}
       switchInfo={switchInfo}
       onCanvasStatusChange={(status) => {

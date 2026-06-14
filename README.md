@@ -43,6 +43,9 @@ The focus is on **information density** — ensemble forecasts, CAPE, cloud laye
 - **Compact mode** — `?compact=1` collapses low-priority lanes (temperature, clouds, CAPE, pressure) into a dense single-scroll view; precipitation shows volume bars & wind shows Beaufort + arrow per cell
 - **紧凑模式** — `?compact=1` 折叠温度、云层、CAPE、气压等次要图表，降水显示量级条、风力显示蒲福级+风向箭头；适合快速扫视
 
+- **Time compact mode** — `?timeCompact=3` or `?timeCompact=6` groups the timeline into 3-hour or 6-hour columns for long-range screenshots; it can be combined with `?compact=1`
+- **时间紧凑模式** — `?timeCompact=3` 或 `?timeCompact=6` 把横轴聚合成 3 小时/6 小时一格，适合长时间截图；可以和 `?compact=1` 叠加使用
+
 - **Long-range fallback** — beyond 15 days, auto-switches from deterministic models to ensemble mean
 - **远期降级** — 超过 15 天自动从确定性模型切到集合均值，不会直接报错
 
@@ -104,6 +107,16 @@ Two cities on the same date — a toggle button appears for quick comparison: / 
 Add `&compact=1` to collapse secondary lanes (temperature, clouds, CAPE, pressure) and show a condensed dashboard — precipitation bars and wind Beaufort indicators remain for quick weather scanning.
 
 加 `&compact=1` 折叠次要图表（温度、云层、CAPE、气压），保留降水和风力摘要，适合快速浏览。
+
+### `timeCompact` — Compress time columns / 时间轴紧凑模式
+
+Use `&timeCompact=3` or `&timeCompact=6` to aggregate hourly data into 3-hour or 6-hour columns. This reduces screenshot width while keeping each rendered column readable.
+
+用 `&timeCompact=3` 或 `&timeCompact=6` 把小时数据聚合成 3 小时/6 小时一格。这样会减少截图宽度，但每一格仍保持正常列宽，天气图标和 UV 不会挤在一起。
+
+It can be combined with vertical compact mode, for example `&compact=1&timeCompact=3`.
+
+它可以和纵向紧凑模式组合，例如 `&compact=1&timeCompact=3`。
 
 ### Without parameters / 不传参数的话
 

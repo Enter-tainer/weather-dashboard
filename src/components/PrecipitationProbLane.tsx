@@ -31,6 +31,8 @@ interface PrecipitationProbLaneProps {
 }
 
 export default function PrecipitationProbLane({ data, compact = false }: PrecipitationProbLaneProps) {
+  const labelInterval = 3;
+
   return (
     <div className="lane precip-prob-lane" style={{ height: compact ? '42px' : 'var(--lane-height-precip-prob)', backgroundColor: 'transparent' }}>
       <div className="lane-data">
@@ -39,7 +41,7 @@ export default function PrecipitationProbLane({ data, compact = false }: Precipi
            const text = prob >= 5 ? `${prob}` : '';
            const precipText = compact ? formatPrecip(item.precipitation) : '';
            const barHeight = compact && item.precipitation > 0 ? Math.min(18, item.precipitation * 2.2) : 0;
-           const showPrecipText = precipText && (index % 3 === 0 || item.precipitation >= 1.5);
+           const showPrecipText = precipText && (index % labelInterval === 0 || item.precipitation >= 1.5);
 
            return (
              <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: compact ? 'flex-start' : 'center', padding: compact ? '2px 0 0' : 0 }}>
@@ -56,7 +58,7 @@ export default function PrecipitationProbLane({ data, compact = false }: Precipi
                     }}
                   />
                 )}
-                {!compact && index % 3 === 0 && text && (
+                {!compact && index % labelInterval === 0 && text && (
                    <span style={{ fontSize: '10px', lineHeight: 1, color: probColor(prob), fontWeight: 'bold', zIndex: 1 }}>{text}%</span>
                 )}
                 {compact && showPrecipText && (
@@ -76,7 +78,7 @@ export default function PrecipitationProbLane({ data, compact = false }: Precipi
                     {precipText}
                   </span>
                 )}
-                {compact && index % 3 === 0 && text && (
+                {compact && index % labelInterval === 0 && text && (
                   <span
                     style={{
                       position: 'absolute',

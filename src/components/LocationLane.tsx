@@ -1,6 +1,7 @@
 import { MapPin } from 'lucide-react';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { WeatherPoint } from '../types/weather';
+import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
 import './Dashboard.css';
 
 interface CityGroup {
@@ -14,11 +15,16 @@ interface LocationLaneProps {
   switchInfo: SwitchInfo;
   onCityClick: (cityName: string) => void;
   interactive?: boolean;
+  hourWidth?: number;
 }
 
-export default function LocationLane({ data, switchInfo, onCityClick, interactive = true }: LocationLaneProps) {
-  const COL_WIDTH = 22;
-
+export default function LocationLane({
+  data,
+  switchInfo,
+  onCityClick,
+  interactive = true,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: LocationLaneProps) {
   const cityGroups: CityGroup[] = [];
   let currentGroup: CityGroup | null = null;
   for (let i = 0; i < data.length; i++) {
@@ -34,13 +40,13 @@ export default function LocationLane({ data, switchInfo, onCityClick, interactiv
 
   return (
     <div className="lane location-lane" style={{ height: '24px', borderBottom: 'none', backgroundColor: 'var(--legend-bg)' }}>
-      <div className="lane-data" style={{ position: 'relative', width: `${data.length * COL_WIDTH}px` }}>
+      <div className="lane-data" style={{ position: 'relative', width: `${getTimelineWidth(data.length, hourWidth)}px` }}>
         {cityGroups.map((group) => {
           const slot = switchInfo && switchInfo[group.cityName];
           const isSwitchable = interactive && !!slot;
           
           return (
-            <div key={`loc-${group.startIndex}`} style={{ position: 'absolute', left: `${group.startIndex * COL_WIDTH}px`, width: `${group.items.length * COL_WIDTH}px`, height: '100%', display: 'block' }}>
+            <div key={`loc-${group.startIndex}`} style={{ position: 'absolute', left: `${group.startIndex * hourWidth}px`, width: `${group.items.length * hourWidth}px`, height: '100%', display: 'block' }}>
               <div style={{ position: 'sticky', left: 0, width: 'max-content', zIndex: 100 }}>
                 <div
                   onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}

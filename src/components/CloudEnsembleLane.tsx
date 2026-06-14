@@ -1,21 +1,22 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
+import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
-const COL_WIDTH = 22;
 const LANE_HEIGHT = 50;
 
 interface CloudEnsembleLaneProps {
   data: WeatherPoint[];
+  hourWidth?: number;
 }
 
-export default function CloudEnsembleLane({ data }: CloudEnsembleLaneProps) {
-  const width = data.length * COL_WIDTH;
+export default function CloudEnsembleLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: CloudEnsembleLaneProps) {
+  const width = getTimelineWidth(data.length, hourWidth);
 
   const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const getY = (cov: number) => h - 5 - (cov / 100) * (h - 10);
-    const getX = (index: number) => index * COL_WIDTH + COL_WIDTH / 2;
+    const getX = (index: number) => getHourCenter(index, hourWidth);
 
     // Detect location-change boundaries (break lines here)
     const isBreak = (i: number) => i > 0 && data[i]?.cityName !== data[i - 1]?.cityName;
@@ -53,7 +54,7 @@ export default function CloudEnsembleLane({ data }: CloudEnsembleLaneProps) {
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
-  }, [data]);
+  }, [data, hourWidth]);
 
   return (
     <div className="lane cloud-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative', borderBottom: '1px solid var(--lane-border)', backgroundColor: 'transparent' }}>

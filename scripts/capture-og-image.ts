@@ -8,42 +8,46 @@
  *   tsx scripts/capture-og-image.ts --theme dark --format png --output og-image.png
  */
 
-import { parseArgs } from 'node:util';
 import { resolve, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { statSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
+import type { Page } from 'playwright';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const { values } = parseArgs({
-  options: {
-    fixture: { type: 'string', default: 'default' },
-    hours: { type: 'string', default: '72' },
-    theme: { type: 'string' },
-    themes: { type: 'string', default: 'dark,light' },
-    format: { type: 'string' },
-    formats: { type: 'string', default: 'png,webp' },
-    output: { type: 'string' },
-    port: { type: 'string', default: '0' },
-  },
-  strict: false,
-});
+function readArg(name: string): string | undefined {
+  const flag = `--${name}`;
+  const inlinePrefix = `${flag}=`;
+  for (let i = 2; i < process.argv.length; i += 1) {
+    const arg = process.argv[i];
+    if (!arg) continue;
+    if (arg.startsWith(inlinePrefix)) return arg.slice(inlinePrefix.length);
+    if (arg === flag) return process.argv[i + 1];
+  }
+  return undefined;
+}
 
-const fixtureName = values.fixture ?? 'default';
-const hours = Number(values.hours ?? '72');
-const portStr = values.port ?? '0';
-const requestedThemes = values.theme
-  ? [values.theme]
-  : (values.themes ?? 'dark,light').split(',').map((theme) => theme.trim()).filter(Boolean);
-const requestedFormats = values.format
-  ? [values.format]
-  : (values.formats ?? 'png,webp').split(',').map((format) => format.trim()).filter(Boolean);
+const fixtureName = readArg('fixture') ?? 'default';
+const hoursArg = readArg('hours') ?? '72';
+const hours = Number(hoursArg);
+const portStr = readArg('port') ?? '0';
+const outputName = readArg('output');
+const themeArg = readArg('theme');
+const themesArg = readArg('themes') ?? 'dark,light';
+const formatArg = readArg('format');
+const formatsArg = readArg('formats') ?? 'png,webp';
+const requestedThemes = themeArg
+  ? [themeArg]
+  : themesArg.split(',').map((theme) => theme.trim()).filter(Boolean);
+const requestedFormats = formatArg
+  ? [formatArg]
+  : formatsArg.split(',').map((format) => format.trim()).filter(Boolean);
 
 if (!Number.isFinite(hours) || hours <= 0) {
-  console.error(`Invalid hours: ${values.hours}. Expected a positive number.`);
+  console.error(`Invalid hours: ${hoursArg}. Expected a positive number.`);
   process.exit(1);
 }
 
@@ -65,15 +69,16 @@ if (formats.some((format) => format == null)) {
   process.exit(1);
 }
 
+const outputFormats = formats.filter((format): format is 'png' | 'jpeg' | 'webp' => format != null);
+
 function extensionForFormat(format: 'png' | 'jpeg' | 'webp'): string {
   return format === 'jpeg' ? 'jpg' : format;
 }
 
 function outputNameForTheme(theme: string, format: 'png' | 'jpeg' | 'webp'): string {
-  const outputName = values.output;
   const formatExt = extensionForFormat(format);
   if (!outputName) return `og-image-${theme}.${formatExt}`;
-  if (requestedThemes.length === 1 && formats.length === 1) return outputName;
+  if (requestedThemes.length === 1 && outputFormats.length === 1) return outputName;
   if (outputName.includes('{theme}') || outputName.includes('{format}')) {
     return outputName.replaceAll('{theme}', theme).replaceAll('{format}', formatExt);
   }
@@ -82,13 +87,13 @@ function outputNameForTheme(theme: string, format: 'png' | 'jpeg' | 'webp'): str
   const baseName = ext ? outputName.slice(0, -ext.length) : outputName;
   const suffix = [
     requestedThemes.length > 1 ? theme : null,
-    formats.length > 1 ? formatExt : null,
+    outputFormats.length > 1 ? formatExt : null,
   ].filter(Boolean).join('-');
   return `${baseName}-${suffix}.${formatExt}`;
 }
 
 async function captureTheme(
-  page: import('playwright').Page,
+  page: Page,
   serverPort: number,
   theme: string,
 ): Promise<Buffer> {
@@ -114,7 +119,7 @@ async function captureTheme(
 }
 
 async function convertPngInBrowser(
-  page: import('playwright').Page,
+  page: Page,
   png: Buffer,
   format: 'jpeg' | 'webp',
 ): Promise<Buffer> {
@@ -160,7 +165,7 @@ function saveImage(outputName: string, image: Buffer, theme: string): void {
 }
 
 async function main() {
-  console.log(`Generating GitHub OG images from fixture "${fixtureName}" (${hours} hours): ${requestedThemes.join(', ')} / ${formats.join(', ')}`);
+  console.log(`Generating GitHub OG images from fixture "${fixtureName}" (${hours} hours): ${requestedThemes.join(', ')} / ${outputFormats.join(', ')}`);
 
   const server = await createServer({
     server: { port: Number(portStr), strictPort: false },
@@ -180,8 +185,7 @@ async function main() {
   for (const theme of requestedThemes) {
     const png = await captureTheme(page, serverPort, theme);
 
-    for (const format of formats) {
-      if (!format) continue;
+    for (const format of outputFormats) {
       const image = format === 'png' ? png : await convertPngInBrowser(page, png, format);
       saveImage(outputNameForTheme(theme, format), image, theme);
     }

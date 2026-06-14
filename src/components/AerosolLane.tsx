@@ -1,9 +1,9 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
+import { DEFAULT_HOUR_WIDTH, getHourCenter, getHourLeft, getTimelineWidth } from '../services/timelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
-const COL_WIDTH = 22;
 const LANE_HEIGHT = 30;
 const MAX_AOD = 1.5;
 
@@ -33,6 +33,7 @@ const BAR_STOPS = [
 
 interface AerosolLaneProps {
   data: WeatherPoint[];
+  hourWidth?: number;
 }
 
 function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
@@ -79,8 +80,12 @@ function getAodTextStyle(): { fill: string; stroke: string } {
   };
 }
 
-export default function AerosolLane({ data }: AerosolLaneProps) {
-  const totalWidth = data.length * COL_WIDTH;
+export default function AerosolLane({
+  data,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: AerosolLaneProps) {
+  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const barInset = hourWidth >= 12 ? 2 : 1;
 
   const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx, w, h) => {
     const textStyle = getAodTextStyle();
@@ -88,17 +93,18 @@ export default function AerosolLane({ data }: AerosolLaneProps) {
     for (let i = 0; i < data.length; i++) {
       const d = data[i];
       if (!d) continue;
-      const x = i * COL_WIDTH;
+      const x = getHourLeft(i, hourWidth);
+      const cx = getHourCenter(i, hourWidth);
 
       // Background color band
       ctx.fillStyle = aodColor(d.aod);
-      ctx.fillRect(x, 0, COL_WIDTH, h);
+      ctx.fillRect(x, 0, hourWidth, h);
 
       // Bar height proportional to AOD
       if (d.aod != null && d.aod > 0) {
         const barH = Math.min(d.aod / MAX_AOD, 1) * (h - 4);
         ctx.fillStyle = aodBarColor(d.aod);
-        ctx.fillRect(x + 2, h - 2 - barH, COL_WIDTH - 4, barH);
+        ctx.fillRect(x + barInset, h - 2 - barH, Math.max(1, hourWidth - barInset * 2), barH);
       }
 
       // Text label for notable values
@@ -107,12 +113,12 @@ export default function AerosolLane({ data }: AerosolLaneProps) {
         ctx.textAlign = 'center';
         ctx.lineWidth = 2;
         ctx.strokeStyle = textStyle.stroke;
-        ctx.strokeText(d.aod.toFixed(2), x + COL_WIDTH / 2, 11);
+        ctx.strokeText(d.aod.toFixed(2), cx, 11);
         ctx.fillStyle = textStyle.fill;
-        ctx.fillText(d.aod.toFixed(2), x + COL_WIDTH / 2, 11);
+        ctx.fillText(d.aod.toFixed(2), cx, 11);
       }
     }
-  }, [data]);
+  }, [data, hourWidth, barInset]);
 
   return (
     <div className="lane" style={{ height: `${LANE_HEIGHT}px` }}>

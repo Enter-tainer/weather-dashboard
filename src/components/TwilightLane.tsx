@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import './Dashboard.css';
 import { cssVar } from '../services/themeColors';
+import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
 import type { WeatherPoint } from '../types/weather';
-
-const COL_WIDTH = 22;
 
 interface TwilightPalette {
   day: string;
@@ -16,6 +15,7 @@ interface TwilightPalette {
 
 interface TwilightLaneProps {
   data: WeatherPoint[];
+  hourWidth?: number;
 }
 
 // Map sun altitude (degrees) to a sky color
@@ -54,7 +54,7 @@ function lerpColor(a: string, b: string, t: number): string {
   return `rgb(${r},${g},${bl})`;
 }
 
-export default function TwilightLane({ data }: TwilightLaneProps) {
+export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: TwilightLaneProps) {
   const [, setThemeRevision] = useState(0);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function TwilightLane({ data }: TwilightLaneProps) {
 
   const gradient = `linear-gradient(to right, ${stops.join(', ')})`;
 
-  const totalWidth = data.length * COL_WIDTH;
+  const totalWidth = getTimelineWidth(data.length, hourWidth);
 
   return (
     <div className="lane" style={{ height: '12px', minHeight: '12px' }}>

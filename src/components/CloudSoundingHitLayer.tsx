@@ -1,12 +1,12 @@
 import type { WeatherPoint } from '../types/weather';
-
-const COL_WIDTH = 22;
+import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
 
 interface CloudSoundingHitLayerProps {
   data: WeatherPoint[];
   activeTime: string | null;
   onSelect?: (item: WeatherPoint) => void;
   bottomOffset?: number;
+  hourWidth?: number;
 }
 
 function formatHour(item: WeatherPoint): string {
@@ -18,6 +18,7 @@ export default function CloudSoundingHitLayer({
   activeTime,
   onSelect,
   bottomOffset = 0,
+  hourWidth = DEFAULT_HOUR_WIDTH,
 }: CloudSoundingHitLayerProps) {
   if (typeof onSelect !== 'function') return null;
 
@@ -25,7 +26,7 @@ export default function CloudSoundingHitLayer({
     <div
       className="cloud-sounding-hit-layer"
       style={{
-        width: `${data.length * COL_WIDTH}px`,
+        width: `${getTimelineWidth(data.length, hourWidth)}px`,
         bottom: bottomOffset ? `${bottomOffset}px` : 0,
       }}
       aria-label="Skew-T 探空图时次"

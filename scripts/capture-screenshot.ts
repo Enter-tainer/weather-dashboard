@@ -9,12 +9,12 @@
  *   tsx scripts/capture-screenshot.ts --capture 48 --theme dark --output demo.webp
  */
 
-import { parseArgs } from 'node:util';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
+import type { Page } from 'playwright';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,34 +23,37 @@ const __dirname = dirname(__filename);
 // CLI args
 // ---------------------------------------------------------------------------
 
-const { values } = parseArgs({
-  options: {
-    fixture: { type: 'string', default: 'default' },
-    theme: { type: 'string' },
-    themes: { type: 'string', default: 'dark,light' },
-    capture: { type: 'string', default: '72' },
-    output: { type: 'string' },
-    viewport: { type: 'string', default: '1920x1080' },
-    port: { type: 'string', default: '0' },
-  },
-  strict: false,
-});
+function readArg(name: string): string | undefined {
+  const flag = `--${name}`;
+  const inlinePrefix = `${flag}=`;
+  for (let i = 2; i < process.argv.length; i += 1) {
+    const arg = process.argv[i];
+    if (!arg) continue;
+    if (arg.startsWith(inlinePrefix)) return arg.slice(inlinePrefix.length);
+    if (arg === flag) return process.argv[i + 1];
+  }
+  return undefined;
+}
 
-const fixtureName = values.fixture ?? 'default';
-const captureHours = Number(values.capture ?? '72');
-const portStr = values.port ?? '0';
+const fixtureName = readArg('fixture') ?? 'default';
+const captureHours = Number(readArg('capture') ?? '72');
+const portStr = readArg('port') ?? '0';
+const outputName = readArg('output');
+const viewport = readArg('viewport') ?? '1920x1080';
 
 // Determine which themes to generate
-const themes: string[] = values.theme
-  ? [values.theme]
-  : (values.themes ?? 'dark,light').split(',').map(s => s.trim()).filter(Boolean);
+const themeArg = readArg('theme');
+const themesArg = readArg('themes') ?? 'dark,light';
+const themes: string[] = themeArg
+  ? [themeArg]
+  : themesArg.split(',').map((theme) => theme.trim()).filter(Boolean);
 
-const [width, height] = (values.viewport ?? '1920x1080')
-  .split('x')
-  .map(Number) as [number, number];
+const viewportParts = viewport.split('x').map(Number);
+const width = viewportParts[0] ?? 0;
+const height = viewportParts[1] ?? 0;
 
 if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-  console.error(`Invalid viewport: ${values.viewport}. Expected WxH, e.g. 1920x1080`);
+  console.error(`Invalid viewport: ${viewport}. Expected WxH, e.g. 1920x1080`);
   process.exit(1);
 }
 
@@ -58,7 +61,7 @@ if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height 
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function pngToWebpInBrowser(page: import('playwright').Page, pngBuf: Buffer): Promise<Buffer> {
+async function pngToWebpInBrowser(page: Page, pngBuf: Buffer): Promise<Buffer> {
   const base64 = pngBuf.toString('base64');
   const bytes = await page.evaluate(async (b64) => {
     const img = new Image();
@@ -90,7 +93,7 @@ async function pngToWebpInBrowser(page: import('playwright').Page, pngBuf: Buffe
 // ---------------------------------------------------------------------------
 
 async function captureTheme(theme: string, serverPort: number): Promise<void> {
-  const outName = values.output ?? `demo-${theme}.webp`;
+  const outName = outputName ?? `demo-${theme}.webp`;
   const outPath = resolve(__dirname, '..', outName);
 
   const browser = await chromium.launch();

@@ -6,6 +6,8 @@ interface AirQualityLaneProps {
 }
 
 export default function AirQualityLane({ data }: AirQualityLaneProps) {
+  const labelInterval = 1;
+
   const getAqiColor = (aqi: number | undefined): string => {
     const value = aqi ?? 0;
     if (value <= 50) return 'var(--aqi-good)';
@@ -35,7 +37,7 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
             const color = 'var(--metric-text-strong)';
             return (
               <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, fontSize: '11px', color }}>
-                {item.aqiUS}
+                {index % labelInterval === 0 ? item.aqiUS : ''}
               </div>
             );
           })}
@@ -51,7 +53,7 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
             
             return (
               <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, color: 'var(--metric-text)' }}>
-                {visKm !== '-' ? parseFloat(visKm) : ''}
+                {index % labelInterval === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
               </div>
             );
           })}

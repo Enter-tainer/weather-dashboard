@@ -3,17 +3,21 @@ import type { CSSProperties, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
+import {
+  DEFAULT_HOUR_WIDTH,
+  getHourCenter,
+  getHourLeft,
+  getTimelineWidth,
+} from '../services/timelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
 
-const COL_WIDTH = 22;
 const LANE_HEIGHT = 80;
 const TOP_LABEL_H = 13;
 const BOT_LABEL_H = 12;
 const BAR_TOP = TOP_LABEL_H;
 const BAR_BOT = LANE_HEIGHT - BOT_LABEL_H;
 const BAR_H_MAX = BAR_BOT - BAR_TOP;
-const BAR_W = 12;
-const BAR_X = (COL_WIDTH - BAR_W) / 2;
+const DEFAULT_BAR_W = 12;
 
 // ── Temperature color stops ──
 type ColorStop = readonly [temp: number, r: number, g: number, b: number];
@@ -33,6 +37,7 @@ interface ThermoHygroLaneProps {
   data: WeatherPoint[];
   minTemp: number;
   maxTemp: number;
+  hourWidth?: number;
 }
 
 interface TooltipPosition {
@@ -253,9 +258,16 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }: ThermoTooltipProps) {
   );
 }
 
-export default function ThermoHygroLane({ data, minTemp, maxTemp }: ThermoHygroLaneProps) {
-  const totalWidth = data.length * COL_WIDTH;
+export default function ThermoHygroLane({
+  data,
+  minTemp,
+  maxTemp,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: ThermoHygroLaneProps) {
+  const totalWidth = getTimelineWidth(data.length, hourWidth);
   const ensembles = useMemo(() => data.map(d => getEnsemble(d)), [data]);
+  const barWidth = Math.max(2, Math.min(DEFAULT_BAR_W, hourWidth * 0.7));
+  const labelInterval = hourWidth < 12 ? 6 : 3;
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const handleClose = useCallback(() => setActiveIndex(null), []);
@@ -277,8 +289,8 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }: ThermoHygroL
       const d = data[i];
       if (!d) continue;
       const ens = ensembles[i];
-      const cx = i * COL_WIDTH + COL_WIDTH / 2;
-      const bx = i * COL_WIDTH + BAR_X;
+      const cx = getHourCenter(i, hourWidth);
+      const bx = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
 
       const yTemp = tempToY(d.temperature);
       const barH = Math.max(2, BAR_BOT - yTemp);
@@ -286,12 +298,12 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }: ThermoHygroL
       // ── Highlight for hover/active cell ──
       if (i === activeIndex) {
         ctx.fillStyle = cellHover;
-        ctx.fillRect(i * COL_WIDTH, 0, COL_WIDTH, LANE_HEIGHT);
+        ctx.fillRect(getHourLeft(i, hourWidth), 0, hourWidth, LANE_HEIGHT);
       }
 
       // ── Temperature bar ──
       ctx.fillStyle = tempColor(d.temperature);
-      ctx.fillRect(bx, yTemp, BAR_W, barH);
+      ctx.fillRect(bx, yTemp, barWidth, barH);
 
       // ── Dew point (tiny dot) ──
       const yDew = Math.min(BAR_BOT - 2, Math.max(BAR_TOP + 2, tempToY(d.dewPoint)));
@@ -337,10 +349,10 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }: ThermoHygroL
 
     // ── Top labels: temperature + apparent temp (every 3h) ──
     ctx.textAlign = 'center';
-    for (let i = 0; i < data.length; i += 3) {
+    for (let i = 0; i < data.length; i += labelInterval) {
       const d = data[i];
       if (!d) continue;
-      const cx = i * COL_WIDTH + COL_WIDTH / 2;
+      const cx = getHourCenter(i, hourWidth);
 
       // Main temperature
       ctx.font = 'bold 10px system-ui';
@@ -364,15 +376,15 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }: ThermoHygroL
     // ── Bottom labels: humidity every 3h ──
     ctx.font = '8px system-ui';
     ctx.textAlign = 'center';
-    for (let i = 0; i < data.length; i += 3) {
+    for (let i = 0; i < data.length; i += labelInterval) {
       const d = data[i];
       if (!d) continue;
-      const cx = i * COL_WIDTH + COL_WIDTH / 2;
+      const cx = getHourCenter(i, hourWidth);
       ctx.fillStyle = mutedLabel;
       ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
     }
 
-  }, [data, minTemp, maxTemp, ensembles, activeIndex]);
+  }, [data, minTemp, maxTemp, ensembles, activeIndex, hourWidth, barWidth, labelInterval]);
 
   const activeRef = activeIndex != null ? cellRefs[activeIndex] : undefined;
   const activeItem = activeIndex != null ? data[activeIndex] : undefined;
@@ -392,7 +404,7 @@ export default function ThermoHygroLane({ data, minTemp, maxTemp }: ThermoHygroL
               key={i}
               ref={cellRefs[i]}
               style={{
-                width: `${COL_WIDTH}px`,
+                width: `${hourWidth}px`,
                 height: '100%',
                 cursor: 'pointer',
               }}

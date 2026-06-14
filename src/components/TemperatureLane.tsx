@@ -1,17 +1,23 @@
 import { useCanvas } from '../hooks/useCanvas';
+import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
-const COL_WIDTH = 22;
 const LANE_HEIGHT = 110;
 
 interface TemperatureLaneProps {
   data: WeatherPoint[];
   minTemp: number;
   maxTemp: number;
+  hourWidth?: number;
 }
 
-export default function TemperatureLane({ data, minTemp, maxTemp }: TemperatureLaneProps) {
+export default function TemperatureLane({
+  data,
+  minTemp,
+  maxTemp,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: TemperatureLaneProps) {
   const minTempVal = Math.floor(minTemp / 5) * 5;
   const maxTempVal = Math.ceil(maxTemp / 5) * 5;
   const tempSteps: number[] = [];
@@ -21,14 +27,14 @@ export default function TemperatureLane({ data, minTemp, maxTemp }: TemperatureL
     }
   }
 
-  const width = data.length * COL_WIDTH;
+  const width = getTimelineWidth(data.length, hourWidth);
 
   const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const range = maxTemp - minTemp;
     if (range === 0) return;
 
     const getY = (val: number) => h - ((val - minTemp) / range) * h;
-    const getX = (index: number) => index * COL_WIDTH + (COL_WIDTH / 2);
+    const getX = (index: number) => getHourCenter(index, hourWidth);
 
     // Draw gridlines
     ctx.beginPath();
@@ -110,7 +116,7 @@ export default function TemperatureLane({ data, minTemp, maxTemp }: TemperatureL
         segStart = i;
       }
     }
-  }, [data, minTemp, maxTemp, tempSteps]);
+  }, [data, minTemp, maxTemp, tempSteps, hourWidth]);
 
   return (
     <div className="lane temp-lane" style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}>

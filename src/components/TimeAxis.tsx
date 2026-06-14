@@ -1,5 +1,6 @@
 import { Sunrise, Sunset, Moon } from 'lucide-react';
 import type { WeatherPoint, WeatherTimeline } from '../types/weather';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import './Dashboard.css';
 
 interface IndexedWeatherPoint {
@@ -24,7 +25,11 @@ interface DayGroup {
 
 interface TimeAxisProps {
   data: WeatherTimeline;
+  hourWidth?: number;
+  hoursPerColumn?: number;
 }
+
+const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const;
 
 function getMoonPhaseName(phase: number): string {
   if (phase < 0.0625) return '新月';
@@ -38,9 +43,19 @@ function getMoonPhaseName(phase: number): string {
   return '新月';
 }
 
-export default function TimeAxis({ data }: TimeAxisProps) {
-  const COL_WIDTH = 22;
+function formatDateLabel(dateKey: string): string {
+  const dateObj: Date = new Date(`${dateKey}T00:00:00`);
+  const weekday = WEEKDAY_LABELS[dateObj.getDay()] ?? '';
+  return `${weekday} ${dateObj.getDate()}`;
+}
 
+export default function TimeAxis({ data, hourWidth = DEFAULT_HOUR_WIDTH, hoursPerColumn = 1 }: TimeAxisProps) {
+  const hourLabelInterval = 3;
+  const eventLabelFontSize = '9px';
+  const eventIconSize = 10;
+  const showAggregateLabels = hoursPerColumn > 1;
+  const shouldShowHourLabel = (hour: number): boolean => showAggregateLabels || (hour !== 0 && hour % hourLabelInterval === 0);
+  const shouldShowGridLine = (hour: number): boolean => showAggregateLabels || hour % hourLabelInterval === 0;
   // Group data items by city block
   const cityGroups: CityGroup[] = [];
   let currentGroup: CityGroup | null = null;
@@ -60,8 +75,8 @@ export default function TimeAxis({ data }: TimeAxisProps) {
       <div className="lane-data" style={{ position: 'relative' }}>
         {/* Darker localized overlay for the header night periods */}
         {data.nightBands && data.nightBands.map((band, idx) => {
-           const leftPx = band.left * COL_WIDTH + COL_WIDTH / 2;
-           const rightPx = band.right * COL_WIDTH + COL_WIDTH / 2;
+           const leftPx = band.left * hourWidth + hourWidth / 2;
+           const rightPx = band.right * hourWidth + hourWidth / 2;
            return (
               <div key={`header-night-${idx}`} style={{ position: 'absolute', top: 0, left: `${leftPx}px`, width: `${rightPx - leftPx}px`, height: '100%', backgroundColor: 'var(--cell-night)', pointerEvents: 'none', zIndex: 0 }} />
            );
@@ -73,11 +88,9 @@ export default function TimeAxis({ data }: TimeAxisProps) {
           const dayGroups: DayGroup[] = [];
           let currentDay: DayGroup | null = null;
           for (const { item, index } of group.items) {
-            const dateKey = new Date(item.time).toDateString();
+            const dateKey = item.time.slice(0, 10);
             if (!currentDay || currentDay.dateKey !== dateKey) {
-              const dateObj = new Date(item.time);
-              const dayStr = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()] ?? '';
-              currentDay = { dateKey, dateStr: `${dayStr} ${dateObj.getDate()}`, items: [], startIndex: index, moonPhase: item.moonPhase, moonFraction: item.moonFraction };
+              currentDay = { dateKey, dateStr: formatDateLabel(dateKey), items: [], startIndex: index, moonPhase: item.moonPhase, moonFraction: item.moonFraction };
               if (currentDay) dayGroups.push(currentDay);
             }
             currentDay?.items.push({ item, index });
@@ -89,8 +102,8 @@ export default function TimeAxis({ data }: TimeAxisProps) {
               {dayGroups.map((day) => (
                 <div key={`daylabel-${day.startIndex}`} style={{
                   position: 'absolute',
-                  left: `${(day.startIndex - group.startIndex) * COL_WIDTH}px`,
-                  width: `${day.items.length * COL_WIDTH}px`,
+                  left: `${(day.startIndex - group.startIndex) * hourWidth}px`,
+                  width: `${day.items.length * hourWidth}px`,
                   height: '100%',
                   pointerEvents: 'none',
                   zIndex: 10
@@ -112,9 +125,9 @@ export default function TimeAxis({ data }: TimeAxisProps) {
               {group.items.map(({ item, index }) => (
                 <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', zIndex: 5 }}>
                   <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: 'auto' }}>
-                    {item.hour % 3 === 0 && item.hour !== 0 ? item.hour : ''}
+                    {shouldShowHourLabel(item.hour) ? item.hour : ''}
                   </div>
-                  <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: item.hour % 3 === 0 ? 'var(--lane-border)' : 'transparent' }} />
+                  <div style={{ position: 'absolute', right: 0, top: '40px', bottom: 0, width: '1px', backgroundColor: shouldShowGridLine(item.hour) ? 'var(--lane-border)' : 'transparent' }} />
                 </div>
               ))}
             </div>
@@ -124,8 +137,8 @@ export default function TimeAxis({ data }: TimeAxisProps) {
         {/* Sun Events Overlay */}
         {data.sunEvents && data.sunEvents.map((ev, i) => {
            if (ev.absoluteIndex == null) return null;
-           const exactX = ev.absoluteIndex * COL_WIDTH + COL_WIDTH / 2;
-           if (exactX < 0 || exactX > data.length * COL_WIDTH) return null;
+           const exactX = ev.absoluteIndex * hourWidth + hourWidth / 2;
+           if (exactX < 0 || exactX > data.length * hourWidth) return null;
 
            const mm = ev.time.getMinutes().toString().padStart(2, '0');
            const hh = ev.time.getHours().toString().padStart(2, '0');
@@ -141,8 +154,8 @@ export default function TimeAxis({ data }: TimeAxisProps) {
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 21
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px var(--astro-label-stroke)', paintOrder: 'stroke fill' }}>
-                   <IconComp size={10} color={color} /> {hh}:{mm}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: eventLabelFontSize, color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px var(--astro-label-stroke)', paintOrder: 'stroke fill' }}>
+                   <IconComp size={eventIconSize} color={color} /> {hh}:{mm}
                 </div>
                 <div style={{ height: '6px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />
              </div>
@@ -152,8 +165,8 @@ export default function TimeAxis({ data }: TimeAxisProps) {
         {/* Moon Events Overlay */}
         {data.moonEvents && data.moonEvents.map((ev, i) => {
            if (ev.absoluteIndex == null) return null;
-           const exactX = ev.absoluteIndex * COL_WIDTH + COL_WIDTH / 2;
-           if (exactX < 0 || exactX > data.length * COL_WIDTH) return null;
+           const exactX = ev.absoluteIndex * hourWidth + hourWidth / 2;
+           if (exactX < 0 || exactX > data.length * hourWidth) return null;
 
            const mm = ev.time.getMinutes().toString().padStart(2, '0');
            const hh = ev.time.getHours().toString().padStart(2, '0');
@@ -169,8 +182,8 @@ export default function TimeAxis({ data }: TimeAxisProps) {
                 transform: 'translateX(-50%)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', zIndex: 20
              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '9px', color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px var(--astro-label-stroke)', paintOrder: 'stroke fill' }}>
-                   <Moon size={10} color={color} />{arrow}{hh}:{mm}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: eventLabelFontSize, color: color, whiteSpace: 'nowrap', fontWeight: 'bold', WebkitTextStroke: '2px var(--astro-label-stroke)', paintOrder: 'stroke fill' }}>
+                   <Moon size={eventIconSize} color={color} />{arrow}{hh}:{mm}
                 </div>
                 <div style={{ height: '18px', width: '1px', backgroundColor: color, marginTop: '2px', opacity: 0.8 }} />
              </div>

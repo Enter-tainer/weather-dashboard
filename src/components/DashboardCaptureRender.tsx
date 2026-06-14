@@ -5,12 +5,12 @@ import { CanvasCaptureProvider } from '../hooks/canvasCapture';
 import type { CanvasCaptureStatus } from '../hooks/canvasCaptureContext';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import {
-  CAPTURE_COL_WIDTH,
   captureLocationLabel,
   captureRangeLabel,
   sliceTimelineForCapture,
   type CaptureSelection,
 } from '../services/timelineCapture';
+import { getTimelineHourWidth } from '../services/timelineLayout';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 
 const CAPTURE_LEGEND_WIDTH = 48;
@@ -19,6 +19,7 @@ interface DashboardCaptureRenderProps {
   data: WeatherTimeline;
   selection: CaptureSelection;
   compactMode: boolean;
+  hoursPerColumn?: number;
   scales: DashboardScales;
   switchInfo: SwitchInfo;
   onCanvasStatusChange?: ((status: CanvasCaptureStatus) => void) | undefined;
@@ -28,6 +29,7 @@ export default function DashboardCaptureRender({
   data,
   selection,
   compactMode,
+  hoursPerColumn = 1,
   scales,
   switchInfo,
   onCanvasStatusChange,
@@ -36,7 +38,8 @@ export default function DashboardCaptureRender({
     () => sliceTimelineForCapture(data, selection),
     [data, selection],
   );
-  const width = CAPTURE_LEGEND_WIDTH + captureData.length * CAPTURE_COL_WIDTH;
+  const hourWidth = getTimelineHourWidth();
+  const width = CAPTURE_LEGEND_WIDTH + captureData.length * hourWidth;
 
   return (
     <CanvasCaptureProvider onStatusChange={onCanvasStatusChange}>
@@ -54,6 +57,7 @@ export default function DashboardCaptureRender({
           <DashboardLaneStack
             data={captureData}
             compactMode={compactMode}
+            hoursPerColumn={hoursPerColumn}
             scales={scales}
             switchInfo={switchInfo}
             renderMode="capture"

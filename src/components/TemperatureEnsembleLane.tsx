@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import { useCanvas } from '../hooks/useCanvas';
+import {
+  DEFAULT_HOUR_WIDTH,
+  getHourCenter,
+  getHourLeft,
+  getTimelineWidth,
+} from '../services/timelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
 
-const COL_WIDTH = 22;
 const LANE_HEIGHT = 56;
-const BAR_WIDTH = 12;
-const BAR_PAD = (COL_WIDTH - BAR_WIDTH) / 2; // 5px each side
 
 // Temperature color stops: cold blue → mild teal/green → hot orange/red
 type ColorStop = readonly [temp: number, r: number, g: number, b: number];
@@ -25,6 +28,7 @@ interface TemperatureEnsembleLaneProps {
   data: WeatherPoint[];
   minTemp: number;
   maxTemp: number;
+  hourWidth?: number;
 }
 
 function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
@@ -108,8 +112,15 @@ function getEnsemble(d: WeatherPoint): TemperatureEnsemble | null {
   return computeEnsemble(d.tempMembers);
 }
 
-export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }: TemperatureEnsembleLaneProps) {
-  const totalWidth = data.length * COL_WIDTH;
+export default function TemperatureEnsembleLane({
+  data,
+  minTemp,
+  maxTemp,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: TemperatureEnsembleLaneProps) {
+  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const barWidth = Math.max(2, Math.min(12, hourWidth * 0.7));
+  const labelInterval = hourWidth < 12 ? 6 : 2;
 
   // Precompute ensembles so canvas draw doesn't sort on every re-render
   const ensembles = useMemo(() => data.map(d => getEnsemble(d)), [data]);
@@ -125,8 +136,8 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }: Temp
       const d = data[i];
       if (!d) continue;
       const ens = ensembles[i];
-      const x = i * COL_WIDTH + BAR_PAD;
-      const cx = x + BAR_WIDTH / 2;
+      const cx = getHourCenter(i, hourWidth);
+      const x = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
 
       // Use main forecast temperature for bar height (matches TemperatureTextLane above)
       const temp = d.temperature;
@@ -134,7 +145,7 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }: Temp
 
       // Draw temperature bar
       ctx.fillStyle = tempColor(temp);
-      ctx.fillRect(x, h - bh, BAR_WIDTH, bh);
+      ctx.fillRect(x, h - bh, barWidth, bh);
 
       // Error bar (I-beam) only if ensemble data is available
       if (ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90) {
@@ -180,18 +191,18 @@ export default function TemperatureEnsembleLane({ data, minTemp, maxTemp }: Temp
     ctx.textAlign = 'center';
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    for (let i = 0; i < data.length; i += 2) {
+    for (let i = 0; i < data.length; i += labelInterval) {
       const item = data[i];
       if (!item) continue;
       const temp = item.temperature;
       const text = `${Math.round(temp)}`;
-      const tx = i * COL_WIDTH + COL_WIDTH / 2;
+      const tx = getHourCenter(i, hourWidth);
       const ty = h - 3;
       ctx.strokeText(text, tx, ty);
       ctx.fillStyle = tempTextColor(temp);
       ctx.fillText(text, tx, ty);
     }
-  }, [data, minTemp, maxTemp, ensembles]);
+  }, [data, minTemp, maxTemp, ensembles, hourWidth, barWidth, labelInterval]);
 
   return (
     <div className="lane temp-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}>

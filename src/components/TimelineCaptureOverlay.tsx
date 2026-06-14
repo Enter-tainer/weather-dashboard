@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
-  CAPTURE_COL_WIDTH,
   type CaptureDragMode,
   type CaptureSelection,
   updateCaptureSelectionByDrag,
 } from '../services/timelineCapture';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 
 interface TimelineCaptureOverlayProps {
   dataLength: number;
   selection: CaptureSelection;
   onSelectionChange: (selection: CaptureSelection) => void;
+  hourWidth?: number;
+  hoursPerColumn?: number;
 }
 
 interface CaptureDragState {
@@ -23,11 +25,13 @@ export default function TimelineCaptureOverlay({
   dataLength,
   selection,
   onSelectionChange,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+  hoursPerColumn = 1,
 }: TimelineCaptureOverlayProps) {
   const [dragState, setDragState] = useState<CaptureDragState | null>(null);
-  const left = selection.startIndex * CAPTURE_COL_WIDTH;
-  const width = (selection.endIndex - selection.startIndex) * CAPTURE_COL_WIDTH;
-  const totalWidth = dataLength * CAPTURE_COL_WIDTH;
+  const left = selection.startIndex * hourWidth;
+  const width = (selection.endIndex - selection.startIndex) * hourWidth;
+  const totalWidth = dataLength * hourWidth;
 
   const startDrag = useCallback((mode: CaptureDragMode, event: ReactPointerEvent<HTMLElement>) => {
     event.preventDefault();
@@ -44,7 +48,7 @@ export default function TimelineCaptureOverlay({
 
     const handlePointerMove = (event: PointerEvent) => {
       event.preventDefault();
-      const deltaHours = Math.round((event.clientX - dragState.startClientX) / CAPTURE_COL_WIDTH);
+      const deltaHours = Math.round((event.clientX - dragState.startClientX) / hourWidth);
       onSelectionChange(updateCaptureSelectionByDrag(
         dragState.initialSelection,
         dragState.mode,
@@ -66,7 +70,7 @@ export default function TimelineCaptureOverlay({
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [dataLength, dragState, onSelectionChange]);
+  }, [dataLength, dragState, hourWidth, onSelectionChange]);
 
   return (
     <div
@@ -97,7 +101,7 @@ export default function TimelineCaptureOverlay({
           aria-label="移动截图时间范围"
           title="移动截图范围"
         >
-          <span>{selection.endIndex - selection.startIndex}h</span>
+          <span>{(selection.endIndex - selection.startIndex) * hoursPerColumn}h</span>
         </button>
         <button
           type="button"

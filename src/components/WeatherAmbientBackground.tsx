@@ -1,7 +1,6 @@
 import { useCanvas } from '../hooks/useCanvas';
+import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
 import type { WeatherPoint } from '../types/weather';
-
-const COL_WIDTH = 22;
 
 type WeatherCategory = 'clear' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder';
 type RgbTuple = readonly [r: number, g: number, b: number];
@@ -14,6 +13,7 @@ interface WeatherDistributionSegment {
 interface WeatherAmbientBackgroundProps {
   data: WeatherPoint[];
   compact?: boolean;
+  hourWidth?: number;
 }
 
 // Soft ambient colors for weather categories
@@ -57,7 +57,6 @@ function computeDistribution(weatherCodeMembers: number[] | undefined): WeatherD
 }
 
 const ALPHA = 0.22;
-const H_RADIUS_PX = COL_WIDTH * 1.2;
 const WEATHER_ICON_LANE_HEIGHT = 28;
 const UV_LANE_HEIGHT = 25;
 const THERMO_HYGRO_LANE_HEIGHT = 80;
@@ -67,9 +66,14 @@ const COMPACT_TEMP_LANE_HEIGHT = 35;
 const FULL_BG_HEIGHT = WEATHER_ICON_LANE_HEIGHT + UV_LANE_HEIGHT + THERMO_HYGRO_LANE_HEIGHT;
 const COMPACT_BG_HEIGHT = WEATHER_ICON_LANE_HEIGHT + UV_LANE_HEIGHT + COMPACT_TEMP_LANE_HEIGHT;
 
-export default function WeatherAmbientBackground({ data, compact = false }: WeatherAmbientBackgroundProps) {
-  const totalWidth = data.length * COL_WIDTH;
+export default function WeatherAmbientBackground({
+  data,
+  compact = false,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: WeatherAmbientBackgroundProps) {
+  const totalWidth = getTimelineWidth(data.length, hourWidth);
   const bgHeight = compact ? COMPACT_BG_HEIGHT : FULL_BG_HEIGHT;
+  const hRadiusPx = hourWidth * 1.2;
 
   const canvasRef = useCanvas(totalWidth, bgHeight, (ctx) => {
     for (let i = 0; i < data.length; i++) {
@@ -78,7 +82,7 @@ export default function WeatherAmbientBackground({ data, compact = false }: Weat
       const dist = computeDistribution(item.weatherCodeMembers);
       if (!dist) continue;
 
-      const cx = (i + 0.5) * COL_WIDTH;
+      const cx = getHourCenter(i, hourWidth);
 
       let cumulative = 0;
       for (const seg of dist) {
@@ -90,7 +94,7 @@ export default function WeatherAmbientBackground({ data, compact = false }: Weat
         // Scale context so a circular gradient becomes elliptical
         ctx.save();
         ctx.translate(cx, yCenter);
-        ctx.scale(H_RADIUS_PX / vRadius, 1);
+        ctx.scale(hRadiusPx / vRadius, 1);
 
         // Create gradient in scaled space (circular, radius = vRadius)
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, vRadius);
@@ -106,7 +110,7 @@ export default function WeatherAmbientBackground({ data, compact = false }: Weat
         cumulative += seg.prob;
       }
     }
-  }, [data]);
+  }, [data, hourWidth, hRadiusPx, bgHeight]);
 
   return (
     <div style={{

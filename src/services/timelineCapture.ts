@@ -1,6 +1,7 @@
 import type { MoonEventList, NightBand, SunEvent, WeatherPoint, WeatherTimeline } from '../types/weather';
+import { DEFAULT_HOUR_WIDTH } from './timelineLayout';
 
-export const CAPTURE_COL_WIDTH = 22;
+export const CAPTURE_COL_WIDTH = DEFAULT_HOUR_WIDTH;
 export const MIN_CAPTURE_HOURS = 1;
 
 export interface CaptureSelection {
@@ -33,20 +34,19 @@ export function captureSelectionFromViewport(
   scrollLeft: number,
   clientWidth: number,
   dataLength: number,
+  hourWidth = CAPTURE_COL_WIDTH,
 ): CaptureSelection {
   const safeLength = Math.max(0, dataLength);
   if (safeLength === 0) return { startIndex: 0, endIndex: 0 };
 
-  const startIndex = clamp(Math.floor(scrollLeft / CAPTURE_COL_WIDTH), 0, safeLength - 1);
-  const endIndex = clamp(Math.ceil((scrollLeft + clientWidth) / CAPTURE_COL_WIDTH), startIndex + 1, safeLength);
+  const startIndex = clamp(Math.floor(scrollLeft / hourWidth), 0, safeLength - 1);
+  const endIndex = clamp(Math.ceil((scrollLeft + clientWidth) / hourWidth), startIndex + 1, safeLength);
 
   return normalizeCaptureSelection({ startIndex, endIndex }, safeLength);
 }
 
 function localDateKey(item: WeatherPoint): string {
-  const date = new Date(item.time);
-  if (Number.isNaN(date.getTime())) return item.time.slice(0, 10);
-  return date.toDateString();
+  return item.time.slice(0, 10);
 }
 
 function isSameCaptureDayBlock(item: WeatherPoint | undefined, anchor: WeatherPoint): boolean {
@@ -56,11 +56,12 @@ function isSameCaptureDayBlock(item: WeatherPoint | undefined, anchor: WeatherPo
 export function captureSelectionFromCurrentDay(
   scrollLeft: number,
   data: WeatherTimeline,
+  hourWidth = CAPTURE_COL_WIDTH,
 ): CaptureSelection {
   const safeLength = Math.max(0, data.length);
   if (safeLength === 0) return { startIndex: 0, endIndex: 0 };
 
-  const anchorIndex = clamp(Math.floor(scrollLeft / CAPTURE_COL_WIDTH), 0, safeLength - 1);
+  const anchorIndex = clamp(Math.floor(scrollLeft / hourWidth), 0, safeLength - 1);
   const anchor = data[anchorIndex];
   if (!anchor) return normalizeCaptureSelection({ startIndex: 0, endIndex: Math.min(24, safeLength) }, safeLength);
 

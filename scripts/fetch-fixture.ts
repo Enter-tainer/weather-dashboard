@@ -8,7 +8,6 @@
  *   tsx scripts/fetch-fixture.ts --name my-route --route "Tokyo;Singapore"
  */
 
-import { parseArgs } from 'node:util';
 import { mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +21,10 @@ const __dirname = dirname(__filename);
 
 const store = new Map<string, string>();
 
-(globalThis as any).localStorage = {
+const memoryStorage: Storage = {
+  clear(): void {
+    store.clear();
+  },
   getItem(key: string): string | null {
     return store.get(key) ?? null;
   },
@@ -40,23 +42,35 @@ const store = new Map<string, string>();
   },
 };
 
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: memoryStorage,
+});
+
 // cache.ts calls window.setTimeout for 429 retry backoff
-(globalThis as any).window = globalThis;
+Object.defineProperty(globalThis, 'window', {
+  configurable: true,
+  value: globalThis,
+});
 
 // ---------------------------------------------------------------------------
 // CLI args
 // ---------------------------------------------------------------------------
 
-const { values } = parseArgs({
-  options: {
-    route: { type: 'string', default: 'Beijing;London;Reykjavik;Tokyo' },
-    name: { type: 'string', default: 'default' },
-  },
-  strict: false,
-});
+function readArg(name: string): string | undefined {
+  const flag = `--${name}`;
+  const inlinePrefix = `${flag}=`;
+  for (let i = 2; i < process.argv.length; i += 1) {
+    const arg = process.argv[i];
+    if (!arg) continue;
+    if (arg.startsWith(inlinePrefix)) return arg.slice(inlinePrefix.length);
+    if (arg === flag) return process.argv[i + 1];
+  }
+  return undefined;
+}
 
-const routeStr = values.route ?? 'Beijing;London;Reykjavik;Tokyo';
-const fixtureName = values.name ?? 'default';
+const routeStr = readArg('route') ?? 'Beijing;London;Reykjavik;Tokyo';
+const fixtureName = readArg('name') ?? 'default';
 
 // ---------------------------------------------------------------------------
 // Import app modules (must come AFTER shim setup)
@@ -139,7 +153,7 @@ const fixture = {
 writeFileSync(filePath, JSON.stringify(fixture));
 
 const sizeMB = (statSync(filePath).size / (1024 * 1024)).toFixed(2);
-const citiesFound = new Set(timeline.map((p: any) => p.cityName)).size;
+const citiesFound = new Set(timeline.map((point) => point.cityName)).size;
 
 console.log(`Fixture saved: ${filePath}`);
 console.log(`  ${citiesFound} cities, ${timeline.length} hours, ${sizeMB} MB`);

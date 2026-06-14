@@ -16,6 +16,8 @@ interface FixtureBundle {
   nightBands?: NightBand[];
 }
 
+const EMPTY_TIMELINE: WeatherTimeline = [];
+
 function reviveDates(events: { time: string | Date }[]): void {
   for (const e of events) {
     if (typeof e.time === 'string') e.time = new Date(e.time);
@@ -25,11 +27,11 @@ function reviveDates(events: { time: string | Date }[]): void {
 function attachMeta(points: WeatherTimeline, bundle: FixtureBundle): WeatherTimeline {
   if (bundle.sunEvents) {
     reviveDates(bundle.sunEvents);
-    points.sunEvents = bundle.sunEvents as SunEvent[];
+    points.sunEvents = bundle.sunEvents;
   }
   if (bundle.moonEvents) {
     reviveDates(bundle.moonEvents);
-    points.moonEvents = bundle.moonEvents as MoonEventList;
+    points.moonEvents = bundle.moonEvents;
   }
   if (bundle.nightBands) points.nightBands = bundle.nightBands;
   return points;
@@ -40,11 +42,10 @@ export default function AppDev({ testData: propTestData }: AppDevProps) {
   const captureParam = useSearchParam('capture');
   const ogParam = useSearchParam('og');
   const ogHoursParam = useSearchParam('ogHours');
-  const [fixtureData, setFixtureData] = useState<WeatherTimeline>();
+  const [fixtureData, setFixtureData] = useState<{ name: string; data: WeatherTimeline } | null>(null);
 
   useEffect(() => {
     if (!fixtureName) {
-      setFixtureData(undefined);
       return undefined;
     }
 
@@ -56,9 +57,9 @@ export default function AppDev({ testData: propTestData }: AppDevProps) {
         return r.json() as Promise<FixtureBundle>;
       })
       .then(bundle => {
-        if (!cancelled) setFixtureData(attachMeta(bundle.points, bundle));
+        if (!cancelled) setFixtureData({ name: fixtureName, data: attachMeta(bundle.points, bundle) });
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         console.error(`Failed to load fixture "${fixtureName}":`, err);
       });
 
@@ -67,8 +68,8 @@ export default function AppDev({ testData: propTestData }: AppDevProps) {
 
   const testData = useMemo<WeatherTimeline | undefined>(() => {
     if (fixtureName) {
-      if (fixtureData) return fixtureData;
-      return [] as unknown as WeatherTimeline;
+      if (fixtureData?.name === fixtureName) return fixtureData.data;
+      return EMPTY_TIMELINE;
     }
     return propTestData;
   }, [fixtureName, fixtureData, propTestData]);
