@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
   type CaptureDragMode,
@@ -32,6 +32,9 @@ export default function TimelineCaptureOverlay({
   const left = selection.startIndex * hourWidth;
   const width = (selection.endIndex - selection.startIndex) * hourWidth;
   const totalWidth = dataLength * hourWidth;
+
+  const selectionRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
 
   const startDrag = useCallback((mode: CaptureDragMode, event: ReactPointerEvent<HTMLElement>) => {
     event.preventDefault();
@@ -72,6 +75,49 @@ export default function TimelineCaptureOverlay({
     };
   }, [dataLength, dragState, hourWidth, onSelectionChange]);
 
+  // Keep the range label visible in the viewport, pinned to the selection's
+  // horizontal centre.  `position: sticky; left: 50%` only clamps on one side
+  // (the left), so we use JS + position: fixed to get symmetric bidirectional
+  // clamping.
+  useEffect(() => {
+    const selectionEl = selectionRef.current;
+    const labelEl = labelRef.current;
+    if (!selectionEl || !labelEl) return;
+
+    const scroller = selectionEl.closest<HTMLElement>('.timeline-scroller');
+    if (!scroller) return;
+
+    const updatePosition = () => {
+      const rect = selectionEl.getBoundingClientRect();
+      const center = rect.left + rect.width / 2;
+      const padding = 4;
+      // Account for the translateX(-50%) transform that shifts the span
+      // left by half its own width — clamp so the full visual span stays
+      // within the viewport.
+      const halfWidth = labelEl.offsetWidth / 2;
+      const minLeft = halfWidth + padding;
+      const maxLeft = window.innerWidth - halfWidth - padding;
+      const clampedLeft = Math.max(minLeft, Math.min(maxLeft, center));
+      const clampedTop = Math.max(4, rect.top);
+
+      labelEl.style.position = 'fixed';
+      labelEl.style.left = `${clampedLeft}px`;
+      labelEl.style.top = `${clampedTop - 4}px`;
+      labelEl.style.transform = 'translateX(-50%)';
+    };
+
+    updatePosition();
+
+    scroller.addEventListener('scroll', updatePosition, { passive: true });
+    window.addEventListener('resize', updatePosition, { passive: true });
+
+    return () => {
+      scroller.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('resize', updatePosition);
+    };
+    // Re-run when selection bounds change (width / centre shifts)
+  }, [selection.startIndex, selection.endIndex]);
+
   return (
     <div
       className="timeline-capture-overlay"
@@ -81,6 +127,7 @@ export default function TimelineCaptureOverlay({
       <div className="timeline-capture-mask" style={{ left: 0, width: `${left}px` }} />
       <div className="timeline-capture-mask" style={{ left: `${left + width}px`, width: `${Math.max(0, totalWidth - left - width)}px` }} />
       <div
+        ref={selectionRef}
         className={[
           'timeline-capture-selection',
           dragState ? 'is-dragging' : '',
@@ -101,7 +148,7 @@ export default function TimelineCaptureOverlay({
           aria-label="移动截图时间范围"
           title="移动截图范围"
         >
-          <span>{(selection.endIndex - selection.startIndex) * hoursPerColumn}h</span>
+          <span ref={labelRef}>{(selection.endIndex - selection.startIndex) * hoursPerColumn}h</span>
         </button>
         <button
           type="button"
