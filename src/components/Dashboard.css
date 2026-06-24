@@ -274,7 +274,8 @@
   min-height: min-content;
   position: relative;
   transition: opacity 0.2s ease;
-  will-change: transform;
+  /* 这里不用 will-change: transform，否则 position: fixed 子元素
+     的包含块从视口降级为这个元素，导致 fixed 定位失效。 */
 }
 
 .lanes-container.is-capture-render,
@@ -570,13 +571,15 @@
   cursor: grabbing;
 }
 
-.timeline-capture-move span {
-  position: sticky;
-  top: 15px;
-  left: 50%;
-  display: inline-flex;
+/* 
+ * label 用 position: fixed，在 selection 变化时（不监听滚动事件）
+ * 通过 useEffect 重新计算视口位置，用 max/min 双侧钳制。
+ * 渲染时计算一次，滚动时不重新计算，不卡。
+ */
+.timeline-capture-label-fixed {
   min-width: 34px;
   height: 20px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 7px;
@@ -587,8 +590,14 @@
   font-size: 11px;
   line-height: 1;
   font-weight: 700;
-  transform: translateX(-50%);
   white-space: nowrap;
+  pointer-events: none;
+  z-index: 901;
+  transition: opacity 0.15s ease;
+}
+
+.timeline-capture-label-fixed.is-hidden {
+  opacity: 0;
 }
 
 @media (pointer: coarse) {

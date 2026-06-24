@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
   type CaptureDragMode,
@@ -32,6 +32,48 @@ export default function TimelineCaptureOverlay({
   const left = selection.startIndex * hourWidth;
   const width = (selection.endIndex - selection.startIndex) * hourWidth;
   const totalWidth = dataLength * hourWidth;
+  const hours = (selection.endIndex - selection.startIndex) * hoursPerColumn;
+
+  const [labelStyle, setLabelStyle] = useState<React.CSSProperties | null>(null);
+  const prevLeftRef = useRef(left);
+  const prevWidthRef = useRef(width);
+
+  // 在 selection 变化时（不监听滚动事件），计算 label 的 fixed 位置
+  // 用 max/min 双侧钳制，只在选区变化时重新计算，滚动时不动
+  useEffect(() => {
+    // 跳过渲染时第一次触发（还没到初始渲染完成后）
+    // 实际上只要 left/width 变了就执行
+    const scroller = document.querySelector('.timeline-scroller');
+    if (!scroller) return;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const scrollerScrollLeft = scroller.scrollLeft;
+
+    // 选区的视口 left
+    const selLeftViewport = left - scrollerScrollLeft + scrollerRect.left;
+    const selRightViewport = selLeftViewport + width;
+
+    // label 在选区中心
+    const centre = (selLeftViewport + selRightViewport) / 2;
+
+    // 双侧钳制
+    const pad = 4;
+    const viewportWidth = window.innerWidth;
+    const labelWidth = 34; // min-width: 34px + 2*7px padding = 34
+    const rightBoundary = viewportWidth - labelWidth - pad;
+
+    let fixedLeft = centre - labelWidth / 2;
+    fixedLeft = Math.max(pad, Math.min(rightBoundary, fixedLeft));
+
+    setLabelStyle({
+      position: 'fixed',
+      left: `${fixedLeft}px`,
+      top: `${scrollerRect.top + 10}px`,
+    });
+
+    prevLeftRef.current = left;
+    prevWidthRef.current = width;
+  }, [left, width]);
 
   const startDrag = useCallback((mode: CaptureDragMode, event: ReactPointerEvent<HTMLElement>) => {
     event.preventDefault();
@@ -100,9 +142,7 @@ export default function TimelineCaptureOverlay({
           onPointerDown={(event) => startDrag('move', event)}
           aria-label="移动截图时间范围"
           title="移动截图范围"
-        >
-          <span>{(selection.endIndex - selection.startIndex) * hoursPerColumn}h</span>
-        </button>
+        />
         <button
           type="button"
           className="timeline-capture-handle is-right"
@@ -111,6 +151,15 @@ export default function TimelineCaptureOverlay({
           title="调整结束时间"
         />
       </div>
+      {/* label 用 position: fixed，在 selection 变化时（不监听滚动事件）
+          通过 useEffect 重新计算视口位置，用 max/min 双侧钳制。
+          渲染时计算一次，滚动时不重新计算，不卡。 */}
+      <span
+        className={['timeline-capture-label-fixed', labelStyle ? '' : 'is-hidden'].filter(Boolean).join(' ')}
+        style={labelStyle ?? undefined}
+      >
+        {hours}h
+      </span>
     </div>
   );
 }
