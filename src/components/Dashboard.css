@@ -571,9 +571,6 @@
 }
 
 .timeline-capture-move span {
-  /* position/left/top/transform are set by JS (position: fixed) in
-     TimelineCaptureOverlay – the sticky rules below serve as a
-     brief SSR / JS-not-ready-yet fallback. */
   position: sticky;
   top: 15px;
   left: 50%;

@@ -75,9 +75,9 @@ export default function TimelineCaptureOverlay({
     };
   }, [dataLength, dragState, hourWidth, onSelectionChange]);
 
-  // Sticky `left: 50%` only clamps on the left side.
-  // Use JS + position: fixed to keep the label anchored to the selection's
-  // centre while staying within viewport on both sides.
+  // Keep range-label visible in viewport, pinned to selection centre.
+  // `position: sticky; left: 50%` only clamps on the left side, so we
+  // use JS + position: fixed to get symmetric bidirectional clamping.
   useEffect(() => {
     const sel = selectionRef.current;
     const lbl = labelRef.current;
@@ -88,11 +88,10 @@ export default function TimelineCaptureOverlay({
 
     const update = () => {
       const r = sel.getBoundingClientRect();
-      const c = r.left + r.width / 2;           // selection centre in viewport
-      const hw = lbl.offsetWidth / 2;            // half the label width
+      const centre = r.left + r.width / 2;
+      const hw = lbl.offsetWidth / 2;
       const pad = 4;
-      // Clamp so the full label (including translateX(-50%)) stays on screen
-      const l = Math.max(hw + pad, Math.min(innerWidth - hw - pad, c));
+      const l = Math.max(hw + pad, Math.min(innerWidth - hw - pad, centre));
       lbl.style.setProperty('position', 'fixed');
       lbl.style.setProperty('left', `${l}px`);
       lbl.style.setProperty('top', `${Math.max(4, r.top) - 4}px`);
@@ -105,7 +104,7 @@ export default function TimelineCaptureOverlay({
       scroller.removeEventListener('scroll', update);
       removeEventListener('resize', update);
     };
-  }, []);
+  }, [selection.startIndex, selection.endIndex]);
 
   return (
     <div
