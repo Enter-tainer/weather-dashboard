@@ -564,6 +564,9 @@
   min-width: 0;
   background: transparent;
   cursor: grab;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .timeline-capture-move:active {
@@ -573,7 +576,8 @@
 .timeline-capture-move span {
   position: sticky;
   top: 15px;
-  left: 50%;
+  left: 8px;
+  right: 8px;
   display: inline-flex;
   min-width: 34px;
   height: 20px;
@@ -587,7 +591,6 @@
   font-size: 11px;
   line-height: 1;
   font-weight: 700;
-  transform: translateX(-50%);
   white-space: nowrap;
 }
 
