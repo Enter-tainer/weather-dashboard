@@ -87,8 +87,8 @@ export async function fetchCityDataForDate(cityObj) {
   // Forecast API
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,boundary_layer_height,${cloudPressureParams},${geopotentialParams}${tzParams}`;
 
-  // Ensemble API
-  const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
+  // Ensemble API — request the same hourly fields as the forecast API for complete fallback
+  const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape&models=${ensembleModel}${tzParams}`;
 
   // AQI API
   const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,dust,aerosol_optical_depth${tzParams}`;
@@ -130,24 +130,66 @@ export async function fetchCityDataForDate(cityObj) {
 
     // Calculate mean from member data to substitute the standard forecast
     for (let i = 0; i < hoursCount; i++) {
-      let tempSum = 0, precipSum = 0, windSum = 0, pressSum = 0;
-      let tempCount = 0, precipCount = 0, windCount = 0, pressCount = 0;
-      
+      let tempSum = 0, rhSum = 0, dewPointSum = 0, apparentTempSum = 0;
+      let precipSum = 0, windSum = 0, windDirSum = 0, gustSum = 0;
+      let visibilitySum = 0, cloudCoverSum = 0, cloudLowSum = 0, cloudMidSum = 0, cloudHighSum = 0;
+      let uvIndexSum = 0, pressSum = 0, capeSum = 0;
+      let tempCount = 0, rhCount = 0, dewPointCount = 0, apparentTempCount = 0;
+      let precipCount = 0, windCount = 0, windDirCount = 0, gustCount = 0;
+      let visibilityCount = 0, cloudCoverCount = 0, cloudLowCount = 0, cloudMidCount = 0, cloudHighCount = 0;
+      let uvIndexCount = 0, pressCount = 0, capeCount = 0;
+      // weather_code: collect all values to compute mode (most common value)
+      const weatherCodeValues = [];
+
       for (const [key, arr] of Object.entries(ensembleRes.hourly)) {
         if (key.startsWith('temperature_2m_member') && arr[i] != null) { tempSum += arr[i]; tempCount++; }
+        if (key.startsWith('relative_humidity_2m_member') && arr[i] != null) { rhSum += arr[i]; rhCount++; }
+        if (key.startsWith('dew_point_2m_member') && arr[i] != null) { dewPointSum += arr[i]; dewPointCount++; }
+        if (key.startsWith('apparent_temperature_member') && arr[i] != null) { apparentTempSum += arr[i]; apparentTempCount++; }
         if (key.startsWith('precipitation_member') && arr[i] != null) { precipSum += arr[i]; precipCount++; }
+        if (key.startsWith('weather_code_member') && arr[i] != null) { weatherCodeValues.push(arr[i]); }
         if (key.startsWith('wind_speed_10m_member') && arr[i] != null) { windSum += arr[i]; windCount++; }
+        if (key.startsWith('wind_direction_10m_member') && arr[i] != null) { windDirSum += arr[i]; windDirCount++; }
+        if (key.startsWith('wind_gusts_10m_member') && arr[i] != null) { gustSum += arr[i]; gustCount++; }
+        if (key.startsWith('visibility_member') && arr[i] != null) { visibilitySum += arr[i]; visibilityCount++; }
+        if (key.startsWith('cloud_cover_member') && arr[i] != null) { cloudCoverSum += arr[i]; cloudCoverCount++; }
+        if (key.startsWith('cloud_cover_low_member') && arr[i] != null) { cloudLowSum += arr[i]; cloudLowCount++; }
+        if (key.startsWith('cloud_cover_mid_member') && arr[i] != null) { cloudMidSum += arr[i]; cloudMidCount++; }
+        if (key.startsWith('cloud_cover_high_member') && arr[i] != null) { cloudHighSum += arr[i]; cloudHighCount++; }
+        if (key.startsWith('uv_index_member') && arr[i] != null) { uvIndexSum += arr[i]; uvIndexCount++; }
         if (key.startsWith('surface_pressure_member') && arr[i] != null) { pressSum += arr[i]; pressCount++; }
+        if (key.startsWith('cape_member') && arr[i] != null) { capeSum += arr[i]; capeCount++; }
       }
-      
-      mockHourly.temperature_2m[i] = tempCount > 0 ? tempSum / tempCount : 0;
-      mockHourly.dew_point_2m[i] = mockHourly.temperature_2m[i]; // rough fallback
-      mockHourly.apparent_temperature[i] = mockHourly.temperature_2m[i]; // approximate
-      mockHourly.precipitation[i] = precipCount > 0 ? precipSum / precipCount : 0;
+
+      // Mode for weather_code (most common value across members)
+      let weatherCode = 0;
+      if (weatherCodeValues.length > 0) {
+        const freq = {};
+        let maxFreq = 0;
+        for (const code of weatherCodeValues) {
+          freq[code] = (freq[code] || 0) + 1;
+          if (freq[code] > maxFreq) { maxFreq = freq[code]; weatherCode = code; }
+        }
+      }
+
+      mockHourly.temperature_2m[i] = tempCount > 0 ? tempSum / tempCount : null;
+      mockHourly.relative_humidity_2m[i] = rhCount > 0 ? rhSum / rhCount : null;
+      mockHourly.dew_point_2m[i] = dewPointCount > 0 ? dewPointSum / dewPointCount : null;
+      mockHourly.apparent_temperature[i] = apparentTempCount > 0 ? apparentTempSum / apparentTempCount : null;
+      mockHourly.precipitation[i] = precipCount > 0 ? precipSum / precipCount : null;
       mockHourly.precipitation_probability[i] = mockHourly.precipitation[i] > 0.1 ? 80 : 0;
-      mockHourly.wind_speed_10m[i] = windCount > 0 ? windSum / windCount : 0;
-      mockHourly.wind_gusts_10m[i] = mockHourly.wind_speed_10m[i] * 1.5; // very rough estimate
-      mockHourly.surface_pressure[i] = pressCount > 0 ? pressSum / pressCount : 1013;
+      mockHourly.weather_code[i] = weatherCode;
+      mockHourly.wind_speed_10m[i] = windCount > 0 ? windSum / windCount : null;
+      mockHourly.wind_direction_10m[i] = windDirCount > 0 ? windDirSum / windDirCount : null;
+      mockHourly.wind_gusts_10m[i] = gustCount > 0 ? gustSum / gustCount : null;
+      mockHourly.visibility[i] = visibilityCount > 0 ? visibilitySum / visibilityCount : null;
+      mockHourly.cloud_cover[i] = cloudCoverCount > 0 ? cloudCoverSum / cloudCoverCount : null;
+      mockHourly.cloud_cover_low[i] = cloudLowCount > 0 ? cloudLowSum / cloudLowCount : null;
+      mockHourly.cloud_cover_mid[i] = cloudMidCount > 0 ? cloudMidSum / cloudMidCount : null;
+      mockHourly.cloud_cover_high[i] = cloudHighCount > 0 ? cloudHighSum / cloudHighCount : null;
+      mockHourly.uv_index[i] = uvIndexCount > 0 ? uvIndexSum / uvIndexCount : null;
+      mockHourly.surface_pressure[i] = pressCount > 0 ? pressSum / pressCount : null;
+      mockHourly.cape[i] = capeCount > 0 ? capeSum / capeCount : null;
     }
     
     forecastRes = { hourly: mockHourly };
@@ -163,6 +205,17 @@ export async function fetchCityDataForDate(cityObj) {
     const cloudMembers = [];
     const pressureMembers = [];
     const weatherCodeMembers = [];
+    const rhMembers = [];
+    const windDirMembers = [];
+    const gustMembers = [];
+    const dewPointMembers = [];
+    const apparentTempMembers = [];
+    const visibilityMembers = [];
+    const cloudLowMembers = [];
+    const cloudMidMembers = [];
+    const cloudHighMembers = [];
+    const uvIndexMembers = [];
+    const capeMembers = [];
     if (ensembleRes && ensembleRes.hourly) {
       for (const key in ensembleRes.hourly) {
         if (key.startsWith('temperature_2m_member') && ensembleRes.hourly[key][i] != null) tempMembers.push(ensembleRes.hourly[key][i]);
@@ -171,6 +224,17 @@ export async function fetchCityDataForDate(cityObj) {
         if (key.startsWith('cloud_cover_member') && ensembleRes.hourly[key][i] != null) cloudMembers.push(ensembleRes.hourly[key][i]);
         if (key.startsWith('surface_pressure_member') && ensembleRes.hourly[key][i] != null) pressureMembers.push(ensembleRes.hourly[key][i]);
         if (key.startsWith('weather_code_member') && ensembleRes.hourly[key][i] != null) weatherCodeMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('relative_humidity_2m_member') && ensembleRes.hourly[key][i] != null) rhMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('wind_direction_10m_member') && ensembleRes.hourly[key][i] != null) windDirMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('wind_gusts_10m_member') && ensembleRes.hourly[key][i] != null) gustMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('dew_point_2m_member') && ensembleRes.hourly[key][i] != null) dewPointMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('apparent_temperature_member') && ensembleRes.hourly[key][i] != null) apparentTempMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('visibility_member') && ensembleRes.hourly[key][i] != null) visibilityMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('cloud_cover_low_member') && ensembleRes.hourly[key][i] != null) cloudLowMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('cloud_cover_mid_member') && ensembleRes.hourly[key][i] != null) cloudMidMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('cloud_cover_high_member') && ensembleRes.hourly[key][i] != null) cloudHighMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('uv_index_member') && ensembleRes.hourly[key][i] != null) uvIndexMembers.push(ensembleRes.hourly[key][i]);
+        if (key.startsWith('cape_member') && ensembleRes.hourly[key][i] != null) capeMembers.push(ensembleRes.hourly[key][i]);
       }
     }
 
@@ -198,9 +262,9 @@ export async function fetchCityDataForDate(cityObj) {
         ) ?? Infinity
       ),
       
-      uvIndex: forecastRes.hourly.uv_index?.[i] || 0,
-      pressure: forecastRes.hourly.surface_pressure?.[i] || 1013,
-      cape: forecastRes.hourly.cape?.[i] || 0,
+      uvIndex: forecastRes.hourly.uv_index?.[i] ?? null,
+      pressure: forecastRes.hourly.surface_pressure?.[i] ?? null,
+      cape: forecastRes.hourly.cape?.[i] ?? null,
       
       cloudCover: forecastRes.hourly.cloud_cover[i],
       cloudLow: forecastRes.hourly.cloud_cover_low[i],
@@ -212,7 +276,7 @@ export async function fetchCityDataForDate(cityObj) {
       // Pressure-level cloud cover and geopotential heights for altitude visualization
       cloudByLevel: pressureLevels.map(p => ({
         pressure: p,
-        cover: forecastRes.hourly[`cloud_cover_${p}hPa`]?.[i] || 0,
+        cover: forecastRes.hourly[`cloud_cover_${p}hPa`]?.[i] ?? null,
         altitude: forecastRes.hourly[`geopotential_height_${p}hPa`]?.[i] || null,
       })),
 
@@ -222,15 +286,26 @@ export async function fetchCityDataForDate(cityObj) {
       cloudMembers,
       pressureMembers,
       weatherCodeMembers,
+      rhMembers,
+      windDirMembers,
+      gustMembers,
+      dewPointMembers,
+      apparentTempMembers,
+      visibilityMembers,
+      cloudLowMembers,
+      cloudMidMembers,
+      cloudHighMembers,
+      uvIndexMembers,
+      capeMembers,
 
-      aqiUS: aqRes?.hourly?.us_aqi?.[i] || 0,
-      aqiEU: aqRes?.hourly?.european_aqi?.[i] || 0,
-      pm25: aqRes?.hourly?.pm2_5?.[i] || 0,
-      pm10: aqRes?.hourly?.pm10?.[i] || 0,
-      co: aqRes?.hourly?.carbon_monoxide?.[i] || 0,
-      no2: aqRes?.hourly?.nitrogen_dioxide?.[i] || 0,
-      so2: aqRes?.hourly?.sulphur_dioxide?.[i] || 0,
-      dust: aqRes?.hourly?.dust?.[i] || 0,
+      aqiUS: aqRes?.hourly?.us_aqi?.[i] ?? null,
+      aqiEU: aqRes?.hourly?.european_aqi?.[i] ?? null,
+      pm25: aqRes?.hourly?.pm2_5?.[i] ?? null,
+      pm10: aqRes?.hourly?.pm10?.[i] ?? null,
+      co: aqRes?.hourly?.carbon_monoxide?.[i] ?? null,
+      no2: aqRes?.hourly?.nitrogen_dioxide?.[i] ?? null,
+      so2: aqRes?.hourly?.sulphur_dioxide?.[i] ?? null,
+      dust: aqRes?.hourly?.dust?.[i] ?? null,
       aod: aqRes?.hourly?.aerosol_optical_depth?.[i] ?? null,
     });
   }
