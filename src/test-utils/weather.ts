@@ -1,4 +1,4 @@
-import type { WeatherPoint, WeatherTimeline } from '../types/weather';
+import type { DateSlot, RouteEntry, WeatherPoint, WeatherTimeline } from '../types/weather';
 
 export function makeWeatherPoint(overrides: Partial<WeatherPoint> = {}): WeatherPoint {
   return {
@@ -30,4 +30,25 @@ export function makeWeatherPoint(overrides: Partial<WeatherPoint> = {}): Weather
 export function makeWeatherTimeline(points: WeatherPoint[] = []): WeatherTimeline {
   const timeline: WeatherTimeline = [...points];
   return timeline;
+}
+
+export function makeRouteEntry(overrides: Partial<RouteEntry> = {}): RouteEntry {
+  return {
+    city: 'Test City',
+    originalName: 'Test City',
+    date: '2026-05-23',
+    ...overrides,
+  };
+}
+
+export function makeDateSlot(overrides: Partial<DateSlot> = {}): DateSlot {
+  return {
+    date: '2026-05-23',
+    activeIndex: 0,
+    entries: [
+      makeRouteEntry({ city: 'City A', originalName: 'City A' }),
+      makeRouteEntry({ city: 'City B', originalName: 'City B' }),
+    ],
+    ...overrides,
+  };
 }

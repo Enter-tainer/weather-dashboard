@@ -22,6 +22,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm exec playwright install --with-deps chromium
+
       - run: pnpm lint
 
       - run: pnpm format:check
@@ -31,3 +33,7 @@ jobs:
       - run: pnpm test
 
       - run: pnpm build
+
+      - run: pnpm test:e2e
+
+      - run: pnpm test:visual

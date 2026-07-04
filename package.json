@@ -14,6 +14,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "tsx scripts/e2e-smoke.ts",
+    "test:visual": "tsx scripts/visual-smoke.ts",
     "deploy": "vite build && wrangler deploy",
     "fixture:fetch": "tsx scripts/fetch-fixture.ts",
     "demo:update": "tsx scripts/capture-screenshot.ts",
