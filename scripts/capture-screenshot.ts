@@ -46,7 +46,10 @@ const themeArg = readArg('theme');
 const themesArg = readArg('themes') ?? 'dark,light';
 const themes: string[] = themeArg
   ? [themeArg]
-  : themesArg.split(',').map((theme) => theme.trim()).filter(Boolean);
+  : themesArg
+      .split(',')
+      .map((theme) => theme.trim())
+      .filter(Boolean);
 
 const viewportParts = viewport.split('x').map(Number);
 const width = viewportParts[0] ?? 0;
@@ -77,10 +80,14 @@ async function pngToWebpInBrowser(page: Page, pngBuf: Buffer): Promise<Buffer> {
     if (!ctx) throw new Error('2d context not available');
     ctx.drawImage(img, 0, 0);
     const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((b) => {
-        if (b) resolve(b);
-        else reject(new Error('WebP encoding failed'));
-      }, 'image/webp', 0.85);
+      canvas.toBlob(
+        (b) => {
+          if (b) resolve(b);
+          else reject(new Error('WebP encoding failed'));
+        },
+        'image/webp',
+        0.85,
+      );
     });
     const buf = await blob.arrayBuffer();
     return Array.from(new Uint8Array(buf));

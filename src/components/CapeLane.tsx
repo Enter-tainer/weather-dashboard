@@ -17,18 +17,42 @@ export default function CapeLane({ data }: CapeLaneProps) {
   };
 
   return (
-    <div className="lane cape-lane" style={{ height: 'var(--lane-height-cape)', backgroundColor: 'transparent', borderBottom: '1px solid var(--lane-border)' }}>
+    <div
+      className="lane cape-lane"
+      style={{
+        height: 'var(--lane-height-cape)',
+        backgroundColor: 'transparent',
+        borderBottom: '1px solid var(--lane-border)',
+      }}
+    >
       <div className="lane-data">
         {data.map((item, index) => {
-           const cape = item.cape;
-           const bgColor = getCapeColor(cape);
-           return (
-             <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-               {cape != null && cape > 0 && (
-                 <span style={{ fontSize: '8px', color: 'var(--metric-text-strong)', fontWeight: 'bold' }}>{Math.round(cape)}</span>
-                )}
-             </div>
-           );
+          const cape = item.cape;
+          const bgColor = getCapeColor(cape);
+          return (
+            <div
+              key={index}
+              className="lane-cell"
+              style={{
+                backgroundColor: bgColor,
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              {cape != null && cape > 0 && (
+                <span
+                  style={{
+                    fontSize: '8px',
+                    color: 'var(--metric-text-strong)',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {Math.round(cape)}
+                </span>
+              )}
+            </div>
+          );
         })}
       </div>
     </div>

@@ -14,11 +14,11 @@ const LANE_HEIGHT = 56;
 type ColorStop = readonly [temp: number, r: number, g: number, b: number];
 
 const COLOR_STOPS = [
-  [-20, 20, 30, 180],   // deep blue (very cold)
-  [0, 40, 120, 220],    // blue
-  [15, 80, 180, 160],   // teal
-  [25, 250, 180, 60],   // orange
-  [40, 200, 50, 20],    // red (very hot)
+  [-20, 20, 30, 180], // deep blue (very cold)
+  [0, 40, 120, 220], // blue
+  [15, 80, 180, 160], // teal
+  [25, 250, 180, 60], // orange
+  [40, 200, 50, 20], // red (very hot)
 ] as const satisfies readonly ColorStop[];
 
 const FIRST_STOP = COLOR_STOPS[0];
@@ -31,7 +31,9 @@ interface TemperatureEnsembleLaneProps {
   hourWidth?: number;
 }
 
-function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
 
 function tempColor(temp: number): string {
   const t = Math.max(FIRST_STOP[0], Math.min(LAST_STOP[0], temp));
@@ -123,7 +125,7 @@ export default function TemperatureEnsembleLane({
   const labelInterval = hourWidth < 12 ? 6 : 2;
 
   // Precompute ensembles so canvas draw doesn't sort on every re-render
-  const ensembles = useMemo(() => data.map(d => getEnsemble(d)), [data]);
+  const ensembles = useMemo(() => data.map((d) => getEnsemble(d)), [data]);
 
   const hasTempScale = Number.isFinite(minTemp) && Number.isFinite(maxTemp);
   const rawRange = maxTemp - minTemp;
@@ -131,85 +133,93 @@ export default function TemperatureEnsembleLane({
   const barHeight = (temp: number) => Math.max(1, ((temp - minTemp) / range) * LANE_HEIGHT);
   const yFromTemp = (temp: number) => LANE_HEIGHT - barHeight(temp);
 
-  const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx, w, h) => {
-    if (!hasTempScale) return;
+  const canvasRef = useCanvas(
+    totalWidth,
+    LANE_HEIGHT,
+    (ctx, w, h) => {
+      if (!hasTempScale) return;
 
-    const labelH = 12; // space reserved for text labels at top
+      const labelH = 12; // space reserved for text labels at top
 
-    for (let i = 0; i < data.length; i++) {
-      const d = data[i];
-      if (!d || d.temperature == null) continue;
-      const ens = ensembles[i];
-      const cx = getHourCenter(i, hourWidth);
-      const x = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
+      for (let i = 0; i < data.length; i++) {
+        const d = data[i];
+        if (!d || d.temperature == null) continue;
+        const ens = ensembles[i];
+        const cx = getHourCenter(i, hourWidth);
+        const x = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
 
-      // Use main forecast temperature for bar height (matches TemperatureTextLane above)
-      const temp = d.temperature;
-      const bh = Math.max(2, barHeight(temp));
+        // Use main forecast temperature for bar height (matches TemperatureTextLane above)
+        const temp = d.temperature;
+        const bh = Math.max(2, barHeight(temp));
 
-      // Draw temperature bar
-      ctx.fillStyle = tempColor(temp);
-      ctx.fillRect(x, h - bh, barWidth, bh);
+        // Draw temperature bar
+        ctx.fillStyle = tempColor(temp);
+        ctx.fillRect(x, h - bh, barWidth, bh);
 
-      // Error bar (I-beam) only if ensemble data is available
-      if (ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90) {
-        const y10 = Math.max(labelH, yFromTemp(ens.p10));
-        const y90 = Math.min(h - 1, yFromTemp(ens.p90));
+        // Error bar (I-beam) only if ensemble data is available
+        if (ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90) {
+          const y10 = Math.max(labelH, yFromTemp(ens.p10));
+          const y90 = Math.min(h - 1, yFromTemp(ens.p90));
 
-        // Vertical line P10 → P90
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(cx, y10);
-        ctx.lineTo(cx, y90);
-        ctx.stroke();
+          // Vertical line P10 → P90
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(cx, y10);
+          ctx.lineTo(cx, y90);
+          ctx.stroke();
 
-        // Horizontal caps at P10 and P90
-        const capW = 3;
-        ctx.beginPath();
-        ctx.moveTo(cx - capW, y10);
-        ctx.lineTo(cx + capW, y10);
-        ctx.moveTo(cx - capW, y90);
-        ctx.lineTo(cx + capW, y90);
-        ctx.stroke();
+          // Horizontal caps at P10 and P90
+          const capW = 3;
+          ctx.beginPath();
+          ctx.moveTo(cx - capW, y10);
+          ctx.lineTo(cx + capW, y10);
+          ctx.moveTo(cx - capW, y90);
+          ctx.lineTo(cx + capW, y90);
+          ctx.stroke();
 
-        // P25-P75 thicker segment
-        if (ens.p25 != null && ens.p75 != null) {
-          const y25 = Math.max(labelH, yFromTemp(ens.p25));
-          const y75 = Math.min(h - 1, yFromTemp(ens.p75));
-          if (y25 !== y75) {
-            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.moveTo(cx, y25);
-            ctx.lineTo(cx, y75);
-            ctx.stroke();
-            ctx.lineWidth = 1;
+          // P25-P75 thicker segment
+          if (ens.p25 != null && ens.p75 != null) {
+            const y25 = Math.max(labelH, yFromTemp(ens.p25));
+            const y75 = Math.min(h - 1, yFromTemp(ens.p75));
+            if (y25 !== y75) {
+              ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.moveTo(cx, y25);
+              ctx.lineTo(cx, y75);
+              ctx.stroke();
+              ctx.lineWidth = 1;
+            }
           }
         }
       }
-    }
 
-    // Temperature value labels at bottom of lane (every 2h)
-    ctx.font = 'bold 9px system-ui';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    for (let i = 0; i < data.length; i += labelInterval) {
-      const item = data[i];
-      if (!item || item.temperature == null) continue;
-      const temp = item.temperature;
-      const text = `${Math.round(temp)}`;
-      const tx = getHourCenter(i, hourWidth);
-      const ty = h - 3;
-      ctx.strokeText(text, tx, ty);
-      ctx.fillStyle = tempTextColor(temp);
-      ctx.fillText(text, tx, ty);
-    }
-  }, [data, minTemp, maxTemp, hasTempScale, ensembles, hourWidth, barWidth, labelInterval]);
+      // Temperature value labels at bottom of lane (every 2h)
+      ctx.font = 'bold 9px system-ui';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      for (let i = 0; i < data.length; i += labelInterval) {
+        const item = data[i];
+        if (!item || item.temperature == null) continue;
+        const temp = item.temperature;
+        const text = `${Math.round(temp)}`;
+        const tx = getHourCenter(i, hourWidth);
+        const ty = h - 3;
+        ctx.strokeText(text, tx, ty);
+        ctx.fillStyle = tempTextColor(temp);
+        ctx.fillText(text, tx, ty);
+      }
+    },
+    [data, minTemp, maxTemp, hasTempScale, ensembles, hourWidth, barWidth, labelInterval],
+  );
 
   return (
-    <div className="lane temp-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}>
+    <div
+      className="lane temp-ensemble-lane"
+      style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}
+    >
       <div className="lane-data">
         <canvas
           ref={canvasRef}

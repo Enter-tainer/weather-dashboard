@@ -2,20 +2,54 @@ import { useMemo, useState, useRef, useEffect, useCallback, createRef } from 're
 import type { ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import './Dashboard.css';
-import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudRainWind, CloudSnow, CloudHail, CloudLightning, CloudSunRain, CloudMoonRain, HelpCircle } from 'lucide-react';
+import {
+  Sun,
+  Moon,
+  CloudSun,
+  CloudMoon,
+  Cloud,
+  CloudFog,
+  CloudDrizzle,
+  CloudRain,
+  CloudRainWind,
+  CloudSnow,
+  CloudHail,
+  CloudLightning,
+  CloudSunRain,
+  CloudMoonRain,
+  HelpCircle,
+} from 'lucide-react';
 import type { WeatherPoint } from '../types/weather';
 
 const WEATHER_NAMES: Record<number, string> = {
-  0: '晴', 1: '少云', 2: '多云', 3: '阴',
-  45: '雾', 48: '雾凇',
-  51: '小毛毛雨', 53: '毛毛雨', 55: '大毛毛雨',
-  56: '冻毛毛雨', 57: '强冻毛毛雨',
-  61: '小雨', 63: '中雨', 65: '大雨',
-  66: '冻雨', 67: '强冻雨',
-  71: '小雪', 73: '中雪', 75: '大雪', 77: '雪粒',
-  80: '小阵雨', 81: '中阵雨', 82: '强阵雨',
-  85: '小阵雪', 86: '大阵雪',
-  95: '雷暴', 96: '雷暴+冰雹', 99: '强雷暴+冰雹',
+  0: '晴',
+  1: '少云',
+  2: '多云',
+  3: '阴',
+  45: '雾',
+  48: '雾凇',
+  51: '小毛毛雨',
+  53: '毛毛雨',
+  55: '大毛毛雨',
+  56: '冻毛毛雨',
+  57: '强冻毛毛雨',
+  61: '小雨',
+  63: '中雨',
+  65: '大雨',
+  66: '冻雨',
+  67: '强冻雨',
+  71: '小雪',
+  73: '中雪',
+  75: '大雪',
+  77: '雪粒',
+  80: '小阵雨',
+  81: '中阵雨',
+  82: '强阵雨',
+  85: '小阵雪',
+  86: '大阵雪',
+  95: '雷暴',
+  96: '雷暴+冰雹',
+  99: '强雷暴+冰雹',
 };
 
 interface WeatherRun {
@@ -45,10 +79,18 @@ interface WeatherTooltipProps {
 function getWeatherIcon(code: number, isNight: boolean, size = 18): ReactNode {
   const props = { size, color: 'var(--text-light)' };
 
-  if (code === 0) return isNight ? <Moon {...props} color="#64748b" /> : <Sun {...props} color="#e69c00" />;
-  if (code === 1) return isNight ? <CloudMoon {...props} color="#64748b" /> : <CloudSun {...props} color="#deba37" />;
-  if (code === 2) return <Cloud {...props} color={isNight ? 'var(--moonrise-color)' : 'var(--text-muted)'} />;
-  if (code === 3) return <Cloud {...props} color={isNight ? 'var(--moonset-color)' : 'var(--text-light)'} />;
+  if (code === 0)
+    return isNight ? <Moon {...props} color="#64748b" /> : <Sun {...props} color="#e69c00" />;
+  if (code === 1)
+    return isNight ? (
+      <CloudMoon {...props} color="#64748b" />
+    ) : (
+      <CloudSun {...props} color="#deba37" />
+    );
+  if (code === 2)
+    return <Cloud {...props} color={isNight ? 'var(--moonrise-color)' : 'var(--text-muted)'} />;
+  if (code === 3)
+    return <Cloud {...props} color={isNight ? 'var(--moonset-color)' : 'var(--text-light)'} />;
   if ([45, 48].includes(code)) return <CloudFog {...props} />;
 
   if (code === 51) return <CloudDrizzle {...props} color="rgb(var(--precip-drizzle-rgb))" />;
@@ -57,7 +99,12 @@ function getWeatherIcon(code: number, isNight: boolean, size = 18): ReactNode {
   if (code === 56) return <CloudDrizzle {...props} color="rgb(var(--precip-freezing-rgb))" />;
   if (code === 57) return <CloudDrizzle {...props} color="rgb(var(--precip-freezing-rgb))" />;
 
-  if (code === 61) return isNight ? <CloudMoonRain {...props} color="rgb(var(--precip-drizzle-rgb))" /> : <CloudSunRain {...props} color="rgb(var(--precip-drizzle-rgb))" />;
+  if (code === 61)
+    return isNight ? (
+      <CloudMoonRain {...props} color="rgb(var(--precip-drizzle-rgb))" />
+    ) : (
+      <CloudSunRain {...props} color="rgb(var(--precip-drizzle-rgb))" />
+    );
   if (code === 63) return <CloudRain {...props} color="rgb(var(--precip-rain-rgb))" />;
   if (code === 65) return <CloudRainWind {...props} color="rgb(var(--precip-rain-rgb))" />;
   if (code === 66) return <CloudRain {...props} color="rgb(var(--precip-freezing-rgb))" />;
@@ -68,7 +115,12 @@ function getWeatherIcon(code: number, isNight: boolean, size = 18): ReactNode {
   if (code === 75) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
   if (code === 77) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
 
-  if (code === 80) return isNight ? <CloudMoonRain {...props} color="rgb(var(--precip-drizzle-rgb))" /> : <CloudSunRain {...props} color="rgb(var(--precip-drizzle-rgb))" />;
+  if (code === 80)
+    return isNight ? (
+      <CloudMoonRain {...props} color="rgb(var(--precip-drizzle-rgb))" />
+    ) : (
+      <CloudSunRain {...props} color="rgb(var(--precip-drizzle-rgb))" />
+    );
   if (code === 81) return <CloudRain {...props} color="rgb(var(--precip-rain-rgb))" />;
   if (code === 82) return <CloudRainWind {...props} color="rgb(var(--precip-rain-rgb))" />;
   if (code === 85) return <CloudSnow {...props} color="rgb(var(--precip-snow-rgb))" />;
@@ -81,7 +133,10 @@ function getWeatherIcon(code: number, isNight: boolean, size = 18): ReactNode {
   return <HelpCircle {...props} />;
 }
 
-function getTopWeatherCodes(weatherCodeMembers: number[] | undefined, maxCount = 3): WeatherCodeProbability[] {
+function getTopWeatherCodes(
+  weatherCodeMembers: number[] | undefined,
+  maxCount = 3,
+): WeatherCodeProbability[] {
   if (!weatherCodeMembers || weatherCodeMembers.length === 0) return [];
   const freq = new Map<number, number>();
   for (const code of weatherCodeMembers) {
@@ -117,7 +172,14 @@ function computeMergedRuns(data: WeatherPoint[]): WeatherRun[] {
   return runs;
 }
 
-function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }: WeatherTooltipProps) {
+function WeatherTooltip({
+  anchorRef,
+  data,
+  run,
+  isNight,
+  onClose,
+  forecastCode,
+}: WeatherTooltipProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const midIndex = run.start + Math.floor(run.length / 2);
@@ -144,30 +206,35 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
   if (topCodes.length === 0 || !pos) return null;
 
   return createPortal(
-    <div ref={ref} style={{
-      position: 'fixed',
-      left: pos.x,
-      top: pos.y,
-      transform: 'translate(-50%, -100%)',
-      marginTop: '-4px',
-      background: 'var(--tooltip-bg)',
-      borderRadius: '6px',
-      padding: '6px 8px',
-      zIndex: 1000,
-      whiteSpace: 'nowrap',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.32)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '3px',
-    }}>
-      <div style={{
+    <div
+      ref={ref}
+      style={{
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        transform: 'translate(-50%, -100%)',
+        marginTop: '-4px',
+        background: 'var(--tooltip-bg)',
+        borderRadius: '6px',
+        padding: '6px 8px',
+        zIndex: 1000,
+        whiteSpace: 'nowrap',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.32)',
         display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        borderBottom: '1px solid var(--tooltip-border)',
-        paddingBottom: '3px',
-        marginBottom: '1px',
-      }}>
+        flexDirection: 'column',
+        gap: '3px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          borderBottom: '1px solid var(--tooltip-border)',
+          paddingBottom: '3px',
+          marginBottom: '1px',
+        }}
+      >
         {getWeatherIcon(forecastCode, isNight, 14)}
         <span style={{ fontSize: '10px', color: 'var(--tooltip-text)', fontWeight: 500 }}>
           {WEATHER_NAMES[forecastCode] || `#${forecastCode}`}
@@ -175,12 +242,15 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
         <span style={{ fontSize: '9px', color: 'var(--tooltip-subtle)' }}>预报</span>
       </div>
       {topCodes.map((entry) => (
-        <div key={entry.code} style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          opacity: 0.4 + 0.6 * entry.probability,
-        }}>
+        <div
+          key={entry.code}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            opacity: 0.4 + 0.6 * entry.probability,
+          }}
+        >
           {getWeatherIcon(entry.code, isNight, 14)}
           <span style={{ fontSize: '10px', color: 'var(--tooltip-muted)' }}>
             {WEATHER_NAMES[entry.code] || `#${entry.code}`}
@@ -191,19 +261,21 @@ function WeatherTooltip({ anchorRef, data, run, isNight, onClose, forecastCode }
         </div>
       ))}
       {/* Arrow */}
-      <div style={{
-        position: 'absolute',
-        bottom: '-4px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 0,
-        height: 0,
-        borderLeft: '4px solid transparent',
-        borderRight: '4px solid transparent',
-        borderTop: '4px solid var(--tooltip-bg)',
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-4px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 0,
+          height: 0,
+          borderLeft: '4px solid transparent',
+          borderRight: '4px solid transparent',
+          borderTop: '4px solid var(--tooltip-bg)',
+        }}
+      />
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -237,10 +309,14 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
           const bgColor = ci && ci.colorIdx % 2 !== 0 ? 'var(--weather-stripe)' : 'transparent';
 
           return (
-            <div key={index} className="lane-cell" style={{
-              backgroundColor: bgColor,
-              borderLeft: ci?.isStart ? '1px solid var(--weather-run-border)' : 'none',
-            }} />
+            <div
+              key={index}
+              className="lane-cell"
+              style={{
+                backgroundColor: bgColor,
+                borderLeft: ci?.isStart ? '1px solid var(--weather-run-border)' : 'none',
+              }}
+            />
           );
         })}
 
@@ -258,7 +334,8 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
           const hasEnsemble = (midItem.weatherCodeMembers?.length ?? 0) > 0;
 
           return (
-            <div key={`run-${runIdx}`}
+            <div
+              key={`run-${runIdx}`}
               ref={overlayRef}
               style={{
                 position: 'absolute',

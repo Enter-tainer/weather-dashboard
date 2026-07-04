@@ -41,10 +41,16 @@ const formatArg = readArg('format');
 const formatsArg = readArg('formats') ?? 'png,webp';
 const requestedThemes = themeArg
   ? [themeArg]
-  : themesArg.split(',').map((theme) => theme.trim()).filter(Boolean);
+  : themesArg
+      .split(',')
+      .map((theme) => theme.trim())
+      .filter(Boolean);
 const requestedFormats = formatArg
   ? [formatArg]
-  : formatsArg.split(',').map((format) => format.trim()).filter(Boolean);
+  : formatsArg
+      .split(',')
+      .map((format) => format.trim())
+      .filter(Boolean);
 
 if (!Number.isFinite(hours) || hours <= 0) {
   console.error(`Invalid hours: ${hoursArg}. Expected a positive number.`);
@@ -52,7 +58,9 @@ if (!Number.isFinite(hours) || hours <= 0) {
 }
 
 if (requestedThemes.some((theme) => theme !== 'dark' && theme !== 'light')) {
-  console.error(`Invalid theme list: ${requestedThemes.join(', ')}. Expected "dark", "light", or both.`);
+  console.error(
+    `Invalid theme list: ${requestedThemes.join(', ')}. Expected "dark", "light", or both.`,
+  );
   process.exit(1);
 }
 
@@ -65,7 +73,9 @@ function normalizeFormat(format: string): 'png' | 'jpeg' | 'webp' | null {
 const formats = requestedFormats.map(normalizeFormat);
 
 if (formats.some((format) => format == null)) {
-  console.error(`Invalid format list: ${requestedFormats.join(', ')}. Expected "png", "jpg", "jpeg", "webp", or a comma-separated list.`);
+  console.error(
+    `Invalid format list: ${requestedFormats.join(', ')}. Expected "png", "jpg", "jpeg", "webp", or a comma-separated list.`,
+  );
   process.exit(1);
 }
 
@@ -88,15 +98,13 @@ function outputNameForTheme(theme: string, format: 'png' | 'jpeg' | 'webp'): str
   const suffix = [
     requestedThemes.length > 1 ? theme : null,
     outputFormats.length > 1 ? formatExt : null,
-  ].filter(Boolean).join('-');
+  ]
+    .filter(Boolean)
+    .join('-');
   return `${baseName}-${suffix}.${formatExt}`;
 }
 
-async function captureTheme(
-  page: Page,
-  serverPort: number,
-  theme: string,
-): Promise<Buffer> {
+async function captureTheme(page: Page, serverPort: number, theme: string): Promise<Buffer> {
   const url = `http://localhost:${serverPort}/?fixture=${encodeURIComponent(fixtureName)}&og=1&ogHours=${hours}&theme=${theme}`;
   console.log(`  [${theme}] Opening: ${url}`);
 
@@ -112,7 +120,9 @@ async function captureTheme(
 
   console.log(`  [${theme}] Capture size: ${Math.round(box.width)}x${Math.round(box.height)}px`);
   if (Math.round(box.width) !== 1280 || Math.round(box.height) !== 640) {
-    throw new Error(`Expected 1280x640 capture, got ${Math.round(box.width)}x${Math.round(box.height)}`);
+    throw new Error(
+      `Expected 1280x640 capture, got ${Math.round(box.width)}x${Math.round(box.height)}`,
+    );
   }
 
   return canvas.screenshot({ type: 'png' });
@@ -126,29 +136,36 @@ async function convertPngInBrowser(
   const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg';
   const quality = format === 'webp' ? 0.86 : 0.92;
   const base64 = png.toString('base64');
-  const bytes = await page.evaluate(async ({ base64Png, targetMime, imageQuality }) => {
-    const img = new Image();
-    await new Promise<void>((resolveLoad, rejectLoad) => {
-      img.onload = () => resolveLoad();
-      img.onerror = () => rejectLoad(new Error('Image load failed'));
-      img.src = `data:image/png;base64,${base64Png}`;
-    });
+  const bytes = await page.evaluate(
+    async ({ base64Png, targetMime, imageQuality }) => {
+      const img = new Image();
+      await new Promise<void>((resolveLoad, rejectLoad) => {
+        img.onload = () => resolveLoad();
+        img.onerror = () => rejectLoad(new Error('Image load failed'));
+        img.src = `data:image/png;base64,${base64Png}`;
+      });
 
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('2d context not available');
-    ctx.drawImage(img, 0, 0);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('2d context not available');
+      ctx.drawImage(img, 0, 0);
 
-    const blob = await new Promise<Blob>((resolveBlob, rejectBlob) => {
-      canvas.toBlob((b) => {
-        if (b) resolveBlob(b);
-        else rejectBlob(new Error(`${targetMime} encoding failed`));
-      }, targetMime, imageQuality);
-    });
-    return Array.from(new Uint8Array(await blob.arrayBuffer()));
-  }, { base64Png: base64, targetMime: mimeType, imageQuality: quality });
+      const blob = await new Promise<Blob>((resolveBlob, rejectBlob) => {
+        canvas.toBlob(
+          (b) => {
+            if (b) resolveBlob(b);
+            else rejectBlob(new Error(`${targetMime} encoding failed`));
+          },
+          targetMime,
+          imageQuality,
+        );
+      });
+      return Array.from(new Uint8Array(await blob.arrayBuffer()));
+    },
+    { base64Png: base64, targetMime: mimeType, imageQuality: quality },
+  );
 
   return Buffer.from(bytes);
 }
@@ -165,7 +182,9 @@ function saveImage(outputName: string, image: Buffer, theme: string): void {
 }
 
 async function main() {
-  console.log(`Generating GitHub OG images from fixture "${fixtureName}" (${hours} hours): ${requestedThemes.join(', ')} / ${outputFormats.join(', ')}`);
+  console.log(
+    `Generating GitHub OG images from fixture "${fixtureName}" (${hours} hours): ${requestedThemes.join(', ')} / ${outputFormats.join(', ')}`,
+  );
 
   const server = await createServer({
     server: { port: Number(portStr), strictPort: false },

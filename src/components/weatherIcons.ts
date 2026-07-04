@@ -14,6 +14,6 @@ export function getWeatherIcon(code: number): string {
   if ([85, 86].includes(code)) return '🌨️'; // Snow showers
   if ([95].includes(code)) return '⛈️'; // Thunderstorm
   if ([96, 99].includes(code)) return '⛈️'; // Thunderstorm with hail
-  
+
   return '❓';
 }

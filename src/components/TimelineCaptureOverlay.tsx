@@ -33,15 +33,18 @@ export default function TimelineCaptureOverlay({
   const width = (selection.endIndex - selection.startIndex) * hourWidth;
   const totalWidth = dataLength * hourWidth;
 
-  const startDrag = useCallback((mode: CaptureDragMode, event: ReactPointerEvent<HTMLElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setDragState({
-      mode,
-      startClientX: event.clientX,
-      initialSelection: selection,
-    });
-  }, [selection]);
+  const startDrag = useCallback(
+    (mode: CaptureDragMode, event: ReactPointerEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setDragState({
+        mode,
+        startClientX: event.clientX,
+        initialSelection: selection,
+      });
+    },
+    [selection],
+  );
 
   useEffect(() => {
     if (!dragState) return undefined;
@@ -49,12 +52,14 @@ export default function TimelineCaptureOverlay({
     const handlePointerMove = (event: PointerEvent) => {
       event.preventDefault();
       const deltaHours = Math.round((event.clientX - dragState.startClientX) / hourWidth);
-      onSelectionChange(updateCaptureSelectionByDrag(
-        dragState.initialSelection,
-        dragState.mode,
-        deltaHours,
-        dataLength,
-      ));
+      onSelectionChange(
+        updateCaptureSelectionByDrag(
+          dragState.initialSelection,
+          dragState.mode,
+          deltaHours,
+          dataLength,
+        ),
+      );
     };
 
     const handlePointerUp = () => {
@@ -79,12 +84,14 @@ export default function TimelineCaptureOverlay({
       aria-label="截图时间范围"
     >
       <div className="timeline-capture-mask" style={{ left: 0, width: `${left}px` }} />
-      <div className="timeline-capture-mask" style={{ left: `${left + width}px`, width: `${Math.max(0, totalWidth - left - width)}px` }} />
       <div
-        className={[
-          'timeline-capture-selection',
-          dragState ? 'is-dragging' : '',
-        ].filter(Boolean).join(' ')}
+        className="timeline-capture-mask"
+        style={{ left: `${left + width}px`, width: `${Math.max(0, totalWidth - left - width)}px` }}
+      />
+      <div
+        className={['timeline-capture-selection', dragState ? 'is-dragging' : '']
+          .filter(Boolean)
+          .join(' ')}
         style={{ left: `${left}px`, width: `${width}px` }}
       >
         <button

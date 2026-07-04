@@ -36,13 +36,7 @@ export default function Dashboard({ testData }: DashboardProps) {
   const { compactMode, toggleCompactMode } = useCompactMode();
   const { timeStepHours, toggleTimeCompactMode } = useTimeCompactMode();
   const { mode, effectiveTheme, cycleThemeMode } = useThemeMode();
-  const {
-    data,
-    loadingDone,
-    switching,
-    switchInfo,
-    handleCityClick,
-  } = useDashboardData(testData);
+  const { data, loadingDone, switching, switchInfo, handleCityClick } = useDashboardData(testData);
   const displayData = useMemo(() => {
     if (!data || data.length === 0) return data;
     return aggregateTimelineByHours(data, timeStepHours);
@@ -62,10 +56,13 @@ export default function Dashboard({ testData }: DashboardProps) {
     const scroller = scrollerRef.current;
     const selection = scroller
       ? captureSelectionFromCurrentDay(scroller.scrollLeft, displayData)
-      : normalizeCaptureSelection({
-        startIndex: 0,
-        endIndex: Math.min(Math.ceil(24 / timeStepHours), displayData.length),
-      }, displayData.length);
+      : normalizeCaptureSelection(
+          {
+            startIndex: 0,
+            endIndex: Math.min(Math.ceil(24 / timeStepHours), displayData.length),
+          },
+          displayData.length,
+        );
 
     setCaptureSelection(selection);
     setCaptureMode(true);
@@ -91,10 +88,13 @@ export default function Dashboard({ testData }: DashboardProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [captureMode, exitCaptureMode]);
 
-  const updateCaptureSelection = useCallback((selection: CaptureSelection) => {
-    if (!displayData) return;
-    setCaptureSelection(normalizeCaptureSelection(selection, displayData.length));
-  }, [displayData]);
+  const updateCaptureSelection = useCallback(
+    (selection: CaptureSelection) => {
+      if (!displayData) return;
+      setCaptureSelection(normalizeCaptureSelection(selection, displayData.length));
+    },
+    [displayData],
+  );
 
   const openRouteEditor = useCallback(() => {
     routeEditorRef.current?.open();
@@ -119,7 +119,16 @@ export default function Dashboard({ testData }: DashboardProps) {
         console.error('Failed to export weather capture:', error);
         setCaptureStatus('error');
       });
-  }, [activeCaptureSelection, captureStatus, compactMode, displayData, exitCaptureMode, scales, switchInfo, timeStepHours]);
+  }, [
+    activeCaptureSelection,
+    captureStatus,
+    compactMode,
+    displayData,
+    exitCaptureMode,
+    scales,
+    switchInfo,
+    timeStepHours,
+  ]);
 
   return (
     <div className="dashboard-wrapper">

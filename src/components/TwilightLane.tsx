@@ -58,7 +58,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
   const [, setThemeRevision] = useState(0);
 
   useEffect(() => {
-    const handleThemeChange = () => setThemeRevision(revision => revision + 1);
+    const handleThemeChange = () => setThemeRevision((revision) => revision + 1);
     window.addEventListener('weather-theme-change', handleThemeChange);
     return () => window.removeEventListener('weather-theme-change', handleThemeChange);
   }, []);
@@ -75,7 +75,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
   for (let i = 0; i < data.length - 1; i++) {
     const alt1 = data[i]?.sunAltitude ?? 10;
     const alt2 = data[i + 1]?.sunAltitude ?? 10;
-    
+
     for (let s = 0; s < resolution; s++) {
       const t = s / resolution;
       const alt = alt1 + (alt2 - alt1) * t;
@@ -92,7 +92,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
     const finalColor = altitudeToColor(finalAlt, palette);
     const finalPct = ((lastIdx + 0.5) / data.length) * 100;
     stops.push(`${finalColor} ${finalPct.toFixed(2)}%`);
-    
+
     // Add end stops to stretch nicely to the very edges of the div
     const firstColor = altitudeToColor(data[0]?.sunAltitude ?? 10, palette);
     stops.unshift(`${firstColor} 0%`);
@@ -105,13 +105,16 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
 
   return (
     <div className="lane" style={{ height: '12px', minHeight: '12px' }}>
-      <div className="lane-data" style={{
-        width: `${totalWidth}px`,
-        minWidth: `${totalWidth}px`,
-        background: gradient,
-        borderTop: '1px solid var(--lane-border)',
-        borderBottom: '1px solid var(--lane-border)',
-      }} />
+      <div
+        className="lane-data"
+        style={{
+          width: `${totalWidth}px`,
+          minWidth: `${totalWidth}px`,
+          background: gradient,
+          borderTop: '1px solid var(--lane-border)',
+          borderBottom: '1px solid var(--lane-border)',
+        }}
+      />
     </div>
   );
 }

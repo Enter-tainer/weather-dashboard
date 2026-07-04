@@ -17,7 +17,9 @@ export function getBeaufort(speedKmh: number | null | undefined): number {
   return 12;
 }
 
-export function calculateDashboardScales(data: WeatherTimeline | null | undefined): DashboardScales {
+export function calculateDashboardScales(
+  data: WeatherTimeline | null | undefined,
+): DashboardScales {
   let minTemp = Infinity;
   let maxTemp = -Infinity;
   let minP = Infinity;
@@ -25,20 +27,20 @@ export function calculateDashboardScales(data: WeatherTimeline | null | undefine
   let maxBft = 0;
 
   if (data && data.length > 0) {
-    data.forEach(d => {
+    data.forEach((d) => {
       if (d.temperature != null && d.temperature < minTemp) minTemp = d.temperature;
       if (d.temperature != null && d.temperature > maxTemp) maxTemp = d.temperature;
       // Include ensemble percentile range in scale
       if (d.tempEnsemble?.p10 != null && d.tempEnsemble.p10 < minTemp) minTemp = d.tempEnsemble.p10;
       if (d.tempEnsemble?.p90 != null && d.tempEnsemble.p90 > maxTemp) maxTemp = d.tempEnsemble.p90;
-      d.tempMembers?.forEach(m => {
+      d.tempMembers?.forEach((m) => {
         if (m < minTemp) minTemp = m;
         if (m > maxTemp) maxTemp = m;
       });
 
       if (d.pressure != null && d.pressure < minP) minP = d.pressure;
       if (d.pressure != null && d.pressure > maxP) maxP = d.pressure;
-      d.pressureMembers?.forEach(m => {
+      d.pressureMembers?.forEach((m) => {
         if (m < minP) minP = m;
         if (m > maxP) maxP = m;
       });

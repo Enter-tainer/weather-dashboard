@@ -43,7 +43,10 @@ export default function UVLane({ data }: UVLaneProps) {
   const runs = useMemo(() => computeUvRuns(data), [data]);
 
   return (
-    <div className="lane uv-lane" style={{ height: 'var(--lane-height-uv)', backgroundColor: 'transparent' }}>
+    <div
+      className="lane uv-lane"
+      style={{ height: 'var(--lane-height-uv)', backgroundColor: 'transparent' }}
+    >
       <div className="lane-data" style={{ position: 'relative' }}>
         {/* Base cells to keep grid columns */}
         {data.map((item, index) => (
@@ -73,14 +76,16 @@ export default function UVLane({ data }: UVLaneProps) {
               }}
             >
               {showText && rounded != null && (
-                <span style={{
-                  fontSize: '10px',
-                  color: rounded <= 5 ? '#1d251f' : '#fff',
-                  backgroundColor: getUvColor(rounded),
-                  padding: '0 4px',
-                  borderRadius: '4px',
-                  fontWeight: 'bold',
-                }}>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    color: rounded <= 5 ? '#1d251f' : '#fff',
+                    backgroundColor: getUvColor(rounded),
+                    padding: '0 4px',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                  }}
+                >
                   {rounded}
                 </span>
               )}

@@ -12,10 +12,13 @@ interface CapturePageProps {
 export default function CapturePage({ data, hours }: CapturePageProps) {
   const [canvasReady, setCanvasReady] = useState(false);
 
-  const selection = useMemo(() => ({
-    startIndex: 0,
-    endIndex: Math.min(hours, data.length),
-  }), [hours, data.length]);
+  const selection = useMemo(
+    () => ({
+      startIndex: 0,
+      endIndex: Math.min(hours, data.length),
+    }),
+    [hours, data.length],
+  );
 
   const scales = useMemo(() => calculateDashboardScales(data), [data]);
 

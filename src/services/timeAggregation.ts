@@ -37,10 +37,12 @@ function weatherSeverity(code: number | null): number {
 }
 
 function pickWeatherCode(items: WeatherPoint[]): number | null {
-  return items
-    .map((item) => item.weatherCode)
-    .filter((code): code is number => code != null)
-    .sort((a, b) => weatherSeverity(b) - weatherSeverity(a))[0] ?? null;
+  return (
+    items
+      .map((item) => item.weatherCode)
+      .filter((code): code is number => code != null)
+      .sort((a, b) => weatherSeverity(b) - weatherSeverity(a))[0] ?? null
+  );
 }
 
 function averageOptional(values: Array<number | null | undefined>): number | undefined {
@@ -94,7 +96,9 @@ function aggregateWindow(items: WeatherPoint[]): WeatherPoint {
     cloudHigh: average(items.map((item) => item.cloudHigh)),
     boundaryLayerHeight: boundaryLayerHeight ?? null,
     aod: aod ?? null,
-    dataSource: items.some((item) => item.dataSource === 'ensemble') ? 'ensemble' : first.dataSource,
+    dataSource: items.some((item) => item.dataSource === 'ensemble')
+      ? 'ensemble'
+      : first.dataSource,
   };
 
   if (aqiUS != null) result.aqiUS = Math.round(aqiUS);
@@ -125,7 +129,9 @@ function aggregateEvents<T extends SunEvent | MoonEventList[number]>(
     const group = groupRanges[groupIndex] ?? { start: sourceIndex, end: sourceIndex + 1 };
     const groupLength = Math.max(1, group.end - group.start);
     const offsetWithinGroup = (event.absoluteIndex - group.start) / groupLength;
-    return [{ ...event, absoluteIndex: groupIndex + Math.max(0, Math.min(0.95, offsetWithinGroup)) }];
+    return [
+      { ...event, absoluteIndex: groupIndex + Math.max(0, Math.min(0.95, offsetWithinGroup)) },
+    ];
   });
 }
 
@@ -159,7 +165,10 @@ function aggregateNightBands(
   });
 }
 
-export function aggregateTimelineByHours(data: WeatherTimeline, stepHours: number): WeatherTimeline {
+export function aggregateTimelineByHours(
+  data: WeatherTimeline,
+  stepHours: number,
+): WeatherTimeline {
   if (stepHours <= 1 || data.length <= 1) return data;
 
   const aggregated = [] as unknown as WeatherTimeline;
@@ -189,7 +198,9 @@ export function aggregateTimelineByHours(data: WeatherTimeline, stepHours: numbe
   const sunEvents = aggregateEvents(data.sunEvents, indexToGroup, groupRanges);
   if (sunEvents) aggregated.sunEvents = sunEvents;
 
-  const moonEvents = aggregateEvents(data.moonEvents, indexToGroup, groupRanges) as MoonEventList | undefined;
+  const moonEvents = aggregateEvents(data.moonEvents, indexToGroup, groupRanges) as
+    | MoonEventList
+    | undefined;
   if (moonEvents) {
     if (data.moonEvents?.phase != null) moonEvents.phase = data.moonEvents.phase;
     if (data.moonEvents?.fraction != null) moonEvents.fraction = data.moonEvents.fraction;

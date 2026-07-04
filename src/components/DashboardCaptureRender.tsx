@@ -34,10 +34,7 @@ export default function DashboardCaptureRender({
   switchInfo,
   onCanvasStatusChange,
 }: DashboardCaptureRenderProps) {
-  const captureData = useMemo(
-    () => sliceTimelineForCapture(data, selection),
-    [data, selection],
-  );
+  const captureData = useMemo(() => sliceTimelineForCapture(data, selection), [data, selection]);
   const hourWidth = getTimelineHourWidth();
   const width = CAPTURE_LEGEND_WIDTH + captureData.length * hourWidth;
 

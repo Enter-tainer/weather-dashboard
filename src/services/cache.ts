@@ -1,7 +1,7 @@
 const STORAGE_PREFIX = 'weather_cache:';
 
-const TTL_GEO = 60 * 60 * 1000;      // 1 hour for geocoding
-const TTL_WEATHER = 10 * 60 * 1000;   // 10 minutes for weather data
+const TTL_GEO = 60 * 60 * 1000; // 1 hour for geocoding
+const TTL_WEATHER = 10 * 60 * 1000; // 10 minutes for weather data
 
 // --- localStorage-backed cache ---
 
@@ -42,18 +42,24 @@ export function getCached<T = unknown>(key: string): T | null {
 
 export function setCache<T>(key: string, value: T, ttl: number): void {
   try {
-    localStorage.setItem(storageKey(key), JSON.stringify({
-      value,
-      expires: Date.now() + ttl,
-    }));
+    localStorage.setItem(
+      storageKey(key),
+      JSON.stringify({
+        value,
+        expires: Date.now() + ttl,
+      }),
+    );
   } catch {
     // localStorage full — evict expired entries and retry once
     evictExpired();
     try {
-      localStorage.setItem(storageKey(key), JSON.stringify({
-        value,
-        expires: Date.now() + ttl,
-      }));
+      localStorage.setItem(
+        storageKey(key),
+        JSON.stringify({
+          value,
+          expires: Date.now() + ttl,
+        }),
+      );
     } catch {
       // still full, silently skip
     }
@@ -93,10 +99,12 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     queue.push(() => {
       activeCount++;
-      fn().then(resolve, reject).finally(() => {
-        activeCount--;
-        drain();
-      });
+      fn()
+        .then(resolve, reject)
+        .finally(() => {
+          activeCount--;
+          drain();
+        });
     });
     drain();
   });
@@ -118,8 +126,12 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
       const waitMs = retryAfter
         ? parseInt(retryAfter, 10) * 1000
         : BASE_BACKOFF_MS * Math.pow(2, attempt);
-      console.warn(`429 on ${url.slice(0, 80)}…, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})`);
-      await new Promise<void>(resolve => { window.setTimeout(resolve, waitMs); });
+      console.warn(
+        `429 on ${url.slice(0, 80)}…, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})`,
+      );
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, waitMs);
+      });
       continue;
     }
     return res;
@@ -139,7 +151,7 @@ export async function cachedFetch<T = unknown>(url: string, ttl: number): Promis
 
     const res = await fetchWithRetry(url);
     if (!res.ok) return null;
-    const data = await res.json() as T;
+    const data = (await res.json()) as T;
     setCache(url, data, ttl);
     return data;
   });

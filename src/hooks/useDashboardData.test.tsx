@@ -18,17 +18,19 @@ vi.mock('../services/api', () => ({
 vi.mock('../services/urlParser', () => ({
   parseRoute: vi.fn(),
   parseSwitchableRoute: vi.fn(),
-  buildRouteForSelections: vi.fn((slots: DateSlot[]): RouteEntry[] => slots.map(slot => {
-    const activeEntry = slot.entries[slot.activeIndex];
-    if (!activeEntry) {
-      throw new Error(`Missing active entry for ${slot.date}`);
-    }
+  buildRouteForSelections: vi.fn((slots: DateSlot[]): RouteEntry[] =>
+    slots.map((slot) => {
+      const activeEntry = slot.entries[slot.activeIndex];
+      if (!activeEntry) {
+        throw new Error(`Missing active entry for ${slot.date}`);
+      }
 
-    return {
-      ...activeEntry,
-      date: slot.date,
-    };
-  })),
+      return {
+        ...activeEntry,
+        date: slot.date,
+      };
+    }),
+  ),
 }));
 
 interface Deferred<T> {
@@ -63,21 +65,17 @@ const mockParseRoute = vi.mocked(parseRoute);
 const mockParseSwitchableRoute = vi.mocked(parseSwitchableRoute);
 
 function DashboardDataProbe({ testData }: DashboardDataProbeProps) {
-  const {
-    data,
-    loadingDone,
-    switching,
-    switchInfo,
-    handleCityClick,
-  } = useDashboardData(testData);
+  const { data, loadingDone, switching, switchInfo, handleCityClick } = useDashboardData(testData);
 
   return (
     <div>
-      <output aria-label="data">{(data ?? []).map(item => item.cityName).join(',')}</output>
+      <output aria-label="data">{(data ?? []).map((item) => item.cityName).join(',')}</output>
       <output aria-label="loading-done">{String(loadingDone)}</output>
       <output aria-label="switching">{String(switching)}</output>
       <output aria-label="switch-info">{Object.keys(switchInfo).join(',')}</output>
-      <button type="button" onClick={() => handleCityClick('City A')}>switch city</button>
+      <button type="button" onClick={() => handleCityClick('City A')}>
+        switch city
+      </button>
     </div>
   );
 }
@@ -98,17 +96,19 @@ describe('useDashboardData', () => {
     vi.clearAllMocks();
     mockParseSwitchableRoute.mockResolvedValue(null);
     mockParseRoute.mockResolvedValue([]);
-    mockBuildRouteForSelections.mockImplementation((slots: DateSlot[]): RouteEntry[] => slots.map(slot => {
-      const activeEntry = slot.entries[slot.activeIndex];
-      if (!activeEntry) {
-        throw new Error(`Missing active entry for ${slot.date}`);
-      }
+    mockBuildRouteForSelections.mockImplementation((slots: DateSlot[]): RouteEntry[] =>
+      slots.map((slot) => {
+        const activeEntry = slot.entries[slot.activeIndex];
+        if (!activeEntry) {
+          throw new Error(`Missing active entry for ${slot.date}`);
+        }
 
-      return {
-        ...activeEntry,
-        date: slot.date,
-      };
-    }));
+        return {
+          ...activeEntry,
+          date: slot.date,
+        };
+      }),
+    );
     mockAssembleTimeline.mockImplementation((results: WeatherTimeline[]): WeatherTimeline => {
       const timeline: WeatherTimeline = [];
       for (const result of results) timeline.push(...result);
@@ -118,9 +118,7 @@ describe('useDashboardData', () => {
   });
 
   it('uses supplied testData without fetching routes', () => {
-    const testData = makeWeatherTimeline([
-      makeWeatherPoint({ cityName: 'mock-hour' }),
-    ]);
+    const testData = makeWeatherTimeline([makeWeatherPoint({ cityName: 'mock-hour' })]);
 
     render(<DashboardDataProbe testData={testData} />);
 
@@ -139,26 +137,22 @@ describe('useDashboardData', () => {
       { city: 'first', date: '2026-05-23' },
       { city: 'second', date: '2026-05-24' },
     ]);
-    mockFetchCityDataForDate.mockImplementation(entry => (
-      entry.city === 'first' ? first.promise : second.promise
-    ));
+    mockFetchCityDataForDate.mockImplementation((entry) =>
+      entry.city === 'first' ? first.promise : second.promise,
+    );
 
     render(<DashboardDataProbe />);
 
     await waitFor(() => expect(mockFetchCityDataForDate).toHaveBeenCalledTimes(2));
 
-    second.resolve(makeWeatherTimeline([
-      makeWeatherPoint({ cityName: 'second-hour' }),
-    ]));
+    second.resolve(makeWeatherTimeline([makeWeatherPoint({ cityName: 'second-hour' })]));
 
     await waitFor(() => {
       expect(screen.getByLabelText('data')).toHaveTextContent('second-hour');
       expect(screen.getByLabelText('loading-done')).toHaveTextContent('false');
     });
 
-    first.resolve(makeWeatherTimeline([
-      makeWeatherPoint({ cityName: 'first-hour' }),
-    ]));
+    first.resolve(makeWeatherTimeline([makeWeatherPoint({ cityName: 'first-hour' })]));
 
     await waitFor(() => {
       expect(screen.getByLabelText('data')).toHaveTextContent('first-hour,second-hour');
@@ -171,9 +165,13 @@ describe('useDashboardData', () => {
     const dateSlots = [dateSlot];
 
     mockParseSwitchableRoute.mockResolvedValue({ dateSlots });
-    mockFetchCityDataForDate.mockImplementation(entry => Promise.resolve(makeWeatherTimeline([
-      makeWeatherPoint({ cityName: `${entry.originalName ?? entry.city ?? 'unknown'}-hour` }),
-    ])));
+    mockFetchCityDataForDate.mockImplementation((entry) =>
+      Promise.resolve(
+        makeWeatherTimeline([
+          makeWeatherPoint({ cityName: `${entry.originalName ?? entry.city ?? 'unknown'}-hour` }),
+        ]),
+      ),
+    );
 
     render(<DashboardDataProbe />);
 
@@ -196,9 +194,13 @@ describe('useDashboardData', () => {
     const dateSlots = [dateSlot];
 
     mockParseSwitchableRoute.mockResolvedValue({ dateSlots });
-    mockFetchCityDataForDate.mockImplementation(entry => Promise.resolve(makeWeatherTimeline([
-      makeWeatherPoint({ cityName: `${entry.originalName ?? entry.city ?? 'unknown'}-hour` }),
-    ])));
+    mockFetchCityDataForDate.mockImplementation((entry) =>
+      Promise.resolve(
+        makeWeatherTimeline([
+          makeWeatherPoint({ cityName: `${entry.originalName ?? entry.city ?? 'unknown'}-hour` }),
+        ]),
+      ),
+    );
 
     render(<DashboardDataProbe />);
 

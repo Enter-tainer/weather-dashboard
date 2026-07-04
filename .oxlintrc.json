@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "env": {
+    "browser": true,
+    "builtin": true,
+    "node": true
+  },
+  "ignorePatterns": ["dist", "coverage", "playwright-report", "test-results"],
+  "settings": {
+    "react": {
+      "version": "19.2.4"
+    }
+  },
+  "rules": {
+    "no-unused-vars": ["error", { "varsIgnorePattern": "^[A-Z_]" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+    "typescript/restrict-template-expressions": [
+      "error",
+      {
+        "allowBoolean": true,
+        "allowNumber": true
+      }
+    ],
+    "react/exhaustive-deps": "error",
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["error", { "allowConstantExport": true }]
+  }
+}

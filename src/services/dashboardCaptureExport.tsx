@@ -36,7 +36,10 @@ function downloadBlob(blob: Blob, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
-async function waitForCanvasReady(getStatus: () => CanvasCaptureStatus, getLastChange: () => number): Promise<void> {
+async function waitForCanvasReady(
+  getStatus: () => CanvasCaptureStatus,
+  getLastChange: () => number,
+): Promise<void> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < CANVAS_READY_TIMEOUT_MS) {
@@ -84,7 +87,10 @@ export async function exportDashboardCapture({
   try {
     await nextFrame();
     await nextFrame();
-    await waitForCanvasReady(() => canvasStatus, () => lastCanvasStatusChange);
+    await waitForCanvasReady(
+      () => canvasStatus,
+      () => lastCanvasStatusChange,
+    );
     await nextFrame();
 
     const captureNode = host.querySelector<HTMLElement>('.dashboard-capture-sheet');
@@ -112,10 +118,14 @@ export async function exportDashboardCapture({
     });
 
     const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((b) => {
-        if (b) resolve(b);
-        else reject(new Error('WebP encoding failed'));
-      }, 'image/webp', 0.85);
+      canvas.toBlob(
+        (b) => {
+          if (b) resolve(b);
+          else reject(new Error('WebP encoding failed'));
+        },
+        'image/webp',
+        0.85,
+      );
     });
 
     downloadBlob(blob, captureFileName(data, selection));

@@ -12,21 +12,22 @@ const DATA = [
 ];
 
 function SoundingSelectionProbe() {
-  const {
-    activeSoundingItem,
-    closeSounding,
-    selectSoundingItem,
-    soundingIndex,
-    stepSounding,
-  } = useSoundingSelection(DATA);
+  const { activeSoundingItem, closeSounding, selectSoundingItem, soundingIndex, stepSounding } =
+    useSoundingSelection(DATA);
 
   return (
     <div>
       <output aria-label="active-time">{activeSoundingItem?.time ?? ''}</output>
       <output aria-label="active-index">{soundingIndex}</output>
-      <button type="button" onClick={() => selectSoundingItem(FIRST_DATA_POINT)}>select first</button>
-      <button type="button" onClick={() => stepSounding(1)}>next</button>
-      <button type="button" onClick={closeSounding}>close</button>
+      <button type="button" onClick={() => selectSoundingItem(FIRST_DATA_POINT)}>
+        select first
+      </button>
+      <button type="button" onClick={() => stepSounding(1)}>
+        next
+      </button>
+      <button type="button" onClick={closeSounding}>
+        close
+      </button>
     </div>
   );
 }

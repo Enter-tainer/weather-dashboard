@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from 'react';
+import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import {
   CanvasCaptureContext,
   type CanvasCaptureRegistration,
@@ -59,9 +54,5 @@ export function CanvasCaptureProvider({ children, onStatusChange }: CanvasCaptur
 
   const value = useMemo(() => ({ registerCanvas }), [registerCanvas]);
 
-  return (
-    <CanvasCaptureContext.Provider value={value}>
-      {children}
-    </CanvasCaptureContext.Provider>
-  );
+  return <CanvasCaptureContext.Provider value={value}>{children}</CanvasCaptureContext.Provider>;
 }

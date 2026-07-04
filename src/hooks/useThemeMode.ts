@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSearchParam } from '../services/urlState';
 
 export const THEME_MODES = ['auto', 'light', 'dark'] as const;
-export type ThemeMode = typeof THEME_MODES[number];
+export type ThemeMode = (typeof THEME_MODES)[number];
 export type EffectiveTheme = Exclude<ThemeMode, 'auto'>;
 
 const THEME_STORAGE_KEY = 'weather-dashboard-theme';
@@ -38,10 +38,7 @@ export function useThemeMode(): ThemeModeResult {
   const [mode, setMode] = useState(getStoredMode);
   const [systemTheme, setSystemTheme] = useState(getSystemTheme);
 
-  const effectiveTheme = useMemo(
-    () => (mode === 'auto' ? systemTheme : mode),
-    [mode, systemTheme],
-  );
+  const effectiveTheme = useMemo(() => (mode === 'auto' ? systemTheme : mode), [mode, systemTheme]);
 
   useEffect(() => {
     if (!window.matchMedia) return undefined;
@@ -65,13 +62,15 @@ export function useThemeMode(): ThemeModeResult {
       // Ignore private browsing or blocked storage.
     }
 
-    window.dispatchEvent(new CustomEvent('weather-theme-change', {
-      detail: { mode, effectiveTheme },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('weather-theme-change', {
+        detail: { mode, effectiveTheme },
+      }),
+    );
   }, [mode, effectiveTheme]);
 
   const cycleThemeMode = useCallback(() => {
-    setMode(current => {
+    setMode((current) => {
       const currentIndex = THEME_MODES.indexOf(current);
       return THEME_MODES[(currentIndex + 1) % THEME_MODES.length] ?? 'auto';
     });

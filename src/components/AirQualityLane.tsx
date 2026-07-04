@@ -29,7 +29,6 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 'min-content' }}>
-      
       {/* Title / Main AQI Row */}
       <div className="lane" style={{ height: '30px', fontWeight: 'normal' }}>
         <div className="lane-data">
@@ -37,30 +36,37 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
             const bgColor = getAqiColor(item.aqiUS);
             const color = 'var(--metric-text-strong)';
             return (
-              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, fontSize: '11px', color }}>
-                {index % labelInterval === 0 ? item.aqiUS ?? '' : ''}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-      {/* Visibility Row (m to km) */}
-      <div className="lane" style={{ height: '20px', fontSize: '9px' }}>
-        <div className="lane-data">
-          {data.map((item, index) => {
-            const visKm = item.visibility != null ? (item.visibility / 1000).toFixed(1) : '-';
-            const bgColor = getVisibilityColor(visKm !== '-' ? parseFloat(visKm) : null);
-            
-            return (
-              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, color: 'var(--metric-text)' }}>
-                {index % labelInterval === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
+              <div
+                key={index}
+                className="lane-cell"
+                style={{ backgroundColor: bgColor, fontSize: '11px', color }}
+              >
+                {index % labelInterval === 0 ? (item.aqiUS ?? '') : ''}
               </div>
             );
           })}
         </div>
       </div>
 
+      {/* Visibility Row (m to km) */}
+      <div className="lane" style={{ height: '20px', fontSize: '9px' }}>
+        <div className="lane-data">
+          {data.map((item, index) => {
+            const visKm = item.visibility != null ? (item.visibility / 1000).toFixed(1) : '-';
+            const bgColor = getVisibilityColor(visKm !== '-' ? parseFloat(visKm) : null);
+
+            return (
+              <div
+                key={index}
+                className="lane-cell"
+                style={{ backgroundColor: bgColor, color: 'var(--metric-text)' }}
+              >
+                {index % labelInterval === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

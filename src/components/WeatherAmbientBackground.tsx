@@ -18,16 +18,24 @@ interface WeatherAmbientBackgroundProps {
 
 // Soft ambient colors for weather categories
 const WEATHER_COLORS = {
-  clear:   [255, 213, 79],
-  cloudy:  [190, 194, 200],
-  fog:     [182, 198, 192],
+  clear: [255, 213, 79],
+  cloudy: [190, 194, 200],
+  fog: [182, 198, 192],
   drizzle: [147, 197, 253],
-  rain:    [96, 165, 250],
-  snow:    [186, 230, 253],
+  rain: [96, 165, 250],
+  snow: [186, 230, 253],
   thunder: [192, 132, 252],
 } as const satisfies Record<WeatherCategory, RgbTuple>;
 
-const CATEGORY_ORDER = ['clear', 'cloudy', 'fog', 'drizzle', 'rain', 'snow', 'thunder'] as const satisfies readonly WeatherCategory[];
+const CATEGORY_ORDER = [
+  'clear',
+  'cloudy',
+  'fog',
+  'drizzle',
+  'rain',
+  'snow',
+  'thunder',
+] as const satisfies readonly WeatherCategory[];
 
 function getWeatherCategory(code: number): WeatherCategory {
   if (code <= 1) return 'clear';
@@ -41,7 +49,9 @@ function getWeatherCategory(code: number): WeatherCategory {
   return 'thunder';
 }
 
-function computeDistribution(weatherCodeMembers: number[] | undefined): WeatherDistributionSegment[] | null {
+function computeDistribution(
+  weatherCodeMembers: number[] | undefined,
+): WeatherDistributionSegment[] | null {
   if (!weatherCodeMembers || weatherCodeMembers.length === 0) return null;
 
   const catFreq: Partial<Record<WeatherCategory, number>> = {};
@@ -51,9 +61,10 @@ function computeDistribution(weatherCodeMembers: number[] | undefined): WeatherD
   }
   const total = weatherCodeMembers.length;
 
-  return CATEGORY_ORDER
-    .filter(cat => catFreq[cat] != null)
-    .map(cat => ({ cat, prob: (catFreq[cat] ?? 0) / total }));
+  return CATEGORY_ORDER.filter((cat) => catFreq[cat] != null).map((cat) => ({
+    cat,
+    prob: (catFreq[cat] ?? 0) / total,
+  }));
 }
 
 const ALPHA = 0.22;
@@ -75,53 +86,60 @@ export default function WeatherAmbientBackground({
   const bgHeight = compact ? COMPACT_BG_HEIGHT : FULL_BG_HEIGHT;
   const hRadiusPx = hourWidth * 1.2;
 
-  const canvasRef = useCanvas(totalWidth, bgHeight, (ctx) => {
-    for (let i = 0; i < data.length; i++) {
-      const item = data[i];
-      if (!item) continue;
-      const dist = computeDistribution(item.weatherCodeMembers);
-      if (!dist) continue;
+  const canvasRef = useCanvas(
+    totalWidth,
+    bgHeight,
+    (ctx) => {
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        if (!item) continue;
+        const dist = computeDistribution(item.weatherCodeMembers);
+        if (!dist) continue;
 
-      const cx = getHourCenter(i, hourWidth);
+        const cx = getHourCenter(i, hourWidth);
 
-      let cumulative = 0;
-      for (const seg of dist) {
-        const yCenter = (cumulative + seg.prob / 2) * bgHeight;
-        const vRadius = Math.max(seg.prob * bgHeight * 0.7, 8);
-        const [r, g, b] = WEATHER_COLORS[seg.cat];
+        let cumulative = 0;
+        for (const seg of dist) {
+          const yCenter = (cumulative + seg.prob / 2) * bgHeight;
+          const vRadius = Math.max(seg.prob * bgHeight * 0.7, 8);
+          const [r, g, b] = WEATHER_COLORS[seg.cat];
 
-        // Draw elliptical gradient matching CSS radial-gradient(Hpx Vpx at cx cy)
-        // Scale context so a circular gradient becomes elliptical
-        ctx.save();
-        ctx.translate(cx, yCenter);
-        ctx.scale(hRadiusPx / vRadius, 1);
+          // Draw elliptical gradient matching CSS radial-gradient(Hpx Vpx at cx cy)
+          // Scale context so a circular gradient becomes elliptical
+          ctx.save();
+          ctx.translate(cx, yCenter);
+          ctx.scale(hRadiusPx / vRadius, 1);
 
-        // Create gradient in scaled space (circular, radius = vRadius)
-        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, vRadius);
-        grad.addColorStop(0, `rgba(${r},${g},${b},${ALPHA})`);
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-        ctx.fillStyle = grad;
+          // Create gradient in scaled space (circular, radius = vRadius)
+          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, vRadius);
+          grad.addColorStop(0, `rgba(${r},${g},${b},${ALPHA})`);
+          grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+          ctx.fillStyle = grad;
 
-        ctx.beginPath();
-        ctx.arc(0, 0, vRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+          ctx.beginPath();
+          ctx.arc(0, 0, vRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
 
-        cumulative += seg.prob;
+          cumulative += seg.prob;
+        }
       }
-    }
-  }, [data, hourWidth, hRadiusPx, bgHeight]);
+    },
+    [data, hourWidth, hRadiusPx, bgHeight],
+  );
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 'calc(24px + var(--lane-height-basic) + 12px)',
-      left: 0,
-      width: totalWidth,
-      height: `${bgHeight}px`,
-      zIndex: 0,
-      pointerEvents: 'none',
-    }}>
+    <div
+      style={{
+        position: 'absolute',
+        top: 'calc(24px + var(--lane-height-basic) + 12px)',
+        left: 0,
+        width: totalWidth,
+        height: `${bgHeight}px`,
+        zIndex: 0,
+        pointerEvents: 'none',
+      }}
+    >
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );

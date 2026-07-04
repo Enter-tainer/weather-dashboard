@@ -16,7 +16,8 @@
           const stored = window.localStorage.getItem(key);
           if (!hasQueryMode && modes.has(stored)) mode = stored;
         } catch {}
-        const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const systemDark =
+          window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const theme = mode === 'auto' ? (systemDark ? 'dark' : 'light') : mode;
         document.documentElement.dataset.theme = theme;
         document.documentElement.dataset.themeMode = mode;

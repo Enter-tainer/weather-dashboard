@@ -1,4 +1,10 @@
-import type { MoonEventList, NightBand, SunEvent, WeatherPoint, WeatherTimeline } from '../types/weather';
+import type {
+  MoonEventList,
+  NightBand,
+  SunEvent,
+  WeatherPoint,
+  WeatherTimeline,
+} from '../types/weather';
 import { DEFAULT_HOUR_WIDTH } from './timelineLayout';
 
 export const CAPTURE_COL_WIDTH = DEFAULT_HOUR_WIDTH;
@@ -40,7 +46,11 @@ export function captureSelectionFromViewport(
   if (safeLength === 0) return { startIndex: 0, endIndex: 0 };
 
   const startIndex = clamp(Math.floor(scrollLeft / hourWidth), 0, safeLength - 1);
-  const endIndex = clamp(Math.ceil((scrollLeft + clientWidth) / hourWidth), startIndex + 1, safeLength);
+  const endIndex = clamp(
+    Math.ceil((scrollLeft + clientWidth) / hourWidth),
+    startIndex + 1,
+    safeLength,
+  );
 
   return normalizeCaptureSelection({ startIndex, endIndex }, safeLength);
 }
@@ -63,7 +73,11 @@ export function captureSelectionFromCurrentDay(
 
   const anchorIndex = clamp(Math.floor(scrollLeft / hourWidth), 0, safeLength - 1);
   const anchor = data[anchorIndex];
-  if (!anchor) return normalizeCaptureSelection({ startIndex: 0, endIndex: Math.min(24, safeLength) }, safeLength);
+  if (!anchor)
+    return normalizeCaptureSelection(
+      { startIndex: 0, endIndex: Math.min(24, safeLength) },
+      safeLength,
+    );
 
   let startIndex = anchorIndex;
   let endIndex = anchorIndex + 1;
@@ -110,26 +124,46 @@ export function updateCaptureSelectionByDrag(
   return { startIndex, endIndex: startIndex + width };
 }
 
-function isEventInCaptureRange(absoluteIndex: number, startIndex: number, endIndex: number): boolean {
+function isEventInCaptureRange(
+  absoluteIndex: number,
+  startIndex: number,
+  endIndex: number,
+): boolean {
   return absoluteIndex >= startIndex - 0.5 && absoluteIndex <= endIndex - 0.5;
 }
 
-function sliceSunEvents(events: SunEvent[] | undefined, startIndex: number, endIndex: number): SunEvent[] | undefined {
+function sliceSunEvents(
+  events: SunEvent[] | undefined,
+  startIndex: number,
+  endIndex: number,
+): SunEvent[] | undefined {
   if (!events) return undefined;
 
   return events
-    .filter((event) => event.absoluteIndex == null || isEventInCaptureRange(event.absoluteIndex, startIndex, endIndex))
+    .filter(
+      (event) =>
+        event.absoluteIndex == null ||
+        isEventInCaptureRange(event.absoluteIndex, startIndex, endIndex),
+    )
     .map((event) => {
       const { absoluteIndex, ...rest } = event;
       return absoluteIndex == null ? rest : { ...rest, absoluteIndex: absoluteIndex - startIndex };
     });
 }
 
-function sliceMoonEvents(events: MoonEventList | undefined, startIndex: number, endIndex: number): MoonEventList | undefined {
+function sliceMoonEvents(
+  events: MoonEventList | undefined,
+  startIndex: number,
+  endIndex: number,
+): MoonEventList | undefined {
   if (!events) return undefined;
 
   const sliced = events
-    .filter((event) => event.absoluteIndex == null || isEventInCaptureRange(event.absoluteIndex, startIndex, endIndex))
+    .filter(
+      (event) =>
+        event.absoluteIndex == null ||
+        isEventInCaptureRange(event.absoluteIndex, startIndex, endIndex),
+    )
     .map((event) => {
       const { absoluteIndex, ...rest } = event;
       return absoluteIndex == null ? rest : { ...rest, absoluteIndex: absoluteIndex - startIndex };
@@ -140,7 +174,11 @@ function sliceMoonEvents(events: MoonEventList | undefined, startIndex: number, 
   return sliced;
 }
 
-function sliceNightBands(bands: NightBand[] | undefined, startIndex: number, endIndex: number): NightBand[] | undefined {
+function sliceNightBands(
+  bands: NightBand[] | undefined,
+  startIndex: number,
+  endIndex: number,
+): NightBand[] | undefined {
   if (!bands) return undefined;
 
   const rangeLeft = startIndex - 0.5;
@@ -154,7 +192,10 @@ function sliceNightBands(bands: NightBand[] | undefined, startIndex: number, end
   });
 }
 
-export function sliceTimelineForCapture(data: WeatherTimeline, selection: CaptureSelection): WeatherTimeline {
+export function sliceTimelineForCapture(
+  data: WeatherTimeline,
+  selection: CaptureSelection,
+): WeatherTimeline {
   const normalized = normalizeCaptureSelection(selection, data.length);
   const { startIndex, endIndex } = normalized;
   const sliced = data.slice(startIndex, endIndex) as WeatherTimeline;

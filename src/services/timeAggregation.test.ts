@@ -61,7 +61,9 @@ describe('time aggregation', () => {
   });
 
   it('aligns six-hour aggregation into four columns for a full day', () => {
-    const timeline = makeWeatherTimeline(Array.from({ length: 24 }, (_, index) => makePoint(index)));
+    const timeline = makeWeatherTimeline(
+      Array.from({ length: 24 }, (_, index) => makePoint(index)),
+    );
 
     const aggregated = aggregateTimelineByHours(timeline, 6);
 

@@ -13,7 +13,8 @@ function parseEntry(part: string): RouteEntry {
 
   if (location && COORD_RE.test(location)) {
     const [lat, lon] = location.split(',').map(Number);
-    if (lat == null || lon == null) return { city: location, date, originalName: displayName || location };
+    if (lat == null || lon == null)
+      return { city: location, date, originalName: displayName || location };
     return { lat, lon, date, originalName: displayName || undefined };
   }
 
@@ -25,16 +26,18 @@ function coordinateFallbackName(lat: number, lon: number): string {
 }
 
 async function resolveCoordinateNames(entries: RouteEntry[]): Promise<RouteEntry[]> {
-  return Promise.all(entries.map(async entry => {
-    if (entry.lat == null || entry.lon == null || entry.originalName) return entry;
+  return Promise.all(
+    entries.map(async (entry) => {
+      if (entry.lat == null || entry.lon == null || entry.originalName) return entry;
 
-    const originalName = await reverseGeocode(
-      entry.lat,
-      entry.lon,
-      coordinateFallbackName(entry.lat, entry.lon)
-    );
-    return { ...entry, originalName };
-  }));
+      const originalName = await reverseGeocode(
+        entry.lat,
+        entry.lon,
+        coordinateFallbackName(entry.lat, entry.lon),
+      );
+      return { ...entry, originalName };
+    }),
+  );
 }
 
 export async function parseRoute(): Promise<RouteEntry[]> {
@@ -75,7 +78,10 @@ export async function parseSwitchableRoute(): Promise<SwitchableRoute | null> {
   // Check whether a date has multiple entries
   let hasSwitchable = false;
   for (const group of dateMap.values()) {
-    if (group.length > 1) { hasSwitchable = true; break; }
+    if (group.length > 1) {
+      hasSwitchable = true;
+      break;
+    }
   }
   if (!hasSwitchable) return null;
 
@@ -88,7 +94,7 @@ export async function parseSwitchableRoute(): Promise<SwitchableRoute | null> {
 
 // Build route for specific active selections
 export function buildRouteForSelections(dateSlots: DateSlot[]): RouteEntry[] {
-  return dateSlots.map(slot => {
+  return dateSlots.map((slot) => {
     const entry = slot.entries[slot.activeIndex];
     if (!entry) return { date: slot.date };
     return { ...entry, date: slot.date };
@@ -98,13 +104,16 @@ export function buildRouteForSelections(dateSlots: DateSlot[]): RouteEntry[] {
 // Convert an array of entries back to a string route
 export function stringifyRoute(entries: RouteEntry[]): string {
   if (!entries || entries.length === 0) return '';
-  return entries.map(entry => {
-    let loc = entry.lat != null && entry.lon != null ? `${entry.lat},${entry.lon}` : (entry.city || '');
-    if (entry.originalName && entry.originalName !== loc && entry.originalName !== entry.city) {
-      loc += `~${entry.originalName}`;
-    }
-    return `${loc}:${entry.date}`;
-  }).join(';');
+  return entries
+    .map((entry) => {
+      let loc =
+        entry.lat != null && entry.lon != null ? `${entry.lat},${entry.lon}` : entry.city || '';
+      if (entry.originalName && entry.originalName !== loc && entry.originalName !== entry.city) {
+        loc += `~${entry.originalName}`;
+      }
+      return `${loc}:${entry.date}`;
+    })
+    .join(';');
 }
 
 export function generate7Days(
@@ -131,9 +140,9 @@ function getUserCoords(): Promise<GeolocationCoordinates> {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      pos => resolve(pos.coords),
-      err => reject(new Error(err.message)),
-      { timeout: 10000 }
+      (pos) => resolve(pos.coords),
+      (err) => reject(new Error(err.message)),
+      { timeout: 10000 },
     );
   });
 }

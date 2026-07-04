@@ -50,7 +50,10 @@ function createInitialState(testData: WeatherTimeline | null | undefined): Dashb
   };
 }
 
-function dashboardDataReducer(state: DashboardDataState, action: DashboardDataAction): DashboardDataState {
+function dashboardDataReducer(
+  state: DashboardDataState,
+  action: DashboardDataAction,
+): DashboardDataState {
   switch (action.type) {
     case 'test-data-loaded':
       return createInitialState(action.data);
@@ -88,7 +91,10 @@ function fetchCityDataSafely(entry: RouteEntry): Promise<WeatherTimeline> {
   });
 }
 
-function streamTimeline(route: RouteEntry[], { isCancelled, onTimeline, onComplete }: StreamTimelineOptions): void {
+function streamTimeline(
+  route: RouteEntry[],
+  { isCancelled, onTimeline, onComplete }: StreamTimelineOptions,
+): void {
   if (route.length === 0) {
     if (!isCancelled()) onComplete();
     return;
@@ -98,13 +104,13 @@ function streamTimeline(route: RouteEntry[], { isCancelled, onTimeline, onComple
   let loaded = 0;
 
   route.forEach((entry, index) => {
-    void fetchCityDataSafely(entry).then(cityData => {
+    void fetchCityDataSafely(entry).then((cityData) => {
       if (isCancelled()) return;
 
       results[index] = cityData;
       loaded += 1;
 
-      const timeline = assembleTimeline(results.map(result => result ?? createEmptyTimeline()));
+      const timeline = assembleTimeline(results.map((result) => result ?? createEmptyTimeline()));
       if (timeline.length > 0) onTimeline(timeline);
       if (loaded === route.length) onComplete();
     });
@@ -142,11 +148,7 @@ function buildSwitchInfo(dateSlots: DateSlot[] | null): SwitchInfo {
 }
 
 export function useDashboardData(testData?: WeatherTimeline): DashboardDataResult {
-  const [state, dispatch] = useReducer(
-    dashboardDataReducer,
-    testData,
-    createInitialState,
-  );
+  const [state, dispatch] = useReducer(dashboardDataReducer, testData, createInitialState);
   const switchRequestRef = useRef(0);
   const mountedRef = useRef(false);
 
@@ -180,7 +182,7 @@ export function useDashboardData(testData?: WeatherTimeline): DashboardDataResul
 
           streamTimeline(activeRoute, {
             isCancelled,
-            onTimeline: timeline => dispatch({ type: 'timeline-updated', data: timeline }),
+            onTimeline: (timeline) => dispatch({ type: 'timeline-updated', data: timeline }),
             onComplete: () => {
               dispatch({ type: 'loading-completed' });
               preloadInactiveEntries(switchable.dateSlots);
@@ -194,7 +196,7 @@ export function useDashboardData(testData?: WeatherTimeline): DashboardDataResul
 
         streamTimeline(route, {
           isCancelled,
-          onTimeline: timeline => dispatch({ type: 'timeline-updated', data: timeline }),
+          onTimeline: (timeline) => dispatch({ type: 'timeline-updated', data: timeline }),
           onComplete: () => dispatch({ type: 'loading-completed' }),
         });
       } catch (error) {
@@ -212,46 +214,46 @@ export function useDashboardData(testData?: WeatherTimeline): DashboardDataResul
     };
   }, [testData]);
 
-  const switchInfo = useMemo(
-    () => buildSwitchInfo(state.dateSlots),
-    [state.dateSlots],
-  );
+  const switchInfo = useMemo(() => buildSwitchInfo(state.dateSlots), [state.dateSlots]);
 
-  const handleCityClick = useCallback((cityName: string) => {
-    if (state.switching || !state.dateSlots) return;
+  const handleCityClick = useCallback(
+    (cityName: string) => {
+      if (state.switching || !state.dateSlots) return;
 
-    const slot = state.dateSlots.find(s => s.entries[s.activeIndex]?.originalName === cityName);
-    if (!slot || slot.entries.length <= 1) return;
+      const slot = state.dateSlots.find((s) => s.entries[s.activeIndex]?.originalName === cityName);
+      if (!slot || slot.entries.length <= 1) return;
 
-    const newSlots = state.dateSlots.map(s => {
-      if (s === slot) {
-        return { ...s, activeIndex: (s.activeIndex + 1) % s.entries.length };
-      }
-      return s;
-    });
-
-    const requestId = switchRequestRef.current + 1;
-    switchRequestRef.current = requestId;
-    dispatch({ type: 'switch-started', dateSlots: newSlots });
-
-    const route = buildRouteForSelections(newSlots);
-
-    void Promise.all(route.map(fetchCityDataSafely))
-      .then(results => {
-        if (!mountedRef.current || switchRequestRef.current !== requestId) return;
-
-        dispatch({
-          type: 'switch-completed',
-          data: assembleTimeline(results),
-        });
-      })
-      .catch((error: unknown) => {
-        if (!mountedRef.current || switchRequestRef.current !== requestId) return;
-
-        console.error(error);
-        dispatch({ type: 'switch-failed' });
+      const newSlots = state.dateSlots.map((s) => {
+        if (s === slot) {
+          return { ...s, activeIndex: (s.activeIndex + 1) % s.entries.length };
+        }
+        return s;
       });
-  }, [state.dateSlots, state.switching]);
+
+      const requestId = switchRequestRef.current + 1;
+      switchRequestRef.current = requestId;
+      dispatch({ type: 'switch-started', dateSlots: newSlots });
+
+      const route = buildRouteForSelections(newSlots);
+
+      void Promise.all(route.map(fetchCityDataSafely))
+        .then((results) => {
+          if (!mountedRef.current || switchRequestRef.current !== requestId) return;
+
+          dispatch({
+            type: 'switch-completed',
+            data: assembleTimeline(results),
+          });
+        })
+        .catch((error: unknown) => {
+          if (!mountedRef.current || switchRequestRef.current !== requestId) return;
+
+          console.error(error);
+          dispatch({ type: 'switch-failed' });
+        });
+    },
+    [state.dateSlots, state.switching],
+  );
 
   return {
     data: state.data,

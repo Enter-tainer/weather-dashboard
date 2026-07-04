@@ -116,13 +116,13 @@ function circularMeanDegrees(values: number[]): number | null {
   let sinSum = 0;
   let cosSum = 0;
   for (const value of values) {
-    const radians = value * Math.PI / 180;
+    const radians = (value * Math.PI) / 180;
     sinSum += Math.sin(radians);
     cosSum += Math.cos(radians);
   }
 
   if (Math.hypot(sinSum, cosSum) < 1e-9) return null;
-  return (Math.atan2(sinSum, cosSum) * 180 / Math.PI + 360) % 360;
+  return ((Math.atan2(sinSum, cosSum) * 180) / Math.PI + 360) % 360;
 }
 
 function modalRounded(values: number[]): number | null {
@@ -134,13 +134,12 @@ function modalRounded(values: number[]): number | null {
     frequencies.set(rounded, (frequencies.get(rounded) ?? 0) + 1);
   }
 
-  return [...frequencies.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? null;
+  return [...frequencies.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? null;
 }
 
 function precipitationProbabilityFromMembers(values: number[]): number | null {
   if (values.length === 0) return null;
-  const wetMembers = values.filter(value => value > 0.1).length;
+  const wetMembers = values.filter((value) => value > 0.1).length;
   return Math.round((wetMembers / values.length) * 100);
 }
 
@@ -151,7 +150,10 @@ function minNullable(...values: Array<number | null>): number | null {
 
 export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<WeatherTimeline> {
   const { city, date, originalName, lat, lon } = cityObj;
-  const memoKey = lat != null ? `${lat},${lon}:${date}:${originalName || ''}` : `${city}:${date}:${originalName || ''}`;
+  const memoKey =
+    lat != null
+      ? `${lat},${lon}:${date}:${originalName || ''}`
+      : `${city}:${date}:${originalName || ''}`;
   const processed = processedCache.get(memoKey);
   if (processed) return processed;
 
@@ -163,11 +165,11 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
     latitude = lat;
     longitude = lon;
     timezone = 'auto';
-    name = originalName || await reverseGeocode(lat, lon, `${lat}°, ${lon}°`);
+    name = originalName || (await reverseGeocode(lat, lon, `${lat}°, ${lon}°`));
   } else {
     ({ latitude, longitude, timezone, name } = await getCityDetails(city ?? 'Beijing'));
   }
-  
+
   const tzParams = `&timezone=${encodeURIComponent(timezone)}&start_date=${date}&end_date=${date}`;
 
   // 1. 根据日期差动态选择最精确的集合模型
@@ -183,14 +185,14 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
 
   // Pressure levels for altitude-based cloud visualization
   const pressureLevels = SOUNDING_PRESSURE_LEVELS;
-  const cloudPressureParams = pressureLevels.map(p => `cloud_cover_${p}hPa`).join(',');
-  const geopotentialParams = pressureLevels.map(p => `geopotential_height_${p}hPa`).join(',');
+  const cloudPressureParams = pressureLevels.map((p) => `cloud_cover_${p}hPa`).join(',');
+  const geopotentialParams = pressureLevels.map((p) => `geopotential_height_${p}hPa`).join(',');
   const soundingParams = [
-    ...pressureLevels.map(p => `temperature_${p}hPa`),
-    ...pressureLevels.map(p => `dew_point_${p}hPa`),
-    ...pressureLevels.map(p => `relative_humidity_${p}hPa`),
-    ...pressureLevels.map(p => `wind_speed_${p}hPa`),
-    ...pressureLevels.map(p => `wind_direction_${p}hPa`),
+    ...pressureLevels.map((p) => `temperature_${p}hPa`),
+    ...pressureLevels.map((p) => `dew_point_${p}hPa`),
+    ...pressureLevels.map((p) => `relative_humidity_${p}hPa`),
+    ...pressureLevels.map((p) => `wind_speed_${p}hPa`),
+    ...pressureLevels.map((p) => `wind_direction_${p}hPa`),
   ].join(',');
 
   // Forecast API
@@ -205,7 +207,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   const [initialForecastRes, ensembleRes, aqRes] = await Promise.all([
     cachedFetch<OpenMeteoResponse>(forecastUrl, TTL_WEATHER).catch(() => null),
     cachedFetch<OpenMeteoResponse>(ensembleUrl, TTL_WEATHER).catch(() => null),
-    cachedFetch<OpenMeteoResponse>(aqUrl, TTL_WEATHER).catch(() => null)
+    cachedFetch<OpenMeteoResponse>(aqUrl, TTL_WEATHER).catch(() => null),
   ]);
   let forecastRes = initialForecastRes;
   let forecastDataSource: WeatherDataSource = 'forecast';
@@ -215,7 +217,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
     if (!ensembleRes || ensembleRes.error || !ensembleRes.hourly) {
       throw new Error(`Failed to fetch both forecast and ensemble for ${name}`);
     }
-    
+
     const hoursCount = ensembleRes.hourly.time.length;
     const temperature2m = nullableArray(hoursCount);
     const relativeHumidity2m = nullableArray(hoursCount);
@@ -277,7 +279,8 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
 
       temperature2m[i] = meanTemp;
       relativeHumidity2m[i] = meanHumidity;
-      dewPoint2m[i] = meanTemp != null && meanHumidity != null ? dewPointFromRh(meanTemp, meanHumidity) : null;
+      dewPoint2m[i] =
+        meanTemp != null && meanHumidity != null ? dewPointFromRh(meanTemp, meanHumidity) : null;
       precipitation[i] = meanPrecip;
       precipitationProbability[i] = precipitationProbabilityFromMembers(precipMembers);
       windSpeed10m[i] = meanWind;
@@ -286,7 +289,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       surfacePressure[i] = mean(pressureMembers);
       weatherCode[i] = modalRounded(weatherCodeMembers);
     }
-    
+
     forecastRes = { ...ensembleRes, hourly: mockHourly };
     forecastDataSource = 'ensemble';
   }
@@ -294,7 +297,8 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   // Use utc_offset_seconds from API response for reliable timezone handling.
   // API returns local times without offset; JS Date parses them as browser-local.
   // driftMs = target_offset - browser_offset (the gap between the two).
-  const targetOffsetMs = (forecastRes?.utc_offset_seconds ?? ensembleRes?.utc_offset_seconds ?? 0) * 1000;
+  const targetOffsetMs =
+    (forecastRes?.utc_offset_seconds ?? ensembleRes?.utc_offset_seconds ?? 0) * 1000;
   const browserOffsetMs = -new Date(date + 'T12:00:00').getTimezoneOffset() * 60000;
   const driftMs = targetOffsetMs - browserOffsetMs;
   const toUtc = (localStr: string) => new Date(new Date(localStr).getTime() - driftMs);
@@ -303,9 +307,14 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   // Resolve the IANA timezone name for toLocaleString (handles timezone='auto')
   const resolvedTz = forecastRes?.timezone || ensembleRes?.timezone || timezone;
   const localTime = (utcDate: Date) => {
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: resolvedTz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(utcDate);
-    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
-    const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: resolvedTz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(utcDate);
+    const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+    const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
     return { localHour: h, localMinute: m };
   };
 
@@ -350,12 +359,14 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       p90: percentile(tempMembers, 90),
     };
 
-    const cloudByLevel = pressureLevels.map(p => ({
+    const cloudByLevel = pressureLevels.map((p) => ({
       pressure: p,
       cover: nullableNumberAt(forecastHourly[`cloud_cover_${p}hPa`], i),
       altitude: nullableNumberAt(forecastHourly[`geopotential_height_${p}hPa`], i),
     }));
-    const hasCloudByLevelData = cloudByLevel.some(level => level.cover != null || level.altitude != null);
+    const hasCloudByLevelData = cloudByLevel.some(
+      (level) => level.cover != null || level.altitude != null,
+    );
 
     combined.push({
       cityName: originalName || name,
@@ -364,7 +375,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       timezone: resolvedTz,
       utcOffsetSeconds: targetOffsetMs / 1000,
       hour: new Date(time).getHours(),
-      
+
       weatherCode: nullableNumberAt(forecastHourly.weather_code, i),
       temperature: nullableNumberAt(forecastHourly.temperature_2m, i),
       humidity: nullableNumberAt(forecastHourly.relative_humidity_2m, i),
@@ -378,16 +389,17 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       visibility: minNullable(
         nullableNumberAt(forecastHourly.visibility, i),
         estimateVisibility(
-          nullableNumberAt(aqRes?.hourly?.pm2_5, i), nullableNumberAt(aqRes?.hourly?.pm10, i),
+          nullableNumberAt(aqRes?.hourly?.pm2_5, i),
+          nullableNumberAt(aqRes?.hourly?.pm10, i),
           nullableNumberAt(aqRes?.hourly?.nitrogen_dioxide, i),
-          nullableNumberAt(forecastHourly.relative_humidity_2m, i)
-        )
+          nullableNumberAt(forecastHourly.relative_humidity_2m, i),
+        ),
       ),
-      
+
       uvIndex: nullableNumberAt(forecastHourly.uv_index, i),
       pressure: nullableNumberAt(forecastHourly.surface_pressure, i),
       cape: nullableNumberAt(forecastHourly.cape, i),
-      
+
       cloudCover: nullableNumberAt(forecastHourly.cloud_cover, i),
       cloudLow: nullableNumberAt(forecastHourly.cloud_cover_low, i),
       cloudMid: nullableNumberAt(forecastHourly.cloud_cover_mid, i),
@@ -398,23 +410,26 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       // Pressure-level cloud cover and geopotential heights for altitude visualization
       cloudByLevel: hasCloudByLevelData ? cloudByLevel : undefined,
 
-      soundingLevels: pressureLevels.map(p => {
-        const temp = nullableNumberAt(forecastHourly[`temperature_${p}hPa`], i);
-        const rh = nullableNumberAt(forecastHourly[`relative_humidity_${p}hPa`], i);
-        const dewPoint = nullableNumberAt(forecastHourly[`dew_point_${p}hPa`], i) ?? dewPointFromRh(temp, rh);
-        const altitude = nullableNumberAt(forecastHourly[`geopotential_height_${p}hPa`], i);
+      soundingLevels: pressureLevels
+        .map((p) => {
+          const temp = nullableNumberAt(forecastHourly[`temperature_${p}hPa`], i);
+          const rh = nullableNumberAt(forecastHourly[`relative_humidity_${p}hPa`], i);
+          const dewPoint =
+            nullableNumberAt(forecastHourly[`dew_point_${p}hPa`], i) ?? dewPointFromRh(temp, rh);
+          const altitude = nullableNumberAt(forecastHourly[`geopotential_height_${p}hPa`], i);
 
-        return {
-          pressure: p,
-          temp,
-          dewPoint,
-          relativeHumidity: rh,
-          altitude,
-          agl: altitude != null ? Math.max(0, altitude - elevation) : null,
-          windSpeed: nullableNumberAt(forecastHourly[`wind_speed_${p}hPa`], i),
-          windDir: nullableNumberAt(forecastHourly[`wind_direction_${p}hPa`], i),
-        };
-      }).filter(level => level.temp != null),
+          return {
+            pressure: p,
+            temp,
+            dewPoint,
+            relativeHumidity: rh,
+            altitude,
+            agl: altitude != null ? Math.max(0, altitude - elevation) : null,
+            windSpeed: nullableNumberAt(forecastHourly[`wind_speed_${p}hPa`], i),
+            windDir: nullableNumberAt(forecastHourly[`wind_direction_${p}hPa`], i),
+          };
+        })
+        .filter((level) => level.temp != null),
 
       tempMembers,
       tempEnsemble,
@@ -442,8 +457,18 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   const sunTimes = SunCalc.getTimes(dateObj, latitude, longitude);
 
   const sunEvents: SunEvent[] = [];
-  if (sunTimes.sunrise) sunEvents.push({ type: 'sunrise', time: fromUtc(sunTimes.sunrise), ...localTime(sunTimes.sunrise) });
-  if (sunTimes.sunset) sunEvents.push({ type: 'sunset', time: fromUtc(sunTimes.sunset), ...localTime(sunTimes.sunset) });
+  if (sunTimes.sunrise)
+    sunEvents.push({
+      type: 'sunrise',
+      time: fromUtc(sunTimes.sunrise),
+      ...localTime(sunTimes.sunrise),
+    });
+  if (sunTimes.sunset)
+    sunEvents.push({
+      type: 'sunset',
+      time: fromUtc(sunTimes.sunset),
+      ...localTime(sunTimes.sunset),
+    });
 
   // Compute sun altitude for each hour (for twilight gradient lane)
   for (const item of combined) {
@@ -454,8 +479,22 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   const moonEvents: MoonEventList = [];
   const moonTimes = SunCalc.getMoonTimes(dateObj, latitude, longitude);
   const moonIllum = SunCalc.getMoonIllumination(dateObj);
-  if (moonTimes.rise) moonEvents.push({ type: 'moonrise', time: fromUtc(moonTimes.rise), ...localTime(moonTimes.rise), phase: moonIllum.phase, fraction: moonIllum.fraction });
-  if (moonTimes.set) moonEvents.push({ type: 'moonset', time: fromUtc(moonTimes.set), ...localTime(moonTimes.set), phase: moonIllum.phase, fraction: moonIllum.fraction });
+  if (moonTimes.rise)
+    moonEvents.push({
+      type: 'moonrise',
+      time: fromUtc(moonTimes.rise),
+      ...localTime(moonTimes.rise),
+      phase: moonIllum.phase,
+      fraction: moonIllum.fraction,
+    });
+  if (moonTimes.set)
+    moonEvents.push({
+      type: 'moonset',
+      time: fromUtc(moonTimes.set),
+      ...localTime(moonTimes.set),
+      phase: moonIllum.phase,
+      fraction: moonIllum.fraction,
+    });
 
   // Add moon phase + fraction to each hourly data point
   for (const item of combined) {
@@ -478,67 +517,67 @@ export function assembleTimeline(results: WeatherTimeline[]): WeatherTimeline {
 
   let currentOffset = 0;
   for (const res of results) {
-     if (!res || res.length === 0) continue;
-     flatData.push(...res);
+    if (!res || res.length === 0) continue;
+    flatData.push(...res);
 
-     const firstItem = res[0];
-     if (!firstItem) continue;
+    const firstItem = res[0];
+    if (!firstItem) continue;
 
-     if (res.sunEvents) {
-        const cityStartTimeMs = new Date(firstItem.time).getTime();
-        const validSunEvents: IndexedSunEvent[] = [];
+    if (res.sunEvents) {
+      const cityStartTimeMs = new Date(firstItem.time).getTime();
+      const validSunEvents: IndexedSunEvent[] = [];
 
-        res.sunEvents.forEach(ev => {
-           const diffHours = (ev.time.getTime() - cityStartTimeMs) / 3600000;
-           if (diffHours >= 0 && diffHours <= res.length) {
-              const absIdx = currentOffset + diffHours;
-              validSunEvents.push({ ...ev, absoluteIndex: absIdx });
-              globalSunEvents.push({ ...ev, absoluteIndex: absIdx });
-           }
-        });
-
-        validSunEvents.sort((a,b) => a.absoluteIndex - b.absoluteIndex);
-
-        let currentNightStart: number | null = null;
-        const firstSunEvent = validSunEvents[0];
-        if (firstSunEvent && firstSunEvent.type === 'sunrise') {
-           currentNightStart = currentOffset - 0.5;
+      res.sunEvents.forEach((ev) => {
+        const diffHours = (ev.time.getTime() - cityStartTimeMs) / 3600000;
+        if (diffHours >= 0 && diffHours <= res.length) {
+          const absIdx = currentOffset + diffHours;
+          validSunEvents.push({ ...ev, absoluteIndex: absIdx });
+          globalSunEvents.push({ ...ev, absoluteIndex: absIdx });
         }
+      });
 
-        validSunEvents.forEach(ev => {
-           if (ev.type === 'sunrise') {
-              if (currentNightStart !== null) {
-                 globalNightBands.push({ left: currentNightStart, right: ev.absoluteIndex });
-                 currentNightStart = null;
-              }
-           } else if (ev.type === 'sunset') {
-              currentNightStart = ev.absoluteIndex;
-           }
-        });
+      validSunEvents.sort((a, b) => a.absoluteIndex - b.absoluteIndex);
 
-        if (currentNightStart !== null) {
-           globalNightBands.push({ left: currentNightStart, right: currentOffset + res.length - 0.5 });
+      let currentNightStart: number | null = null;
+      const firstSunEvent = validSunEvents[0];
+      if (firstSunEvent && firstSunEvent.type === 'sunrise') {
+        currentNightStart = currentOffset - 0.5;
+      }
+
+      validSunEvents.forEach((ev) => {
+        if (ev.type === 'sunrise') {
+          if (currentNightStart !== null) {
+            globalNightBands.push({ left: currentNightStart, right: ev.absoluteIndex });
+            currentNightStart = null;
+          }
+        } else if (ev.type === 'sunset') {
+          currentNightStart = ev.absoluteIndex;
         }
-     }
+      });
 
-     if (res.moonEvents) {
-        const cityStartTimeMs = new Date(firstItem.time).getTime();
-        res.moonEvents.forEach(ev => {
-           const diffHours = (ev.time.getTime() - cityStartTimeMs) / 3600000;
-           if (diffHours >= 0 && diffHours <= res.length) {
-              globalMoonEvents.push({ ...ev, absoluteIndex: currentOffset + diffHours });
-           }
-        });
-        // Attach phase info to the city's range
-        if (globalMoonEvents.phase == null && res.moonEvents.phase != null) {
-          globalMoonEvents.phase = res.moonEvents.phase;
-        }
-        if (globalMoonEvents.fraction == null && res.moonEvents.fraction != null) {
-          globalMoonEvents.fraction = res.moonEvents.fraction;
-        }
-     }
+      if (currentNightStart !== null) {
+        globalNightBands.push({ left: currentNightStart, right: currentOffset + res.length - 0.5 });
+      }
+    }
 
-     currentOffset += res.length;
+    if (res.moonEvents) {
+      const cityStartTimeMs = new Date(firstItem.time).getTime();
+      res.moonEvents.forEach((ev) => {
+        const diffHours = (ev.time.getTime() - cityStartTimeMs) / 3600000;
+        if (diffHours >= 0 && diffHours <= res.length) {
+          globalMoonEvents.push({ ...ev, absoluteIndex: currentOffset + diffHours });
+        }
+      });
+      // Attach phase info to the city's range
+      if (globalMoonEvents.phase == null && res.moonEvents.phase != null) {
+        globalMoonEvents.phase = res.moonEvents.phase;
+      }
+      if (globalMoonEvents.fraction == null && res.moonEvents.fraction != null) {
+        globalMoonEvents.fraction = res.moonEvents.fraction;
+      }
+    }
+
+    currentOffset += res.length;
   }
 
   flatData.sunEvents = globalSunEvents;
@@ -550,17 +589,22 @@ export function assembleTimeline(results: WeatherTimeline[]): WeatherTimeline {
 
 async function fetchAndAssemble(route: RouteEntry[]): Promise<WeatherTimeline> {
   const results = await Promise.all(
-    route.map(cityObj => fetchCityDataForDate(cityObj).catch((e: unknown) => {
-      console.error(e);
-      const empty: WeatherTimeline = [];
-      return empty;
-    }))
+    route.map((cityObj) =>
+      fetchCityDataForDate(cityObj).catch((e: unknown) => {
+        console.error(e);
+        const empty: WeatherTimeline = [];
+        return empty;
+      }),
+    ),
   );
   return assembleTimeline(results);
 }
 
 // Streaming variant: calls onUpdate(timeline, {done, loaded, total}) as each city resolves
-export function fetchAndAssembleStreaming(route: RouteEntry[], onUpdate: TimelineUpdateHandler): void {
+export function fetchAndAssembleStreaming(
+  route: RouteEntry[],
+  onUpdate: TimelineUpdateHandler,
+): void {
   const results = Array.from({ length: route.length }, (): WeatherTimeline | null => null);
   let loaded = 0;
   const total = route.length;
@@ -572,14 +616,16 @@ export function fetchAndAssembleStreaming(route: RouteEntry[], onUpdate: Timelin
         const empty: WeatherTimeline = [];
         return empty;
       })
-      .then(cityData => {
+      .then((cityData) => {
         results[idx] = cityData;
         loaded++;
-        const timeline = assembleTimeline(results.map(r => {
-          if (r) return r;
-          const empty: WeatherTimeline = [];
-          return empty;
-        }));
+        const timeline = assembleTimeline(
+          results.map((r) => {
+            if (r) return r;
+            const empty: WeatherTimeline = [];
+            return empty;
+          }),
+        );
         onUpdate(timeline, { done: loaded === total, loaded, total });
       });
   });
@@ -592,7 +638,7 @@ export async function fetchFullTimeline(): Promise<WeatherTimeline> {
 
 export function fetchFullTimelineStreaming(onUpdate: TimelineUpdateHandler): void {
   void parseRoute()
-    .then(route => {
+    .then((route) => {
       fetchAndAssembleStreaming(route, onUpdate);
     })
     .catch((error: unknown) => {
@@ -606,6 +652,9 @@ export async function fetchTimelineForRoute(route: RouteEntry[]): Promise<Weathe
   return fetchAndAssemble(route);
 }
 
-export function fetchTimelineForRouteStreaming(route: RouteEntry[], onUpdate: TimelineUpdateHandler): void {
+export function fetchTimelineForRouteStreaming(
+  route: RouteEntry[],
+  onUpdate: TimelineUpdateHandler,
+): void {
   fetchAndAssembleStreaming(route, onUpdate);
 }

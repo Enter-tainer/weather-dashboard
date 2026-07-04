@@ -1,5 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Columns2, Columns3, Columns4, Maximize2, Menu, Minimize2, Monitor, Moon, Settings, Sun, X } from 'lucide-react';
+import {
+  Camera,
+  Columns2,
+  Columns3,
+  Columns4,
+  Maximize2,
+  Menu,
+  Minimize2,
+  Monitor,
+  Moon,
+  Settings,
+  Sun,
+  X,
+} from 'lucide-react';
 import type { EffectiveTheme, ThemeMode } from '../hooks/useThemeMode';
 import type { TimeCompactStep } from '../hooks/useTimeCompactMode';
 
@@ -43,7 +56,8 @@ export default function MobileToolMenu({
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const { Icon: ThemeIcon, label: themeLabel } = THEME_META[themeMode] || THEME_META.auto;
-  const { Icon: TimeCompactIcon, label: timeCompactLabel } = TIME_COMPACT_META[timeStepHours] || TIME_COMPACT_META[1];
+  const { Icon: TimeCompactIcon, label: timeCompactLabel } =
+    TIME_COMPACT_META[timeStepHours] || TIME_COMPACT_META[1];
   const CompactIcon = compactMode ? Maximize2 : Minimize2;
   const compactLabel = compactMode ? '切换到完整视图' : '切换到紧凑视图';
   const themeTitle = `${themeLabel}${themeMode === 'auto' ? ` (${effectiveTheme})` : ''}`;

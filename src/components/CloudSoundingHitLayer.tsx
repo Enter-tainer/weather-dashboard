@@ -35,10 +35,9 @@ export default function CloudSoundingHitLayer({
         <button
           key={`cloud-sounding-hit-${index}`}
           type="button"
-          className={[
-            'cloud-sounding-hit-cell',
-            item.time === activeTime ? 'is-active' : '',
-          ].filter(Boolean).join(' ')}
+          className={['cloud-sounding-hit-cell', item.time === activeTime ? 'is-active' : '']
+            .filter(Boolean)
+            .join(' ')}
           onClick={() => onSelect(item)}
           title={`${item.cityName} ${formatHour(item)}:00 Skew-T`}
           aria-label={`打开 ${item.cityName} ${formatHour(item)}:00 的 Skew-T`}

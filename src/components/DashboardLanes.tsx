@@ -20,10 +20,7 @@ import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
 import TimelineCaptureOverlay from './TimelineCaptureOverlay';
 import { useSoundingSelection } from '../hooks/useSoundingSelection';
-import {
-  DEFAULT_HOUR_WIDTH,
-  getTimelineHourWidth,
-} from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH, getTimelineHourWidth } from '../services/timelineLayout';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
@@ -120,7 +117,9 @@ export function DashboardLaneStack({
         'lanes-container',
         switching ? 'is-switching' : '',
         renderMode === 'capture' ? 'is-capture-render' : '',
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={timelineStyle}
     >
       {usesEnsembleFallback && (
@@ -141,7 +140,9 @@ export function DashboardLaneStack({
       <TwilightLane data={data} hourWidth={hourWidth} />
       <WeatherIconLane data={data} />
       <UVLane data={data} />
-      {!compactMode && <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} hourWidth={hourWidth} />}
+      {!compactMode && (
+        <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} hourWidth={hourWidth} />
+      )}
       {compactMode && <TemperatureTextLane data={data} />}
       {!compactMode && (
         <div className="cloud-sounding-region">
@@ -180,13 +181,8 @@ function TimelineLanes({
   scales,
   captureMode = false,
 }: TimelineLanesProps) {
-  const {
-    activeSoundingItem,
-    closeSounding,
-    selectSoundingItem,
-    soundingIndex,
-    stepSounding,
-  } = useSoundingSelection(data);
+  const { activeSoundingItem, closeSounding, selectSoundingItem, soundingIndex, stepSounding } =
+    useSoundingSelection(data);
 
   return (
     <>

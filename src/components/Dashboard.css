@@ -19,7 +19,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--legend-border);
-  box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08);
   z-index: 50;
 }
 
@@ -65,7 +65,11 @@
   cursor: pointer;
   z-index: 1000;
   box-shadow: var(--control-shadow);
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
   backdrop-filter: blur(4px);
 }
 
@@ -325,7 +329,8 @@
   color: var(--text-muted);
 }
 
-.loading-state, .error-state {
+.loading-state,
+.error-state {
   display: flex;
   gap: 8px;
   width: 100vw;
@@ -339,7 +344,7 @@
 .loading-state .loading-spinner {
   width: 24px;
   height: 24px;
-  border-color: rgba(255,255,255,0.2);
+  border-color: rgba(255, 255, 255, 0.2);
   border-top-color: var(--text-inverse);
 }
 
@@ -368,7 +373,7 @@
   font-size: 11px;
   color: var(--text-light);
   border-right: 1px solid var(--legend-border);
-  box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08);
 }
 
 .lane-data {
@@ -525,8 +530,7 @@
   bottom: 0;
   min-width: var(--col-width-hour);
   border: 2px solid var(--primary);
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.45),
     0 0 0 1px rgba(0, 0, 0, 0.12),
@@ -661,7 +665,12 @@
   border: 0;
   background: var(--timeline-bg);
   color: var(--text-main);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   overflow: visible;
 }
 
@@ -942,12 +951,11 @@
   align-items: center;
   min-height: 25px;
   padding: 3px 6px;
-  background:
-    linear-gradient(
-      90deg,
-      rgba(var(--cloud-fill-rgb), calc(var(--cloud-profile-alpha) * 0.14)) 0%,
-      transparent 68%
-    );
+  background: linear-gradient(
+    90deg,
+    rgba(var(--cloud-fill-rgb), calc(var(--cloud-profile-alpha) * 0.14)) 0%,
+    transparent 68%
+  );
 }
 
 .cloud-profile-level-row:nth-child(even) {

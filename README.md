@@ -83,21 +83,25 @@ Entries are separated by `;`.
 ### Examples / 举几个例子
 
 Single city, next few days: / 一个城市，看未来几天：
+
 ```
 /?route=Shanghai:2026-03-28
 ```
 
 Multi-city trip, stitched together: / 出差行程，三段拼在一起：
+
 ```
 /?route=Beijing:2026-03-24;London:2026-03-27;New%20York:2026-03-30
 ```
 
 Coordinates with a custom display name: / 用坐标定位，顺便自定义显示名：
+
 ```
 /?route=35.68,139.69~东京:2026-03-28
 ```
 
 Two cities on the same date — a toggle button appears for quick comparison: / 同一天挂两个城市，界面上会出现切换按钮，方便对比：
+
 ```
 /?route=Beijing~北京:2026-03-28;Shanghai~上海:2026-03-28
 ```

@@ -20,15 +20,15 @@ interface OgImagePageProps {
 export default function OgImagePage({ data, hours }: OgImagePageProps) {
   const [canvasReady, setCanvasReady] = useState(false);
 
-  const selection = useMemo<CaptureSelection>(() => ({
-    startIndex: 0,
-    endIndex: Math.min(Math.max(1, Math.round(hours)), data.length),
-  }), [data.length, hours]);
-
-  const captureData = useMemo(
-    () => sliceTimelineForCapture(data, selection),
-    [data, selection],
+  const selection = useMemo<CaptureSelection>(
+    () => ({
+      startIndex: 0,
+      endIndex: Math.min(Math.max(1, Math.round(hours)), data.length),
+    }),
+    [data.length, hours],
   );
+
+  const captureData = useMemo(() => sliceTimelineForCapture(data, selection), [data, selection]);
   const scales = useMemo(() => calculateDashboardScales(data), [data]);
 
   const handleCanvasStatus = useCallback((status: CanvasCaptureStatus) => {
@@ -44,7 +44,10 @@ export default function OgImagePage({ data, hours }: OgImagePageProps) {
         <div className="og-copy">
           <div className="og-kicker">Route weather intelligence</div>
           <h1>Weather Dashboard</h1>
-          <p>Hourly forecast lanes for trips, cloud layers, precipitation, wind, air quality, and sounding detail.</p>
+          <p>
+            Hourly forecast lanes for trips, cloud layers, precipitation, wind, air quality, and
+            sounding detail.
+          </p>
 
           <div className="og-meta">
             <span>{captureLocationLabel(captureData)}</span>

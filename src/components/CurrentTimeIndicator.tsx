@@ -26,7 +26,11 @@ function formatClock(date: Date): string {
   });
 }
 
-function getIndicatorPosition(data: WeatherPoint[], nowMs: number, hourWidth: number): number | null {
+function getIndicatorPosition(
+  data: WeatherPoint[],
+  nowMs: number,
+  hourWidth: number,
+): number | null {
   for (let i = 0; i < data.length; i++) {
     const item = data[i];
     if (!item) continue;
@@ -35,12 +39,11 @@ function getIndicatorPosition(data: WeatherPoint[], nowMs: number, hourWidth: nu
     if (startMs == null) continue;
 
     const nextItem = data[i + 1];
-    const nextMs = nextItem && nextItem.cityName === item.cityName
-      ? getItemTimeMs(nextItem)
-      : null;
-    const endMs = nextMs != null && nextMs > startMs && nextMs - startMs <= HOUR_MS * 3
-      ? nextMs
-      : startMs + HOUR_MS;
+    const nextMs = nextItem && nextItem.cityName === item.cityName ? getItemTimeMs(nextItem) : null;
+    const endMs =
+      nextMs != null && nextMs > startMs && nextMs - startMs <= HOUR_MS * 3
+        ? nextMs
+        : startMs + HOUR_MS;
 
     if (nowMs >= startMs && nowMs < endMs) {
       const fraction = Math.max(0, Math.min(1, (nowMs - startMs) / (endMs - startMs)));
@@ -51,7 +54,10 @@ function getIndicatorPosition(data: WeatherPoint[], nowMs: number, hourWidth: nu
   return null;
 }
 
-export default function CurrentTimeIndicator({ data, hourWidth = DEFAULT_HOUR_WIDTH }: CurrentTimeIndicatorProps) {
+export default function CurrentTimeIndicator({
+  data,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+}: CurrentTimeIndicatorProps) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {

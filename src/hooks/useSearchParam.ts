@@ -16,11 +16,7 @@ function subscribeToUrlChanges(onStoreChange: () => void): () => void {
 }
 
 export function useSearchParam(name: string): string | null {
-  const search = useSyncExternalStore(
-    subscribeToUrlChanges,
-    getCurrentSearch,
-    () => '',
-  );
+  const search = useSyncExternalStore(subscribeToUrlChanges, getCurrentSearch, () => '');
 
   return useMemo(() => new URLSearchParams(search).get(name), [name, search]);
 }

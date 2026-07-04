@@ -57,9 +57,13 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
   const [entries, setEntries] = useState<EditorRouteEntry[]>([]);
   const [quickCity, setQuickCity] = useState('');
 
-  useImperativeHandle(ref, () => ({
-    open: () => setIsOpen(true),
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      open: () => setIsOpen(true),
+    }),
+    [],
+  );
 
   // Load existing configuration when opening the modal
   useEffect(() => {
@@ -68,7 +72,7 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
     let cancelled = false;
 
     parseRoute()
-      .then(data => {
+      .then((data) => {
         if (!cancelled) setEntries(data.map(withEditorId));
       })
       .catch((error: unknown) => {
@@ -83,10 +87,13 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
   const handleApply = useCallback((newEntries: RouteEntry[]) => {
     const sorted = sortEntriesByDate(newEntries);
     const routeStr = stringifyRoute(sorted);
-    updateSearchParams((params) => {
-      params.set('route', routeStr);
-      params.delete('test');
-    }, { history: 'push' });
+    updateSearchParams(
+      (params) => {
+        params.set('route', routeStr);
+        params.delete('test');
+      },
+      { history: 'push' },
+    );
     window.location.reload();
   }, []);
 
@@ -97,55 +104,63 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
   }, [handleApply, quickCity]);
 
   const updateEntry = useCallback((id: string, updates: Partial<RouteEntry>) => {
-    setEntries(current => current.map(e => e._id === id ? { ...e, ...updates } : e));
+    setEntries((current) => current.map((e) => (e._id === id ? { ...e, ...updates } : e)));
   }, []);
 
-  const updateLocation = useCallback((id: string, value: string) => {
-    const val = value.trim();
-    if (COORD_RE.test(val)) {
-      const [lat, lon] = val.split(',').map(Number);
-      if (lat == null || lon == null) return;
-      const fallbackName = `${lat}°, ${lon}°`;
-      updateEntry(id, { lat, lon, city: undefined, originalName: '' });
-      reverseGeocode(lat, lon, fallbackName)
-        .then(name => {
-          setEntries(current => current.map(entry => {
-            if (entry._id !== id || entry.lat !== lat || entry.lon !== lon || entry.originalName) {
-              return entry;
-            }
-            return { ...entry, originalName: name };
-          }));
-        })
-        .catch((error: unknown) => {
-          console.warn('Reverse geocoding failed:', error);
-        });
-    } else {
-      updateEntry(id, { city: value, lat: undefined, lon: undefined });
-    }
-  }, [updateEntry]);
+  const updateLocation = useCallback(
+    (id: string, value: string) => {
+      const val = value.trim();
+      if (COORD_RE.test(val)) {
+        const [lat, lon] = val.split(',').map(Number);
+        if (lat == null || lon == null) return;
+        const fallbackName = `${lat}°, ${lon}°`;
+        updateEntry(id, { lat, lon, city: undefined, originalName: '' });
+        reverseGeocode(lat, lon, fallbackName)
+          .then((name) => {
+            setEntries((current) =>
+              current.map((entry) => {
+                if (
+                  entry._id !== id ||
+                  entry.lat !== lat ||
+                  entry.lon !== lon ||
+                  entry.originalName
+                ) {
+                  return entry;
+                }
+                return { ...entry, originalName: name };
+              }),
+            );
+          })
+          .catch((error: unknown) => {
+            console.warn('Reverse geocoding failed:', error);
+          });
+      } else {
+        updateEntry(id, { city: value, lat: undefined, lon: undefined });
+      }
+    },
+    [updateEntry],
+  );
 
   const removeEntry = useCallback((id: string) => {
-    setEntries(current => current.filter(e => e._id !== id));
+    setEntries((current) => current.filter((e) => e._id !== id));
   }, []);
 
   const updateDateGroup = useCallback((oldDate: string, newDate: string) => {
-    setEntries(current => current.map(e => e.date === oldDate ? { ...e, date: newDate } : e));
+    setEntries((current) => current.map((e) => (e.date === oldDate ? { ...e, date: newDate } : e)));
   }, []);
 
   const addEntryForDate = useCallback((date: string) => {
-    setEntries(current => {
-      const group = current.filter(e => e.date === date);
-      const lastCity = group.length > 0 ? getEntryLocation(group[group.length - 1] ?? {}) : DEFAULT_CITY;
+    setEntries((current) => {
+      const group = current.filter((e) => e.date === date);
+      const lastCity =
+        group.length > 0 ? getEntryLocation(group[group.length - 1] ?? {}) : DEFAULT_CITY;
 
-      return [
-        ...current,
-        withEditorId({ city: lastCity, originalName: lastCity, date }),
-      ];
+      return [...current, withEditorId({ city: lastCity, originalName: lastCity, date })];
     });
   }, []);
 
   const addNewDate = useCallback(() => {
-    setEntries(current => {
+    setEntries((current) => {
       let nextDate = new Date().toLocaleDateString('en-CA');
       const sorted = sortEntriesByDate(current);
       const lastEntry = sorted.at(-1);
@@ -157,10 +172,7 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
       }
 
       const lastCity = lastEntry ? getEntryLocation(lastEntry) : DEFAULT_CITY;
-      return [
-        ...current,
-        withEditorId({ city: lastCity, originalName: lastCity, date: nextDate }),
-      ];
+      return [...current, withEditorId({ city: lastCity, originalName: lastCity, date: nextDate })];
     });
   }, []);
 
@@ -168,8 +180,8 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
 
   return (
     <>
-      <button 
-        className="route-editor-btn" 
+      <button
+        className="route-editor-btn"
         onClick={() => setIsOpen(true)}
         title="Settings & Route Editor"
       >
@@ -181,20 +193,24 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
           <div className="route-editor-modal">
             <div className="route-editor-header">
               <h3>设置城市与路线</h3>
-              <button className="icon-btn" onClick={() => setIsOpen(false)}><X size={20} /></button>
+              <button className="icon-btn" onClick={() => setIsOpen(false)}>
+                <X size={20} />
+              </button>
             </div>
 
             <div className="route-editor-section">
               <h4>快速设置 (未来7天)</h4>
               <div className="quick-set-row">
-                <input 
-                  type="text" 
-                  placeholder="输入城市名，如 Shanghai" 
+                <input
+                  type="text"
+                  placeholder="输入城市名，如 Shanghai"
                   value={quickCity}
-                  onChange={e => setQuickCity(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && applyQuickMode()}
+                  onChange={(e) => setQuickCity(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && applyQuickMode()}
                 />
-                <button className="primary-btn" onClick={applyQuickMode}>一键应用</button>
+                <button className="primary-btn" onClick={applyQuickMode}>
+                  一键应用
+                </button>
               </div>
             </div>
 
@@ -204,32 +220,44 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
                 {dateGroups.map(([date, group]) => (
                   <div key={date} className="date-group">
                     <div className="date-header">
-                       <input 
-                         type="date" 
-                         value={date}
-                         onChange={e => updateDateGroup(date, e.target.value)}
-                         className="date-input-bold"
-                       />
+                      <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => updateDateGroup(date, e.target.value)}
+                        className="date-input-bold"
+                      />
                     </div>
-                    {group.map(entry => (
+                    {group.map((entry) => (
                       <div key={entry._id} className="entry-row">
                         <div className="entry-inputs">
-                           <input 
-                             type="text" 
-                             className="location-input"
-                             placeholder="城市 或 纬度,经度" 
-                             value={entry.lat != null && entry.lon != null ? `${entry.lat},${entry.lon}` : (entry.city || '')} 
-                             onChange={e => updateLocation(entry._id, e.target.value)}
-                           />
-                           <input 
-                             type="text" 
-                             className="alias-input"
-                             placeholder="显示别名(可选)" 
-                             value={entry.originalName || ''} 
-                             onChange={e => updateEntry(entry._id, { originalName: e.target.value })}
-                           />
+                          <input
+                            type="text"
+                            className="location-input"
+                            placeholder="城市 或 纬度,经度"
+                            value={
+                              entry.lat != null && entry.lon != null
+                                ? `${entry.lat},${entry.lon}`
+                                : entry.city || ''
+                            }
+                            onChange={(e) => updateLocation(entry._id, e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            className="alias-input"
+                            placeholder="显示别名(可选)"
+                            value={entry.originalName || ''}
+                            onChange={(e) =>
+                              updateEntry(entry._id, { originalName: e.target.value })
+                            }
+                          />
                         </div>
-                        <button className="icon-btn remove-btn" title="移除此项" onClick={() => removeEntry(entry._id)}><Trash2 size={16} /></button>
+                        <button
+                          className="icon-btn remove-btn"
+                          title="移除此项"
+                          onClick={() => removeEntry(entry._id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     ))}
                     <button className="add-small-btn" onClick={() => addEntryForDate(date)}>
@@ -244,8 +272,12 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
             </div>
 
             <div className="route-editor-footer">
-              <button className="secondary-btn" onClick={() => setIsOpen(false)}>取消</button>
-              <button className="primary-btn" onClick={() => handleApply(entries)}>保存并刷新</button>
+              <button className="secondary-btn" onClick={() => setIsOpen(false)}>
+                取消
+              </button>
+              <button className="primary-btn" onClick={() => handleApply(entries)}>
+                保存并刷新
+              </button>
             </div>
           </div>
         </div>

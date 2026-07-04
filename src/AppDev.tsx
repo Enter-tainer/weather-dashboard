@@ -42,7 +42,9 @@ export default function AppDev({ testData: propTestData }: AppDevProps) {
   const captureParam = useSearchParam('capture');
   const ogParam = useSearchParam('og');
   const ogHoursParam = useSearchParam('ogHours');
-  const [fixtureData, setFixtureData] = useState<{ name: string; data: WeatherTimeline } | null>(null);
+  const [fixtureData, setFixtureData] = useState<{ name: string; data: WeatherTimeline } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!fixtureName) {
@@ -52,18 +54,21 @@ export default function AppDev({ testData: propTestData }: AppDevProps) {
     let cancelled = false;
 
     fetch(`/fixtures/${encodeURIComponent(fixtureName)}.json`)
-      .then(r => {
+      .then((r) => {
         if (!r.ok) throw new Error(`Fixture not found: ${fixtureName}`);
         return r.json() as Promise<FixtureBundle>;
       })
-      .then(bundle => {
-        if (!cancelled) setFixtureData({ name: fixtureName, data: attachMeta(bundle.points, bundle) });
+      .then((bundle) => {
+        if (!cancelled)
+          setFixtureData({ name: fixtureName, data: attachMeta(bundle.points, bundle) });
       })
       .catch((err: unknown) => {
         console.error(`Failed to load fixture "${fixtureName}":`, err);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [fixtureName]);
 
   const testData = useMemo<WeatherTimeline | undefined>(() => {

@@ -1,6 +1,8 @@
 import type { SkewTLevel, SoundingLevel, WeatherPoint } from '../types/weather';
 
-export const SOUNDING_PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200] as const;
+export const SOUNDING_PRESSURE_LEVELS = [
+  1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200,
+] as const;
 
 export const APPROX_PRESSURE_HEIGHTS: Readonly<Record<number, number>> = {
   1000: 110,
@@ -26,7 +28,10 @@ export interface InversionLayer {
   gradientCPer100m: number;
 }
 
-export function dewPointFromRh(tempC: number | null, relativeHumidity: number | null): number | null {
+export function dewPointFromRh(
+  tempC: number | null,
+  relativeHumidity: number | null,
+): number | null {
   if (tempC == null || relativeHumidity == null || relativeHumidity <= 0) return null;
 
   const rh = Math.min(Math.max(relativeHumidity, 1), 100);
@@ -36,7 +41,9 @@ export function dewPointFromRh(tempC: number | null, relativeHumidity: number | 
   return (b * gamma) / (a - gamma);
 }
 
-export function buildSurfaceSoundingPoint(item: WeatherPoint | null | undefined): SoundingLevel | null {
+export function buildSurfaceSoundingPoint(
+  item: WeatherPoint | null | undefined,
+): SoundingLevel | null {
   if (!item || item.temperature == null || item.pressure == null) return null;
 
   return {
@@ -72,10 +79,7 @@ function hasSkewTFields(level: SoundingLevel): level is SoundingLevel & {
   windSpeed: number;
 } {
   return (
-    level.temp != null
-    && level.dewPoint != null
-    && level.windDir != null
-    && level.windSpeed != null
+    level.temp != null && level.dewPoint != null && level.windDir != null && level.windSpeed != null
   );
 }
 
@@ -101,7 +105,7 @@ export function toSkewtFormat(levels: SoundingLevel[]): SkewTLevel[] {
 export function detectInversions(item: WeatherPoint | null | undefined): InversionLayer[] {
   const levels = withSurfaceLevel(item)
     .filter((level): level is SoundingLevel & { temp: number } => level.temp != null)
-    .map(level => ({
+    .map((level) => ({
       ...level,
       agl: level.agl ?? APPROX_PRESSURE_HEIGHTS[level.pressure] ?? null,
     }))
@@ -140,10 +144,8 @@ export function detectInversions(item: WeatherPoint | null | undefined): Inversi
 
   if (current) inversions.push(current);
 
-  return inversions.map(inv => ({
+  return inversions.map((inv) => ({
     ...inv,
-    gradientCPer100m: inv.topM > inv.baseM
-      ? inv.strengthC / ((inv.topM - inv.baseM) / 100)
-      : 0,
+    gradientCPer100m: inv.topM > inv.baseM ? inv.strengthC / ((inv.topM - inv.baseM) / 100) : 0,
   }));
 }

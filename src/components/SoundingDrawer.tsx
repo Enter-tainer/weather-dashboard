@@ -85,7 +85,10 @@ function formatPressure(value: number | null | undefined): string {
   return `${Math.round(value)} hPa`;
 }
 
-function formatWind(speed: number | null | undefined, direction: number | null | undefined): string {
+function formatWind(
+  speed: number | null | undefined,
+  direction: number | null | undefined,
+): string {
   if (speed == null || !Number.isFinite(speed)) return '-';
   const roundedSpeed = Math.round(speed);
   if (direction == null || !Number.isFinite(direction)) return `${roundedSpeed}km/h`;
@@ -107,7 +110,9 @@ function levelTitle(level: CloudProfileLevel): string {
     `RH ${level.relativeHumidity == null ? '-' : `${round(level.relativeHumidity)}%`}`,
     `T-Td ${formatTemp(spread)}`,
     `W ${formatWind(level.windSpeed, level.windDir)}`,
-  ].filter(Boolean).join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function cloudBandLabel(altitude: number | null): string {
@@ -125,11 +130,17 @@ function soundingByPressure(levels: SoundingLevel[] | undefined): Map<number, So
   return byPressure;
 }
 
-function altitudeForLevel(pressure: number | null, cloud: CloudLevel | null, sounding: SoundingLevel | null): number | null {
-  return cloud?.altitude
-    ?? sounding?.altitude
-    ?? sounding?.agl
-    ?? (pressure != null ? FALLBACK_ALTITUDES[pressure] ?? null : null);
+function altitudeForLevel(
+  pressure: number | null,
+  cloud: CloudLevel | null,
+  sounding: SoundingLevel | null,
+): number | null {
+  return (
+    cloud?.altitude ??
+    sounding?.altitude ??
+    sounding?.agl ??
+    (pressure != null ? (FALLBACK_ALTITUDES[pressure] ?? null) : null)
+  );
 }
 
 function cloudProfileLevels(item: WeatherPoint): CloudProfileLevel[] {
@@ -155,8 +166,10 @@ function cloudProfileLevels(item: WeatherPoint): CloudProfileLevel[] {
         };
       })
       .sort((a, b) => {
-        const aHeight = a.altitude ?? (a.pressure != null ? FALLBACK_ALTITUDES[a.pressure] : null) ?? -1;
-        const bHeight = b.altitude ?? (b.pressure != null ? FALLBACK_ALTITUDES[b.pressure] : null) ?? -1;
+        const aHeight =
+          a.altitude ?? (a.pressure != null ? FALLBACK_ALTITUDES[a.pressure] : null) ?? -1;
+        const bHeight =
+          b.altitude ?? (b.pressure != null ? FALLBACK_ALTITUDES[b.pressure] : null) ?? -1;
         return bHeight - aHeight;
       });
   }
@@ -182,9 +195,27 @@ function cloudProfileLevels(item: WeatherPoint): CloudProfileLevel[] {
   }
 
   return [
-    { key: 'high', pressure: null, label: '高云', cover: clampPercent(item.cloudHigh), altitude: 8000 },
-    { key: 'mid', pressure: null, label: '中云', cover: clampPercent(item.cloudMid), altitude: 4000 },
-    { key: 'low', pressure: null, label: '低云', cover: clampPercent(item.cloudLow), altitude: 1000 },
+    {
+      key: 'high',
+      pressure: null,
+      label: '高云',
+      cover: clampPercent(item.cloudHigh),
+      altitude: 8000,
+    },
+    {
+      key: 'mid',
+      pressure: null,
+      label: '中云',
+      cover: clampPercent(item.cloudMid),
+      altitude: 4000,
+    },
+    {
+      key: 'low',
+      pressure: null,
+      label: '低云',
+      cover: clampPercent(item.cloudLow),
+      altitude: 1000,
+    },
   ].map((level) => ({
     ...level,
     temp: null,
@@ -201,7 +232,10 @@ function SkewTChart({ item }: SkewTChartProps) {
 
   const soundingData = useMemo(() => {
     const levels = withSurfaceLevel(item)
-      .filter((level): level is SoundingLevel & { temp: number } => level.pressure > 0 && level.temp != null)
+      .filter(
+        (level): level is SoundingLevel & { temp: number } =>
+          level.pressure > 0 && level.temp != null,
+      )
       .sort((a, b) => b.pressure - a.pressure);
     return levels;
   }, [item]);
@@ -284,7 +318,11 @@ function CloudLayerProfile({ item }: CloudLayerProfileProps) {
         </div>
         <div className="cloud-profile-headline">
           <span>Max</span>
-          <strong>{maxCloudLevel ? `${formatCloudCover(maxCloudLevel.cover)} · ${formatHeight(maxCloudLevel.altitude)}` : '-'}</strong>
+          <strong>
+            {maxCloudLevel
+              ? `${formatCloudCover(maxCloudLevel.cover)} · ${formatHeight(maxCloudLevel.altitude)}`
+              : '-'}
+          </strong>
         </div>
       </div>
 
@@ -299,7 +337,12 @@ function CloudLayerProfile({ item }: CloudLayerProfileProps) {
             } as CSSProperties;
 
             return (
-              <div className="cloud-profile-level-row" key={level.key} style={rowStyle} title={levelTitle(level)}>
+              <div
+                className="cloud-profile-level-row"
+                key={level.key}
+                style={rowStyle}
+                title={levelTitle(level)}
+              >
                 <div className="cloud-profile-height">
                   <span className="cloud-profile-band">{level.label}</span>
                   <div>
@@ -308,7 +351,10 @@ function CloudLayerProfile({ item }: CloudLayerProfileProps) {
                   </div>
                 </div>
 
-                <div className="cloud-profile-cover" aria-label={`云量 ${formatCloudCover(level.cover)}`}>
+                <div
+                  className="cloud-profile-cover"
+                  aria-label={`云量 ${formatCloudCover(level.cover)}`}
+                >
                   <div className="cloud-profile-track">
                     <div className="cloud-profile-fill" />
                   </div>
@@ -316,8 +362,14 @@ function CloudLayerProfile({ item }: CloudLayerProfileProps) {
                 </div>
 
                 <div className="cloud-profile-metrics">
-                  <span><b>T</b>{formatTemp(level.temp)}</span>
-                  <span><b>RH</b>{level.relativeHumidity == null ? '-' : `${round(level.relativeHumidity)}%`}</span>
+                  <span>
+                    <b>T</b>
+                    {formatTemp(level.temp)}
+                  </span>
+                  <span>
+                    <b>RH</b>
+                    {level.relativeHumidity == null ? '-' : `${round(level.relativeHumidity)}%`}
+                  </span>
                 </div>
               </div>
             );
@@ -327,18 +379,42 @@ function CloudLayerProfile({ item }: CloudLayerProfileProps) {
         <div className="cloud-profile-readouts">
           <div>
             <span>Max cloud</span>
-            <strong>{maxCloudLevel ? `${formatCloudCover(maxCloudLevel.cover)} · ${formatHeight(maxCloudLevel.altitude)}` : '-'}</strong>
-            <em>{maxCloudLevel ? `T ${formatTemp(maxCloudLevel.temp)} · RH ${maxCloudLevel.relativeHumidity == null ? '-' : `${round(maxCloudLevel.relativeHumidity)}%`}` : '-'}</em>
+            <strong>
+              {maxCloudLevel
+                ? `${formatCloudCover(maxCloudLevel.cover)} · ${formatHeight(maxCloudLevel.altitude)}`
+                : '-'}
+            </strong>
+            <em>
+              {maxCloudLevel
+                ? `T ${formatTemp(maxCloudLevel.temp)} · RH ${maxCloudLevel.relativeHumidity == null ? '-' : `${round(maxCloudLevel.relativeHumidity)}%`}`
+                : '-'}
+            </em>
           </div>
           <div>
             <span>Cloud base</span>
-            <strong>{cloudBaseLevel ? `${formatHeight(cloudBaseLevel.altitude)} · ${formatPressure(cloudBaseLevel.pressure)}` : '-'}</strong>
-            <em>{cloudBaseLevel ? `W ${formatWind(cloudBaseLevel.windSpeed, cloudBaseLevel.windDir)}` : '-'}</em>
+            <strong>
+              {cloudBaseLevel
+                ? `${formatHeight(cloudBaseLevel.altitude)} · ${formatPressure(cloudBaseLevel.pressure)}`
+                : '-'}
+            </strong>
+            <em>
+              {cloudBaseLevel
+                ? `W ${formatWind(cloudBaseLevel.windSpeed, cloudBaseLevel.windDir)}`
+                : '-'}
+            </em>
           </div>
           <div>
             <span>Moist layer</span>
-            <strong>{moistestLevel ? `${moistestLevel.relativeHumidity == null ? '-' : `${round(moistestLevel.relativeHumidity)}%`} · ${formatHeight(moistestLevel.altitude)}` : '-'}</strong>
-            <em>{moistestLevel ? `T-Td ${formatTemp(moistestLevel.temp != null && moistestLevel.dewPoint != null ? moistestLevel.temp - moistestLevel.dewPoint : null)}` : '-'}</em>
+            <strong>
+              {moistestLevel
+                ? `${moistestLevel.relativeHumidity == null ? '-' : `${round(moistestLevel.relativeHumidity)}%`} · ${formatHeight(moistestLevel.altitude)}`
+                : '-'}
+            </strong>
+            <em>
+              {moistestLevel
+                ? `T-Td ${formatTemp(moistestLevel.temp != null && moistestLevel.dewPoint != null ? moistestLevel.temp - moistestLevel.dewPoint : null)}`
+                : '-'}
+            </em>
           </div>
         </div>
       </div>
@@ -346,12 +422,19 @@ function CloudLayerProfile({ item }: CloudLayerProfileProps) {
   );
 }
 
-export default function SoundingDrawer({ item, index, total, onClose, onStep }: SoundingDrawerProps) {
+export default function SoundingDrawer({
+  item,
+  index,
+  total,
+  onClose,
+  onStep,
+}: SoundingDrawerProps) {
   const drawerRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
 
   const inversions = useMemo(() => detectInversions(item), [item]);
-  const spread = item.temperature != null && item.dewPoint != null ? item.temperature - item.dewPoint : null;
+  const spread =
+    item.temperature != null && item.dewPoint != null ? item.temperature - item.dewPoint : null;
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -383,7 +466,9 @@ export default function SoundingDrawer({ item, index, total, onClose, onStep }: 
   useEffect(() => {
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = original; };
+    return () => {
+      document.body.style.overflow = original;
+    };
   }, []);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -400,55 +485,90 @@ export default function SoundingDrawer({ item, index, total, onClose, onStep }: 
       aria-label="关闭 Skew-T 面板"
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClose();
+      }}
     >
-    <aside className="sounding-drawer" ref={drawerRef} aria-label="Skew-T 探空图" onClick={(e) => e.stopPropagation()}>
-      <div className="sounding-header">
-        <div>
-          <div className="sounding-kicker">Sounding profile</div>
-          <div className="sounding-title">Sounding detail</div>
-          <div className="sounding-subtitle">{item.cityName} · {formatTime(item)}</div>
+      <aside
+        className="sounding-drawer"
+        ref={drawerRef}
+        aria-label="Skew-T 探空图"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sounding-header">
+          <div>
+            <div className="sounding-kicker">Sounding profile</div>
+            <div className="sounding-title">Sounding detail</div>
+            <div className="sounding-subtitle">
+              {item.cityName} · {formatTime(item)}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="sounding-icon-btn"
+            onClick={onClose}
+            aria-label="关闭 Skew-T"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <button type="button" className="sounding-icon-btn" onClick={onClose} aria-label="关闭 Skew-T">
-          <X size={18} />
-        </button>
-      </div>
 
-      <div className="sounding-nav" aria-label="切换探空时次">
-        <button type="button" className="sounding-step-btn" onClick={() => onStep(-1)} disabled={index <= 0} aria-label="上一小时">
-          <ChevronLeft size={18} />
-        </button>
-        <span>{index + 1} / {total}</span>
-        <button type="button" className="sounding-step-btn" onClick={() => onStep(1)} disabled={index >= total - 1} aria-label="下一小时">
-          <ChevronRight size={18} />
-        </button>
-      </div>
+        <div className="sounding-nav" aria-label="切换探空时次">
+          <button
+            type="button"
+            className="sounding-step-btn"
+            onClick={() => onStep(-1)}
+            disabled={index <= 0}
+            aria-label="上一小时"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span>
+            {index + 1} / {total}
+          </span>
+          <button
+            type="button"
+            className="sounding-step-btn"
+            onClick={() => onStep(1)}
+            disabled={index >= total - 1}
+            aria-label="下一小时"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
 
-      <div className="sounding-chart-stack">
-        <CloudLayerProfile item={item} />
-        <SkewTChart item={item} />
-      </div>
+        <div className="sounding-chart-stack">
+          <CloudLayerProfile item={item} />
+          <SkewTChart item={item} />
+        </div>
 
-      <div className="sounding-summary">
-        <div>
-          <span>T / Td</span>
-          <strong>{round(item.temperature, 1)} / {round(item.dewPoint, 1)}°C</strong>
+        <div className="sounding-summary">
+          <div>
+            <span>T / Td</span>
+            <strong>
+              {round(item.temperature, 1)} / {round(item.dewPoint, 1)}°C
+            </strong>
+          </div>
+          <div>
+            <span>Spread</span>
+            <strong>{round(spread, 1)}°C</strong>
+          </div>
+          <div>
+            <span>Wind</span>
+            <strong>
+              {round(item.windSpeed)} km/h · {round(item.windDir)}°
+            </strong>
+          </div>
+          <div>
+            <span>Inversion</span>
+            <strong>
+              {firstInversion
+                ? `${formatHeight(firstInversion.baseM)}-${formatHeight(firstInversion.topM)}`
+                : 'none'}
+            </strong>
+          </div>
         </div>
-        <div>
-          <span>Spread</span>
-          <strong>{round(spread, 1)}°C</strong>
-        </div>
-        <div>
-          <span>Wind</span>
-          <strong>{round(item.windSpeed)} km/h · {round(item.windDir)}°</strong>
-        </div>
-        <div>
-          <span>Inversion</span>
-          <strong>{firstInversion ? `${formatHeight(firstInversion.baseM)}-${formatHeight(firstInversion.topM)}` : 'none'}</strong>
-        </div>
-      </div>
-
-    </aside>
+      </aside>
     </div>
   );
 }

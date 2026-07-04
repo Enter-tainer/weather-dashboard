@@ -99,7 +99,7 @@ function todayPlus(dayOffset: number): string {
 
 const cities = routeStr
   .split(';')
-  .map(s => s.trim())
+  .map((s) => s.trim())
   .filter(Boolean);
 
 const entries: RouteEntry[] = cities.map((city, i) => ({
@@ -113,20 +113,18 @@ const entries: RouteEntry[] = cities.map((city, i) => ({
 // ---------------------------------------------------------------------------
 
 console.log(`Fetching fixture "${fixtureName}"...`);
-console.log(`Route: ${entries.map(e => `${e.originalName} (${e.date})`).join(' → ')}`);
+console.log(`Route: ${entries.map((e) => `${e.originalName} (${e.date})`).join(' → ')}`);
 
 const results = await Promise.all(
-  entries.map(e =>
+  entries.map((e) =>
     fetchCityDataForDate(e).catch((err: unknown) => {
       console.error(`Failed to fetch ${e.originalName}:`, err);
       return [];
-    })
-  )
+    }),
+  ),
 );
 
-const timeline = assembleTimeline(
-  results.filter(r => r.length > 0)
-);
+const timeline = assembleTimeline(results.filter((r) => r.length > 0));
 
 if (timeline.length === 0) {
   console.error('No data fetched. Aborting.');
