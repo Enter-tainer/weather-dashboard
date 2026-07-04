@@ -7,7 +7,8 @@ interface CapeLaneProps {
 
 export default function CapeLane({ data }: CapeLaneProps) {
   // CAPE J/kg ranges. Usually <1000 is mild, 1000-2000 is moderate, >2000 is severe
-  const getCapeColor = (cape: number): string => {
+  const getCapeColor = (cape: number | null): string => {
+    if (cape == null) return 'transparent';
     if (cape < 100) return 'transparent';
     if (cape < 500) return 'var(--cape-low-bg)';
     if (cape < 1000) return 'var(--cape-mid-bg)';
@@ -23,7 +24,7 @@ export default function CapeLane({ data }: CapeLaneProps) {
            const bgColor = getCapeColor(cape);
            return (
              <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-               {cape > 0 && (
+               {cape != null && cape > 0 && (
                  <span style={{ fontSize: '8px', color: 'var(--metric-text-strong)', fontWeight: 'bold' }}>{Math.round(cape)}</span>
                 )}
              </div>

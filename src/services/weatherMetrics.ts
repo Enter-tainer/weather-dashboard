@@ -1,6 +1,7 @@
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 
-export function getBeaufort(speedKmh: number): number {
+export function getBeaufort(speedKmh: number | null | undefined): number {
+  if (speedKmh == null || !Number.isFinite(speedKmh)) return 0;
   if (speedKmh < 2) return 0;
   if (speedKmh < 6) return 1;
   if (speedKmh < 12) return 2;
@@ -25,8 +26,8 @@ export function calculateDashboardScales(data: WeatherTimeline | null | undefine
 
   if (data && data.length > 0) {
     data.forEach(d => {
-      if (d.temperature < minTemp) minTemp = d.temperature;
-      if (d.temperature > maxTemp) maxTemp = d.temperature;
+      if (d.temperature != null && d.temperature < minTemp) minTemp = d.temperature;
+      if (d.temperature != null && d.temperature > maxTemp) maxTemp = d.temperature;
       // Include ensemble percentile range in scale
       if (d.tempEnsemble?.p10 != null && d.tempEnsemble.p10 < minTemp) minTemp = d.tempEnsemble.p10;
       if (d.tempEnsemble?.p90 != null && d.tempEnsemble.p90 > maxTemp) maxTemp = d.tempEnsemble.p90;
@@ -35,8 +36,8 @@ export function calculateDashboardScales(data: WeatherTimeline | null | undefine
         if (m > maxTemp) maxTemp = m;
       });
 
-      if (d.pressure < minP) minP = d.pressure;
-      if (d.pressure > maxP) maxP = d.pressure;
+      if (d.pressure != null && d.pressure < minP) minP = d.pressure;
+      if (d.pressure != null && d.pressure > maxP) maxP = d.pressure;
       d.pressureMembers?.forEach(m => {
         if (m < minP) minP = m;
         if (m > maxP) maxP = m;

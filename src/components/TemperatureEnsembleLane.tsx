@@ -125,16 +125,20 @@ export default function TemperatureEnsembleLane({
   // Precompute ensembles so canvas draw doesn't sort on every re-render
   const ensembles = useMemo(() => data.map(d => getEnsemble(d)), [data]);
 
-  const range = maxTemp - minTemp || 1;
+  const hasTempScale = Number.isFinite(minTemp) && Number.isFinite(maxTemp);
+  const rawRange = maxTemp - minTemp;
+  const range = Number.isFinite(rawRange) && rawRange !== 0 ? rawRange : 1;
   const barHeight = (temp: number) => Math.max(1, ((temp - minTemp) / range) * LANE_HEIGHT);
   const yFromTemp = (temp: number) => LANE_HEIGHT - barHeight(temp);
 
   const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx, w, h) => {
+    if (!hasTempScale) return;
+
     const labelH = 12; // space reserved for text labels at top
 
     for (let i = 0; i < data.length; i++) {
       const d = data[i];
-      if (!d) continue;
+      if (!d || d.temperature == null) continue;
       const ens = ensembles[i];
       const cx = getHourCenter(i, hourWidth);
       const x = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
@@ -193,7 +197,7 @@ export default function TemperatureEnsembleLane({
     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
     for (let i = 0; i < data.length; i += labelInterval) {
       const item = data[i];
-      if (!item) continue;
+      if (!item || item.temperature == null) continue;
       const temp = item.temperature;
       const text = `${Math.round(temp)}`;
       const tx = getHourCenter(i, hourWidth);
@@ -202,7 +206,7 @@ export default function TemperatureEnsembleLane({
       ctx.fillStyle = tempTextColor(temp);
       ctx.fillText(text, tx, ty);
     }
-  }, [data, minTemp, maxTemp, ensembles, hourWidth, barWidth, labelInterval]);
+  }, [data, minTemp, maxTemp, hasTempScale, ensembles, hourWidth, barWidth, labelInterval]);
 
   return (
     <div className="lane temp-ensemble-lane" style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}>

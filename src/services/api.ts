@@ -9,6 +9,7 @@ import type {
   NightBand,
   RouteEntry,
   SunEvent,
+  WeatherDataSource,
   WeatherPoint,
   WeatherTimeline,
 } from '../types/weather';
@@ -68,8 +69,7 @@ function estimateVisibility(
   rh: number | null | undefined,
 ): number | null {
   if (pm25 == null && pm10 == null) return null;
-  const rhClamped = Math.min(rh ?? 50, 95) / 100;
-  const fRH = Math.pow(1 - rhClamped, -0.55);
+  const fRH = rh == null ? 1 : Math.pow(1 - Math.min(rh, 95) / 100, -0.55);
   const bFine = 3.0 * (pm25 || 0) * fRH;
   const bCoarse = 0.6 * Math.max((pm10 || 0) - (pm25 || 0), 0);
   const bNO2 = 0.33 * (no2 || 0);
@@ -82,18 +82,71 @@ function estimateVisibility(
 // The display name is part of the key because processed rows include cityName.
 const processedCache = new Map<string, WeatherTimeline>();
 
-function numericArray(length: number, value: number): number[] {
-  return new Array<number>(length).fill(value);
-}
-
-function numberAt(series: HourlySeries | undefined, index: number, fallback = 0): number {
-  const value = series?.[index];
-  return typeof value === 'number' ? value : fallback;
+function nullableArray(length: number): Array<number | null> {
+  return new Array<number | null>(length).fill(null);
 }
 
 function nullableNumberAt(series: HourlySeries | undefined, index: number): number | null {
   const value = series?.[index];
   return typeof value === 'number' ? value : null;
+}
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function mean(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function memberValues(hourly: OpenMeteoHourly, memberPrefix: string, index: number): number[] {
+  const values: number[] = [];
+  for (const [key, arr] of Object.entries(hourly)) {
+    if (!key.startsWith(memberPrefix)) continue;
+    const value = nullableNumberAt(arr, index);
+    if (value != null) values.push(value);
+  }
+  return values;
+}
+
+function circularMeanDegrees(values: number[]): number | null {
+  if (values.length === 0) return null;
+
+  let sinSum = 0;
+  let cosSum = 0;
+  for (const value of values) {
+    const radians = value * Math.PI / 180;
+    sinSum += Math.sin(radians);
+    cosSum += Math.cos(radians);
+  }
+
+  if (Math.hypot(sinSum, cosSum) < 1e-9) return null;
+  return (Math.atan2(sinSum, cosSum) * 180 / Math.PI + 360) % 360;
+}
+
+function modalRounded(values: number[]): number | null {
+  if (values.length === 0) return null;
+
+  const frequencies = new Map<number, number>();
+  for (const value of values) {
+    const rounded = Math.round(value);
+    frequencies.set(rounded, (frequencies.get(rounded) ?? 0) + 1);
+  }
+
+  return [...frequencies.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? null;
+}
+
+function precipitationProbabilityFromMembers(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const wetMembers = values.filter(value => value > 0.1).length;
+  return Math.round((wetMembers / values.length) * 100);
+}
+
+function minNullable(...values: Array<number | null>): number | null {
+  const valid = values.filter(isFiniteNumber);
+  return valid.length > 0 ? Math.min(...valid) : null;
 }
 
 export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<WeatherTimeline> {
@@ -144,7 +197,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,uv_index,surface_pressure,cape,boundary_layer_height,${cloudPressureParams},${geopotentialParams},${soundingParams}${tzParams}`;
 
   // Ensemble API
-  const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
+  const ensembleUrl = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,cloud_cover,surface_pressure,weather_code&models=${ensembleModel}${tzParams}`;
 
   // AQI API
   const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,dust,aerosol_optical_depth${tzParams}`;
@@ -155,6 +208,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
     cachedFetch<OpenMeteoResponse>(aqUrl, TTL_WEATHER).catch(() => null)
   ]);
   let forecastRes = initialForecastRes;
+  let forecastDataSource: WeatherDataSource = 'forecast';
 
   // 2. 如果常规预报由于超期（>16天）无法拿到，或返回了 error，则使用 Ensemble 数据替代主线
   if (!forecastRes || forecastRes.error || !forecastRes.hourly) {
@@ -163,24 +217,24 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
     }
     
     const hoursCount = ensembleRes.hourly.time.length;
-    const temperature2m = numericArray(hoursCount, 0);
-    const relativeHumidity2m = numericArray(hoursCount, 50);
-    const dewPoint2m = numericArray(hoursCount, 0);
-    const precipitation = numericArray(hoursCount, 0);
-    const precipitationProbability = numericArray(hoursCount, 0);
-    const windSpeed10m = numericArray(hoursCount, 0);
-    const apparentTemperature = numericArray(hoursCount, 0);
-    const weatherCode = numericArray(hoursCount, 0);
-    const windDirection10m = numericArray(hoursCount, 0);
-    const windGusts10m = numericArray(hoursCount, 0);
-    const visibility = numericArray(hoursCount, 10000);
-    const cloudCover = numericArray(hoursCount, 0);
-    const cloudCoverLow = numericArray(hoursCount, 0);
-    const cloudCoverMid = numericArray(hoursCount, 0);
-    const cloudCoverHigh = numericArray(hoursCount, 0);
-    const uvIndex = numericArray(hoursCount, 0);
-    const surfacePressure = numericArray(hoursCount, 1013);
-    const cape = numericArray(hoursCount, 0);
+    const temperature2m = nullableArray(hoursCount);
+    const relativeHumidity2m = nullableArray(hoursCount);
+    const dewPoint2m = nullableArray(hoursCount);
+    const precipitation = nullableArray(hoursCount);
+    const precipitationProbability = nullableArray(hoursCount);
+    const windSpeed10m = nullableArray(hoursCount);
+    const apparentTemperature = nullableArray(hoursCount);
+    const weatherCode = nullableArray(hoursCount);
+    const windDirection10m = nullableArray(hoursCount);
+    const windGusts10m = nullableArray(hoursCount);
+    const visibility = nullableArray(hoursCount);
+    const cloudCover = nullableArray(hoursCount);
+    const cloudCoverLow = nullableArray(hoursCount);
+    const cloudCoverMid = nullableArray(hoursCount);
+    const cloudCoverHigh = nullableArray(hoursCount);
+    const uvIndex = nullableArray(hoursCount);
+    const surfacePressure = nullableArray(hoursCount);
+    const cape = nullableArray(hoursCount);
 
     const mockHourly: OpenMeteoHourly = {
       time: ensembleRes.hourly.time,
@@ -204,34 +258,37 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       cape,
     };
 
-    // Calculate mean from member data to substitute the standard forecast
+    // Calculate representative values from ensemble members. Fields without
+    // ensemble support stay null so the UI can render them as unavailable.
     for (let i = 0; i < hoursCount; i++) {
-      let tempSum = 0, precipSum = 0, windSum = 0, pressSum = 0;
-      let tempCount = 0, precipCount = 0, windCount = 0, pressCount = 0;
-      
-      for (const [key, arr] of Object.entries(ensembleRes.hourly)) {
-        const value = nullableNumberAt(arr, i);
-        if (key.startsWith('temperature_2m_member') && value != null) { tempSum += value; tempCount++; }
-        if (key.startsWith('precipitation_member') && value != null) { precipSum += value; precipCount++; }
-        if (key.startsWith('wind_speed_10m_member') && value != null) { windSum += value; windCount++; }
-        if (key.startsWith('surface_pressure_member') && value != null) { pressSum += value; pressCount++; }
-      }
-      
-      const meanTemp = tempCount > 0 ? tempSum / tempCount : 0;
-      const meanPrecip = precipCount > 0 ? precipSum / precipCount : 0;
-      const meanWind = windCount > 0 ? windSum / windCount : 0;
+      const tempMembers = memberValues(ensembleRes.hourly, 'temperature_2m_member', i);
+      const humidityMembers = memberValues(ensembleRes.hourly, 'relative_humidity_2m_member', i);
+      const precipMembers = memberValues(ensembleRes.hourly, 'precipitation_member', i);
+      const windMembers = memberValues(ensembleRes.hourly, 'wind_speed_10m_member', i);
+      const windDirMembers = memberValues(ensembleRes.hourly, 'wind_direction_10m_member', i);
+      const cloudMembers = memberValues(ensembleRes.hourly, 'cloud_cover_member', i);
+      const pressureMembers = memberValues(ensembleRes.hourly, 'surface_pressure_member', i);
+      const weatherCodeMembers = memberValues(ensembleRes.hourly, 'weather_code_member', i);
+
+      const meanTemp = mean(tempMembers);
+      const meanHumidity = mean(humidityMembers);
+      const meanPrecip = mean(precipMembers);
+      const meanWind = mean(windMembers);
 
       temperature2m[i] = meanTemp;
-      dewPoint2m[i] = meanTemp; // rough fallback
-      apparentTemperature[i] = meanTemp; // approximate
+      relativeHumidity2m[i] = meanHumidity;
+      dewPoint2m[i] = meanTemp != null && meanHumidity != null ? dewPointFromRh(meanTemp, meanHumidity) : null;
       precipitation[i] = meanPrecip;
-      precipitationProbability[i] = meanPrecip > 0.1 ? 80 : 0;
+      precipitationProbability[i] = precipitationProbabilityFromMembers(precipMembers);
       windSpeed10m[i] = meanWind;
-      windGusts10m[i] = meanWind * 1.5; // very rough estimate
-      surfacePressure[i] = pressCount > 0 ? pressSum / pressCount : 1013;
+      windDirection10m[i] = circularMeanDegrees(windDirMembers);
+      cloudCover[i] = mean(cloudMembers);
+      surfacePressure[i] = mean(pressureMembers);
+      weatherCode[i] = modalRounded(weatherCodeMembers);
     }
     
-    forecastRes = { hourly: mockHourly };
+    forecastRes = { ...ensembleRes, hourly: mockHourly };
+    forecastDataSource = 'ensemble';
   }
 
   // Use utc_offset_seconds from API response for reliable timezone handling.
@@ -293,6 +350,13 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       p90: percentile(tempMembers, 90),
     };
 
+    const cloudByLevel = pressureLevels.map(p => ({
+      pressure: p,
+      cover: nullableNumberAt(forecastHourly[`cloud_cover_${p}hPa`], i),
+      altitude: nullableNumberAt(forecastHourly[`geopotential_height_${p}hPa`], i),
+    }));
+    const hasCloudByLevelData = cloudByLevel.some(level => level.cover != null || level.altitude != null);
+
     combined.push({
       cityName: originalName || name,
       time,
@@ -301,42 +365,38 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       utcOffsetSeconds: targetOffsetMs / 1000,
       hour: new Date(time).getHours(),
       
-      weatherCode: numberAt(forecastHourly.weather_code, i),
-      temperature: numberAt(forecastHourly.temperature_2m, i),
-      humidity: numberAt(forecastHourly.relative_humidity_2m, i, 50),
-      dewPoint: numberAt(forecastHourly.dew_point_2m, i),
-      apparentTemp: numberAt(forecastHourly.apparent_temperature, i),
-      precipitation: numberAt(forecastHourly.precipitation, i),
-      precipitationProb: numberAt(forecastHourly.precipitation_probability, i),
-      windSpeed: numberAt(forecastHourly.wind_speed_10m, i),
-      windGusts: numberAt(forecastHourly.wind_gusts_10m, i),
-      windDir: numberAt(forecastHourly.wind_direction_10m, i),
-      visibility: Math.min(
-        nullableNumberAt(forecastHourly.visibility, i) ?? Infinity,
+      weatherCode: nullableNumberAt(forecastHourly.weather_code, i),
+      temperature: nullableNumberAt(forecastHourly.temperature_2m, i),
+      humidity: nullableNumberAt(forecastHourly.relative_humidity_2m, i),
+      dewPoint: nullableNumberAt(forecastHourly.dew_point_2m, i),
+      apparentTemp: nullableNumberAt(forecastHourly.apparent_temperature, i),
+      precipitation: nullableNumberAt(forecastHourly.precipitation, i),
+      precipitationProb: nullableNumberAt(forecastHourly.precipitation_probability, i),
+      windSpeed: nullableNumberAt(forecastHourly.wind_speed_10m, i),
+      windGusts: nullableNumberAt(forecastHourly.wind_gusts_10m, i),
+      windDir: nullableNumberAt(forecastHourly.wind_direction_10m, i),
+      visibility: minNullable(
+        nullableNumberAt(forecastHourly.visibility, i),
         estimateVisibility(
           nullableNumberAt(aqRes?.hourly?.pm2_5, i), nullableNumberAt(aqRes?.hourly?.pm10, i),
           nullableNumberAt(aqRes?.hourly?.nitrogen_dioxide, i),
           nullableNumberAt(forecastHourly.relative_humidity_2m, i)
-        ) ?? Infinity
+        )
       ),
       
-      uvIndex: numberAt(forecastHourly.uv_index, i),
-      pressure: numberAt(forecastHourly.surface_pressure, i, 1013),
-      cape: numberAt(forecastHourly.cape, i),
+      uvIndex: nullableNumberAt(forecastHourly.uv_index, i),
+      pressure: nullableNumberAt(forecastHourly.surface_pressure, i),
+      cape: nullableNumberAt(forecastHourly.cape, i),
       
-      cloudCover: numberAt(forecastHourly.cloud_cover, i),
-      cloudLow: numberAt(forecastHourly.cloud_cover_low, i),
-      cloudMid: numberAt(forecastHourly.cloud_cover_mid, i),
-      cloudHigh: numberAt(forecastHourly.cloud_cover_high, i),
+      cloudCover: nullableNumberAt(forecastHourly.cloud_cover, i),
+      cloudLow: nullableNumberAt(forecastHourly.cloud_cover_low, i),
+      cloudMid: nullableNumberAt(forecastHourly.cloud_cover_mid, i),
+      cloudHigh: nullableNumberAt(forecastHourly.cloud_cover_high, i),
 
       boundaryLayerHeight: nullableNumberAt(forecastHourly.boundary_layer_height, i),
 
       // Pressure-level cloud cover and geopotential heights for altitude visualization
-      cloudByLevel: pressureLevels.map(p => ({
-        pressure: p,
-        cover: numberAt(forecastHourly[`cloud_cover_${p}hPa`], i),
-        altitude: nullableNumberAt(forecastHourly[`geopotential_height_${p}hPa`], i),
-      })),
+      cloudByLevel: hasCloudByLevelData ? cloudByLevel : undefined,
 
       soundingLevels: pressureLevels.map(p => {
         const temp = nullableNumberAt(forecastHourly[`temperature_${p}hPa`], i);
@@ -364,15 +424,16 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       pressureMembers,
       weatherCodeMembers,
 
-      aqiUS: numberAt(aqRes?.hourly?.us_aqi, i),
-      aqiEU: numberAt(aqRes?.hourly?.european_aqi, i),
-      pm25: numberAt(aqRes?.hourly?.pm2_5, i),
-      pm10: numberAt(aqRes?.hourly?.pm10, i),
-      co: numberAt(aqRes?.hourly?.carbon_monoxide, i),
-      no2: numberAt(aqRes?.hourly?.nitrogen_dioxide, i),
-      so2: numberAt(aqRes?.hourly?.sulphur_dioxide, i),
-      dust: numberAt(aqRes?.hourly?.dust, i),
+      aqiUS: nullableNumberAt(aqRes?.hourly?.us_aqi, i),
+      aqiEU: nullableNumberAt(aqRes?.hourly?.european_aqi, i),
+      pm25: nullableNumberAt(aqRes?.hourly?.pm2_5, i),
+      pm10: nullableNumberAt(aqRes?.hourly?.pm10, i),
+      co: nullableNumberAt(aqRes?.hourly?.carbon_monoxide, i),
+      no2: nullableNumberAt(aqRes?.hourly?.nitrogen_dioxide, i),
+      so2: nullableNumberAt(aqRes?.hourly?.sulphur_dioxide, i),
+      dust: nullableNumberAt(aqRes?.hourly?.dust, i),
       aod: nullableNumberAt(aqRes?.hourly?.aerosol_optical_depth, i),
+      dataSource: forecastDataSource,
     });
   }
 

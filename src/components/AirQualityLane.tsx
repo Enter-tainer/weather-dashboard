@@ -8,8 +8,9 @@ interface AirQualityLaneProps {
 export default function AirQualityLane({ data }: AirQualityLaneProps) {
   const labelInterval = 1;
 
-  const getAqiColor = (aqi: number | undefined): string => {
-    const value = aqi ?? 0;
+  const getAqiColor = (aqi: number | null | undefined): string => {
+    if (aqi == null) return 'transparent';
+    const value = aqi;
     if (value <= 50) return 'var(--aqi-good)';
     if (value <= 100) return 'var(--aqi-moderate)';
     if (value <= 150) return 'var(--aqi-sg)';
@@ -37,7 +38,7 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
             const color = 'var(--metric-text-strong)';
             return (
               <div key={index} className="lane-cell" style={{ backgroundColor: bgColor, fontSize: '11px', color }}>
-                {index % labelInterval === 0 ? item.aqiUS : ''}
+                {index % labelInterval === 0 ? item.aqiUS ?? '' : ''}
               </div>
             );
           })}

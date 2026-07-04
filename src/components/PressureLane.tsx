@@ -50,13 +50,18 @@ export default function PressureLane({ data, minP, maxP, hourWidth = DEFAULT_HOU
     ctx.lineWidth = 1.8;
     ctx.strokeStyle = cssVar('--chart-line-main', 'rgba(50, 50, 50, 0.9)');
 
+    let started = false;
     for (let i = 0; i < data.length; i++) {
        const item = data[i];
-       if (!item) continue;
+       if (!item || item.pressure == null) {
+         started = false;
+         continue;
+       }
        const x = getX(i);
        const y = getY(item.pressure);
-       if (i === 0 || isBreak(i)) ctx.moveTo(x, y);
+       if (!started || isBreak(i)) ctx.moveTo(x, y);
        else ctx.lineTo(x, y);
+       started = true;
     }
     ctx.stroke();
   }, [data, minP, maxP, hourWidth]);

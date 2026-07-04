@@ -10,7 +10,8 @@ function probColor(prob: number): string {
   return 'var(--precip-prob-low)';
 }
 
-function precipColor(code: number, alpha = 0.6): string {
+function precipColor(code: number | null, alpha = 0.6): string {
+  if (code == null) return `rgba(var(--precip-rain-rgb), ${alpha})`;
   if ([95, 96, 99].includes(code)) return `rgba(var(--precip-thunder-rgb), ${alpha})`;
   if ([56, 57, 66, 67].includes(code)) return `rgba(var(--precip-freezing-rgb), ${alpha})`;
   if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(var(--precip-snow-rgb), ${alpha})`;
@@ -18,7 +19,8 @@ function precipColor(code: number, alpha = 0.6): string {
   return `rgba(var(--precip-rain-rgb), ${alpha})`;
 }
 
-function formatPrecip(value: number): string | number {
+function formatPrecip(value: number | null): string | number {
+  if (value == null) return '';
   if (value >= 10) return Math.round(value);
   if (value >= 1) return value.toFixed(1);
   if (value >= 0.1) return value.toFixed(1);
@@ -38,10 +40,10 @@ export default function PrecipitationProbLane({ data, compact = false }: Precipi
       <div className="lane-data">
         {data.map((item, index) => {
            const prob = item.precipitationProb;
-           const text = prob >= 5 ? `${prob}` : '';
+           const text = prob != null && prob >= 5 ? `${prob}` : '';
            const precipText = compact ? formatPrecip(item.precipitation) : '';
-           const barHeight = compact && item.precipitation > 0 ? Math.min(18, item.precipitation * 2.2) : 0;
-           const showPrecipText = precipText && (index % labelInterval === 0 || item.precipitation >= 1.5);
+           const barHeight = compact && item.precipitation != null && item.precipitation > 0 ? Math.min(18, item.precipitation * 2.2) : 0;
+           const showPrecipText = precipText && (index % labelInterval === 0 || (item.precipitation != null && item.precipitation >= 1.5));
 
            return (
              <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: compact ? 'flex-start' : 'center', padding: compact ? '2px 0 0' : 0 }}>
@@ -58,7 +60,7 @@ export default function PrecipitationProbLane({ data, compact = false }: Precipi
                     }}
                   />
                 )}
-                {!compact && index % labelInterval === 0 && text && (
+                {!compact && index % labelInterval === 0 && prob != null && text && (
                    <span style={{ fontSize: '10px', lineHeight: 1, color: probColor(prob), fontWeight: 'bold', zIndex: 1 }}>{text}%</span>
                 )}
                 {compact && showPrecipText && (
@@ -78,7 +80,7 @@ export default function PrecipitationProbLane({ data, compact = false }: Precipi
                     {precipText}
                   </span>
                 )}
-                {compact && index % labelInterval === 0 && text && (
+                {compact && index % labelInterval === 0 && prob != null && text && (
                   <span
                     style={{
                       position: 'absolute',

@@ -6,25 +6,26 @@ import type {
   WeatherTimeline,
 } from '../types/weather';
 
-function average(values: Array<number | null | undefined>): number {
+function average(values: Array<number | null | undefined>): number | null {
   const valid = values.filter((value): value is number => Number.isFinite(value));
-  if (valid.length === 0) return 0;
+  if (valid.length === 0) return null;
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
-function max(values: Array<number | null | undefined>): number {
+function max(values: Array<number | null | undefined>): number | null {
   const valid = values.filter((value): value is number => Number.isFinite(value));
-  if (valid.length === 0) return 0;
+  if (valid.length === 0) return null;
   return Math.max(...valid);
 }
 
-function sum(values: Array<number | null | undefined>): number {
-  return values
-    .filter((value): value is number => Number.isFinite(value))
-    .reduce((total, value) => total + value, 0);
+function sum(values: Array<number | null | undefined>): number | null {
+  const valid = values.filter((value): value is number => Number.isFinite(value));
+  if (valid.length === 0) return null;
+  return valid.reduce((total, value) => total + value, 0);
 }
 
-function weatherSeverity(code: number): number {
+function weatherSeverity(code: number | null): number {
+  if (code == null) return -1;
   if ([95, 96, 99].includes(code)) return 700 + code;
   if ([75, 77, 82, 86].includes(code)) return 600 + code;
   if ([65, 67, 73, 81].includes(code)) return 500 + code;
@@ -35,10 +36,11 @@ function weatherSeverity(code: number): number {
   return code;
 }
 
-function pickWeatherCode(items: WeatherPoint[]): number {
+function pickWeatherCode(items: WeatherPoint[]): number | null {
   return items
     .map((item) => item.weatherCode)
-    .sort((a, b) => weatherSeverity(b) - weatherSeverity(a))[0] ?? items[0]?.weatherCode ?? 0;
+    .filter((code): code is number => code != null)
+    .sort((a, b) => weatherSeverity(b) - weatherSeverity(a))[0] ?? null;
 }
 
 function averageOptional(values: Array<number | null | undefined>): number | undefined {
@@ -92,6 +94,7 @@ function aggregateWindow(items: WeatherPoint[]): WeatherPoint {
     cloudHigh: average(items.map((item) => item.cloudHigh)),
     boundaryLayerHeight: boundaryLayerHeight ?? null,
     aod: aod ?? null,
+    dataSource: items.some((item) => item.dataSource === 'ensemble') ? 'ensemble' : first.dataSource,
   };
 
   if (aqiUS != null) result.aqiUS = Math.round(aqiUS);

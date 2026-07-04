@@ -109,6 +109,7 @@ export function DashboardLaneStack({
   const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
   const interactive = renderMode === 'interactive';
   const hourWidth = getTimelineHourWidth();
+  const usesEnsembleFallback = data.some((item) => item.dataSource === 'ensemble');
   const timelineStyle: TimelineStyle = {
     '--col-width-hour': `${hourWidth}px`,
   };
@@ -122,6 +123,11 @@ export function DashboardLaneStack({
       ].filter(Boolean).join(' ')}
       style={timelineStyle}
     >
+      {usesEnsembleFallback && (
+        <div className="data-source-notice" role="status">
+          Forecast 不可用，正在使用 ensemble 近似；缺失字段显示为 —
+        </div>
+      )}
       <DashboardBackground data={data} hourWidth={hourWidth} />
       <WeatherAmbientBackground data={data} compact={compactMode} hourWidth={hourWidth} />
       <LocationLane

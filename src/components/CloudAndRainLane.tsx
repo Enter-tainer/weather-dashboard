@@ -57,7 +57,8 @@ function getCloudAltitude(pressure: number, altitude: number | null): number | n
 }
 
 // Precipitation color by weather code type
-function precipColor(code: number, alpha = 0.6): string {
+function precipColor(code: number | null, alpha = 0.6): string {
+  if (code == null) return `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, ${alpha})`;
   if ([95, 96, 99].includes(code)) return `rgba(${cssVar('--precip-thunder-rgb', '107, 33, 168')}, ${alpha})`;
   if ([56, 57, 66, 67].includes(code)) return `rgba(${cssVar('--precip-freezing-rgb', '139, 92, 246')}, ${alpha})`;
   if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(${cssVar('--precip-snow-rgb', '56, 189, 248')}, ${alpha})`;
@@ -65,7 +66,8 @@ function precipColor(code: number, alpha = 0.6): string {
   return `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, ${alpha})`;
 }
 
-function precipCssColor(code: number, alpha = 0.6): string {
+function precipCssColor(code: number | null, alpha = 0.6): string {
+  if (code == null) return `rgba(var(--precip-rain-rgb), ${alpha})`;
   if ([95, 96, 99].includes(code)) return `rgba(var(--precip-thunder-rgb), ${alpha})`;
   if ([56, 57, 66, 67].includes(code)) return `rgba(var(--precip-freezing-rgb), ${alpha})`;
   if ([71, 73, 75, 77, 85, 86].includes(code)) return `rgba(var(--precip-snow-rgb), ${alpha})`;
@@ -118,7 +120,8 @@ export default function CloudAndRainLane({ data, hourWidth = DEFAULT_HOUR_WIDTH 
           const lower = d.cloudByLevel[li];
           const upper = d.cloudByLevel[li + 1];
           if (!lower || !upper) continue;
-          const cover = Math.max(lower.cover, upper.cover);
+          if (lower.cover == null && upper.cover == null) continue;
+          const cover = Math.max(lower.cover ?? 0, upper.cover ?? 0);
           if (cover < 3) continue;
 
           const altLow = getCloudAltitude(lower.pressure, lower.altitude);
@@ -140,7 +143,7 @@ export default function CloudAndRainLane({ data, hourWidth = DEFAULT_HOUR_WIDTH 
           { cover: d.cloudHigh, altLow: 6000, altHigh: 10000 },
         ];
         for (const layer of layers) {
-          if (layer.cover < 3) continue;
+          if (layer.cover == null || layer.cover < 3) continue;
           const yTop = altToY(layer.altHigh);
           const yBot = altToY(layer.altLow);
 
@@ -161,7 +164,7 @@ export default function CloudAndRainLane({ data, hourWidth = DEFAULT_HOUR_WIDTH 
       }
 
       // Main precipitation bar — colored by type
-      if (d.precipitation > 0) {
+      if (d.precipitation != null && d.precipitation > 0) {
         const barHeight = Math.min(40, d.precipitation * 4);
         ctx.fillStyle = precipColor(d.weatherCode, 0.5);
         ctx.fillRect(x + hourWidth / 2 - precipBarWidth / 2, h - barHeight, precipBarWidth, barHeight);
@@ -192,10 +195,10 @@ export default function CloudAndRainLane({ data, hourWidth = DEFAULT_HOUR_WIDTH 
         <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, zIndex: 1 }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: `${width}px`, height: `${LANE_HEIGHT}px`, display: 'flex', zIndex: 2 }}>
           {data.map((item, index) => {
-            const barHeight = item.precipitation > 0 ? Math.min(40, item.precipitation * 4) : 0;
+            const barHeight = item.precipitation != null && item.precipitation > 0 ? Math.min(40, item.precipitation * 4) : 0;
             return (
               <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: `${barHeight + 2}px` }}>
-                 {showPrecipLabels && item.precipitation > 0 && (
+                 {showPrecipLabels && item.precipitation != null && item.precipitation > 0 && (
                     <span style={{
                       color: precipCssColor(item.weatherCode, 1),
                       fontSize: '9px',

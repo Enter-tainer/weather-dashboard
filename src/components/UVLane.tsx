@@ -3,7 +3,7 @@ import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
 interface UvRun {
-  rounded: number;
+  rounded: number | null;
   start: number;
   length: number;
 }
@@ -26,9 +26,14 @@ function computeUvRuns(data: WeatherPoint[]): UvRun[] {
   while (i < data.length) {
     const item = data[i];
     if (!item) break;
-    const rounded = Math.round(item.uvIndex);
+    const rounded = item.uvIndex == null ? null : Math.round(item.uvIndex);
     const start = i;
-    while (i < data.length && Math.round(data[i]?.uvIndex ?? -1) === rounded) i++;
+    while (i < data.length) {
+      const currentUv = data[i]?.uvIndex;
+      const currentRounded = currentUv == null ? null : Math.round(currentUv);
+      if (currentRounded !== rounded) break;
+      i++;
+    }
     runs.push({ rounded, start, length: i - start });
   }
   return runs;
@@ -47,7 +52,8 @@ export default function UVLane({ data }: UVLaneProps) {
 
         {/* Overlay: one badge centered over each merged run */}
         {runs.map((run, runIdx) => {
-          const showText = run.rounded > 0;
+          const rounded = run.rounded;
+          const showText = rounded != null && rounded > 0;
           const leftPx = `calc(${run.start} * var(--col-width-hour))`;
           const widthPx = `calc(${run.length} * var(--col-width-hour))`;
 
@@ -66,16 +72,16 @@ export default function UVLane({ data }: UVLaneProps) {
                 zIndex: 1,
               }}
             >
-              {showText && (
+              {showText && rounded != null && (
                 <span style={{
                   fontSize: '10px',
-                  color: run.rounded <= 5 ? '#1d251f' : '#fff',
-                  backgroundColor: getUvColor(run.rounded),
+                  color: rounded <= 5 ? '#1d251f' : '#fff',
+                  backgroundColor: getUvColor(rounded),
                   padding: '0 4px',
                   borderRadius: '4px',
                   fontWeight: 'bold',
                 }}>
-                  {run.rounded}
+                  {rounded}
                 </span>
               )}
             </div>

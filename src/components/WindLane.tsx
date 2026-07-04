@@ -76,9 +76,9 @@ export default function WindLane({
                 {index % compactLabelInterval === 0 && (
                   <>
                     <span style={{ fontSize: hourWidth < 12 ? '9px' : '11px', lineHeight: 1, color: bft >= 6 ? 'var(--danger)' : 'var(--metric-text-strong)', fontWeight: bft >= 4 ? 'bold' : 600 }}>
-                      {bft}
+                      {item.windSpeed == null ? '—' : bft}
                     </span>
-                    {hourWidth >= 12 && (
+                    {hourWidth >= 12 && item.windDir != null && (
                       <svg width="9" height="9" viewBox="0 0 24 24" style={{ transform: `rotate(${item.windDir + 180}deg)`, color: bft >= 6 ? 'var(--danger)' : 'var(--text-light)', opacity: 0.86 }}>
                         <path d="M12 2L12 22M12 2L6 8M12 2L18 8" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -104,10 +104,12 @@ export default function WindLane({
              <div key={index} className="lane-cell" style={{ flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '3px', alignItems: 'center' }}>
                {index % fullLabelInterval === 0 && (
                  <>
-                   <span style={{ fontSize: '11px', color: 'var(--metric-text-strong)', fontWeight: 'bold' }}>{getBeaufort(item.windSpeed)}</span>
-                   <svg width="10" height="10" viewBox="0 0 24 24" style={{ transform: `rotate(${item.windDir + 180}deg)`, color: 'var(--text-light)', opacity: 0.86, marginTop: '1px' }}>
-                     <path d="M12 2L12 22M12 2L6 8M12 2L18 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                   </svg>
+                   <span style={{ fontSize: '11px', color: 'var(--metric-text-strong)', fontWeight: 'bold' }}>{item.windSpeed == null ? '—' : getBeaufort(item.windSpeed)}</span>
+                   {item.windDir != null && (
+                     <svg width="10" height="10" viewBox="0 0 24 24" style={{ transform: `rotate(${item.windDir + 180}deg)`, color: 'var(--text-light)', opacity: 0.86, marginTop: '1px' }}>
+                       <path d="M12 2L12 22M12 2L6 8M12 2L18 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                     </svg>
+                   )}
                  </>
                )}
              </div>

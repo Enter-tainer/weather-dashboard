@@ -31,7 +31,7 @@ export default function TemperatureLane({
 
   const canvasRef = useCanvas(width, LANE_HEIGHT, (ctx, w, h) => {
     const range = maxTemp - minTemp;
-    if (range === 0) return;
+    if (!Number.isFinite(range) || range === 0) return;
 
     const getY = (val: number) => h - ((val - minTemp) / range) * h;
     const getX = (index: number) => getHourCenter(index, hourWidth);
@@ -85,34 +85,45 @@ export default function TemperatureLane({
     ctx.fillStyle = grad;
 
     // Fill and stroke each contiguous segment separately
-    let segStart = 0;
-    for (let i = 0; i <= data.length; i++) {
-      if (i === data.length || isBreak(i)) {
+    let segStart: number | null = null;
+    const flushSegment = (end: number) => {
+      if (segStart == null || end <= segStart) return;
+
         // Fill segment [segStart, i-1]
         ctx.beginPath();
         const firstSegmentItem = data[segStart];
-        if (!firstSegmentItem) continue;
+        if (!firstSegmentItem || firstSegmentItem.temperature == null) return;
         ctx.moveTo(getX(segStart), h);
-        for (let j = segStart; j < i; j++) {
+        for (let j = segStart; j < end; j++) {
           const item = data[j];
-          if (!item) continue;
+          if (!item || item.temperature == null) continue;
           ctx.lineTo(getX(j), getY(item.temperature));
         }
-        ctx.lineTo(getX(i - 1), h);
+        ctx.lineTo(getX(end - 1), h);
         ctx.fill();
 
         // Stroke segment
         ctx.beginPath();
-        for (let j = segStart; j < i; j++) {
+        for (let j = segStart; j < end; j++) {
           const item = data[j];
-          if (!item) continue;
+          if (!item || item.temperature == null) continue;
           const x = getX(j);
           const y = getY(item.temperature);
           if (j === segStart) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
+    };
 
+    for (let i = 0; i <= data.length; i++) {
+      const item = data[i];
+      if (i === data.length || !item || item.temperature == null) {
+        flushSegment(i);
+        segStart = null;
+      } else if (segStart != null && isBreak(i)) {
+        flushSegment(i);
+        segStart = i;
+      } else if (segStart == null) {
         segStart = i;
       }
     }

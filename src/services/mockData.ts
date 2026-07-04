@@ -48,13 +48,18 @@ function generateMembers(base: number, count: number, spread: number): number[] 
 }
 
 function buildMockSounding(item: WeatherPoint): SoundingLevel[] {
-  const inversionLikely = item.humidity > 85 && (item.hour <= 10 || item.hour >= 20);
+  const surfaceHumidity = item.humidity ?? 50;
+  const surfaceTemp = item.temperature ?? 15;
+  const surfaceCloudCover = item.cloudCover ?? 0;
+  const surfaceWindSpeed = item.windSpeed ?? 0;
+  const surfaceWindDir = item.windDir ?? 0;
+  const inversionLikely = surfaceHumidity > 85 && (item.hour <= 10 || item.hour >= 20);
   return SOUNDING_PRESSURE_LEVELS.map((pressure) => {
     const agl = APPROX_PRESSURE_HEIGHTS[pressure] ?? 0;
     const km = agl / 1000;
     const inversionWarmNose = inversionLikely ? Math.max(0, 4 - agl / 180) : 0;
-    const temp = item.temperature - 6.2 * km + inversionWarmNose;
-    const rh = Math.max(8, Math.min(100, item.humidity - km * 11 + (item.cloudCover || 0) * 0.08));
+    const temp = surfaceTemp - 6.2 * km + inversionWarmNose;
+    const rh = Math.max(8, Math.min(100, surfaceHumidity - km * 11 + surfaceCloudCover * 0.08));
 
     return {
       pressure,
@@ -63,8 +68,8 @@ function buildMockSounding(item: WeatherPoint): SoundingLevel[] {
       relativeHumidity: rh,
       altitude: agl,
       agl,
-      windSpeed: item.windSpeed + km * 8,
-      windDir: (item.windDir + km * 25) % 360,
+      windSpeed: surfaceWindSpeed + km * 8,
+      windDir: (surfaceWindDir + km * 25) % 360,
     };
   });
 }

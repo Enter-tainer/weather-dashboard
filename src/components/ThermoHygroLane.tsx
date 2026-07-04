@@ -112,6 +112,14 @@ function windDirLabel(deg: number | null | undefined): string {
   return WIND_DIRS[idx] ?? '北';
 }
 
+function formatTemp(value: number | null | undefined): string {
+  return value == null ? '—' : `${Math.round(value)}°`;
+}
+
+function formatPercent(value: number | null | undefined): string {
+  return value == null ? '—' : `${Math.round(value)}%`;
+}
+
 // ── Tooltip component ──
 function ThermoTooltip({ anchorRef, d, ens, onClose }: ThermoTooltipProps) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -146,8 +154,8 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }: ThermoTooltipProps) {
   if (!pos) return null;
 
   const timeStr = d.time ? new Date(d.time).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
-  const feelsDiff = d.apparentTemp - d.temperature;
-  const feelsColor = Math.abs(feelsDiff) >= 2 ? (feelsDiff > 0 ? 'var(--sunrise-color)' : 'var(--precip-prob-40)') : 'var(--tooltip-subtle)';
+  const feelsDiff = d.apparentTemp != null && d.temperature != null ? d.apparentTemp - d.temperature : null;
+  const feelsColor = feelsDiff != null && Math.abs(feelsDiff) >= 2 ? (feelsDiff > 0 ? 'var(--sunrise-color)' : 'var(--precip-prob-40)') : 'var(--tooltip-subtle)';
 
   const rowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '10px' };
   const labelStyle: CSSProperties = { color: 'var(--tooltip-subtle)' };
@@ -184,15 +192,15 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }: ThermoTooltipProps) {
       {/* Temperature */}
       <div style={rowStyle}>
         <span style={labelStyle}>温度</span>
-        <span style={valStyle}>{Math.round(d.temperature)}°</span>
+        <span style={valStyle}>{formatTemp(d.temperature)}</span>
       </div>
 
       {/* Feels like */}
       <div style={rowStyle}>
         <span style={labelStyle}>体感</span>
         <span style={{ ...valStyle, color: feelsColor }}>
-          {Math.round(d.apparentTemp)}°
-          {Math.abs(feelsDiff) >= 0.8 && (
+          {formatTemp(d.apparentTemp)}
+          {feelsDiff != null && Math.abs(feelsDiff) >= 0.8 && (
             <span style={{ fontSize: '8px', marginLeft: '2px' }}>
               {feelsDiff > 0 ? '↑' : '↓'}{Math.abs(feelsDiff).toFixed(1)}
             </span>
@@ -203,13 +211,13 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }: ThermoTooltipProps) {
       {/* Dew point */}
       <div style={rowStyle}>
         <span style={labelStyle}>露点</span>
-        <span style={dimValStyle}>{Math.round(d.dewPoint)}°</span>
+        <span style={dimValStyle}>{formatTemp(d.dewPoint)}</span>
       </div>
 
       {/* Humidity */}
       <div style={rowStyle}>
         <span style={labelStyle}>湿度</span>
-        <span style={dimValStyle}>{Math.round(d.humidity)}%</span>
+        <span style={dimValStyle}>{formatPercent(d.humidity)}</span>
       </div>
 
       {/* Wind */}
@@ -273,10 +281,14 @@ export default function ThermoHygroLane({
   const handleClose = useCallback(() => setActiveIndex(null), []);
   const cellRefs = useMemo(() => data.map(() => createRef<HTMLDivElement>()), [data]);
 
-  const tRange = maxTemp - minTemp || 1;
+  const hasTempScale = Number.isFinite(minTemp) && Number.isFinite(maxTemp);
+  const rawTRange = maxTemp - minTemp;
+  const tRange = Number.isFinite(rawTRange) && rawTRange !== 0 ? rawTRange : 1;
   const tempToY = (t: number) => BAR_BOT - ((t - minTemp) / tRange) * BAR_H_MAX;
 
   const canvasRef = useCanvas(totalWidth, LANE_HEIGHT, (ctx) => {
+    if (!hasTempScale) return;
+
     const cellHover = cssVar('--cell-hover', 'rgba(255,255,255,0.12)');
     const ensembleLine = cssVar('--temperature-ensemble-line', 'rgba(0,0,0,0.25)');
     const mutedLabel = cssVar('--chart-label-muted', '#666');
@@ -292,9 +304,6 @@ export default function ThermoHygroLane({
       const cx = getHourCenter(i, hourWidth);
       const bx = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
 
-      const yTemp = tempToY(d.temperature);
-      const barH = Math.max(2, BAR_BOT - yTemp);
-
       // ── Highlight for hover/active cell ──
       if (i === activeIndex) {
         ctx.fillStyle = cellHover;
@@ -302,24 +311,30 @@ export default function ThermoHygroLane({
       }
 
       // ── Temperature bar ──
-      ctx.fillStyle = tempColor(d.temperature);
-      ctx.fillRect(bx, yTemp, barWidth, barH);
+      if (d.temperature != null) {
+        const yTemp = tempToY(d.temperature);
+        const barH = Math.max(2, BAR_BOT - yTemp);
+        ctx.fillStyle = tempColor(d.temperature);
+        ctx.fillRect(bx, yTemp, barWidth, barH);
+      }
 
       // ── Dew point (tiny dot) ──
-      const yDew = Math.min(BAR_BOT - 2, Math.max(BAR_TOP + 2, tempToY(d.dewPoint)));
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(cx, yDew, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#1565c0';
-      ctx.beginPath();
-      ctx.arc(cx, yDew, 1.8, 0, Math.PI * 2);
-      ctx.fill();
+      if (d.dewPoint != null) {
+        const yDew = Math.min(BAR_BOT - 2, Math.max(BAR_TOP + 2, tempToY(d.dewPoint)));
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx, yDew, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1565c0';
+        ctx.beginPath();
+        ctx.arc(cx, yDew, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // ── Feels-like side notch at apparent temp ──
-      const yApp = tempToY(d.apparentTemp);
-      const feelsDiff = d.apparentTemp - d.temperature;
-      if (Math.abs(feelsDiff) >= 0.8 && yApp >= BAR_TOP && yApp <= BAR_BOT) {
+      const feelsDiff = d.apparentTemp != null && d.temperature != null ? d.apparentTemp - d.temperature : null;
+      const yApp = d.apparentTemp != null ? tempToY(d.apparentTemp) : null;
+      if (feelsDiff != null && yApp != null && Math.abs(feelsDiff) >= 0.8 && yApp >= BAR_TOP && yApp <= BAR_BOT) {
         const isWarmer = feelsDiff > 0;
         ctx.fillStyle = isWarmer ? warmFeels : coolFeels;
         ctx.beginPath();
@@ -351,7 +366,7 @@ export default function ThermoHygroLane({
     ctx.textAlign = 'center';
     for (let i = 0; i < data.length; i += labelInterval) {
       const d = data[i];
-      if (!d) continue;
+      if (!d || d.temperature == null) continue;
       const cx = getHourCenter(i, hourWidth);
 
       // Main temperature
@@ -361,8 +376,9 @@ export default function ThermoHygroLane({
       ctx.fillText(`${Math.round(d.temperature)}°`, cx, TOP_LABEL_H - 2);
 
       // Apparent temp (small, below main temp, only if differs meaningfully)
-      const feelsDiff = d.apparentTemp - d.temperature;
-      if (Math.abs(feelsDiff) >= 0.8) {
+      if (d.apparentTemp != null) {
+        const feelsDiff = d.apparentTemp - d.temperature;
+        if (Math.abs(feelsDiff) < 0.8) continue;
         ctx.font = '7px system-ui';
         ctx.textBaseline = 'top';
         ctx.fillStyle = Math.abs(feelsDiff) >= 2
@@ -378,13 +394,13 @@ export default function ThermoHygroLane({
     ctx.textAlign = 'center';
     for (let i = 0; i < data.length; i += labelInterval) {
       const d = data[i];
-      if (!d) continue;
+      if (!d || d.humidity == null) continue;
       const cx = getHourCenter(i, hourWidth);
       ctx.fillStyle = mutedLabel;
       ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
     }
 
-  }, [data, minTemp, maxTemp, ensembles, activeIndex, hourWidth, barWidth, labelInterval]);
+  }, [data, minTemp, maxTemp, hasTempScale, ensembles, activeIndex, hourWidth, barWidth, labelInterval]);
 
   const activeRef = activeIndex != null ? cellRefs[activeIndex] : undefined;
   const activeItem = activeIndex != null ? data[activeIndex] : undefined;

@@ -19,7 +19,7 @@ const WEATHER_NAMES: Record<number, string> = {
 };
 
 interface WeatherRun {
-  code: number;
+  code: number | null;
   start: number;
   length: number;
 }
@@ -248,6 +248,7 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
         {runs.map((run, runIdx) => {
           const overlayRef = overlayRefs[runIdx];
           if (!overlayRef) return null;
+          if (run.code == null) return null;
           const midIndex = run.start + Math.floor(run.length / 2);
           const midItem = data[midIndex];
           if (!midItem) return null;

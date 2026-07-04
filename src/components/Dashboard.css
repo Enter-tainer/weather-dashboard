@@ -287,6 +287,25 @@
   opacity: 0.5;
 }
 
+.data-source-notice {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 80;
+  width: max-content;
+  max-width: min(520px, calc(100vw - var(--legend-width) - 32px));
+  padding: 5px 9px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--control-bg);
+  color: var(--text-main);
+  box-shadow: var(--control-shadow);
+  font-size: 12px;
+  line-height: 1.25;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
 .timeline-loading-indicator {
   position: absolute;
   right: -40px;

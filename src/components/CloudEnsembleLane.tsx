@@ -48,7 +48,7 @@ export default function CloudEnsembleLane({ data, hourWidth = DEFAULT_HOUR_WIDTH
     for (let i = 0; i < data.length; i++) {
       const x = getX(i);
       const item = data[i];
-      if (!item) continue;
+      if (!item || item.cloudCover == null) continue;
       const y = getY(item.cloudCover);
       if (i === 0 || isBreak(i)) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);

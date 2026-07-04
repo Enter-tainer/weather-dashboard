@@ -14,7 +14,9 @@ export default function HumidityLane({ data }: HumidityLaneProps) {
              {index % 3 === 0 && item.humidity != null && (
                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                  <span style={{ fontWeight: 'bold', color: 'var(--precip-prob-60)', fontSize: '12px' }}>{Math.round(item.humidity)}%</span>
-                 <span style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '-1px' }}>{Math.round(item.dewPoint)}°</span>
+                 <span style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '-1px' }}>
+                   {item.dewPoint != null ? `${Math.round(item.dewPoint)}°` : '—'}
+                 </span>
                </div>
              )}
           </div>
