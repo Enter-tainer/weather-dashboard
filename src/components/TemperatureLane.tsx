@@ -1,5 +1,6 @@
 import { useCanvas } from '../hooks/useCanvas';
-import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -18,6 +19,7 @@ export default function TemperatureLane({
   maxTemp,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: TemperatureLaneProps) {
+  const layout = useTimelineLayout(data.length, hourWidth);
   const minTempVal = Math.floor(minTemp / 5) * 5;
   const maxTempVal = Math.ceil(maxTemp / 5) * 5;
   const tempSteps: number[] = [];
@@ -27,7 +29,7 @@ export default function TemperatureLane({
     }
   }
 
-  const width = getTimelineWidth(data.length, hourWidth);
+  const width = layout.totalWidth;
 
   const canvasRef = useCanvas(
     width,
@@ -37,7 +39,7 @@ export default function TemperatureLane({
       if (!Number.isFinite(range) || range === 0) return;
 
       const getY = (val: number) => h - ((val - minTemp) / range) * h;
-      const getX = (index: number) => getHourCenter(index, hourWidth);
+      const getX = (index: number) => layout.getColumnCenter(index);
 
       // Draw gridlines
       ctx.beginPath();
@@ -131,7 +133,7 @@ export default function TemperatureLane({
         }
       }
     },
-    [data, minTemp, maxTemp, tempSteps, hourWidth],
+    [data, minTemp, maxTemp, tempSteps, layout],
   );
 
   return (

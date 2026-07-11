@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reverseGeocode } from '../services/geocoding';
 import { parseRoute } from '../services/urlParser';
 import type * as UrlParser from '../services/urlParser';
+import { clearQWeatherCredentials, loadQWeatherCredentials } from '../services/qweatherCredentials';
 import RouteEditor from './RouteEditor';
 
 vi.mock('../services/geocoding', () => ({
@@ -24,6 +25,7 @@ const mockReverseGeocode = vi.mocked(reverseGeocode);
 describe('RouteEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearQWeatherCredentials();
     mockParseRoute.mockResolvedValue([
       {
         city: 'Beijing',
@@ -32,6 +34,32 @@ describe('RouteEditor', () => {
       },
     ]);
     mockReverseGeocode.mockResolvedValue('Tokyo');
+  });
+
+  it('saves and clears a user-provided QWeather credential', async () => {
+    render(<RouteEditor />);
+
+    fireEvent.click(screen.getByTitle('Settings & Route Editor'));
+    await screen.findByText('和风天气分钟降水 (BYOK)');
+
+    fireEvent.change(screen.getByLabelText('专属 API Host'), {
+      target: { value: 'https://user.qweatherapi.com/' },
+    });
+    fireEvent.change(screen.getByLabelText('API Key'), {
+      target: { value: 'user-api-key' },
+    });
+    fireEvent.click(screen.getByRole('checkbox', { name: /记住在此浏览器/ }));
+    fireEvent.click(screen.getByRole('button', { name: '保存凭证' }));
+
+    expect(await screen.findByText('已保存在此浏览器')).toBeInTheDocument();
+    expect(loadQWeatherCredentials()).toEqual({
+      apiKey: 'user-api-key',
+      apiHost: 'user.qweatherapi.com',
+      persistent: true,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '清除凭证' }));
+    expect(loadQWeatherCredentials()).toBeNull();
   });
 
   it('loads current route entries when opened and closes through cancel', async () => {

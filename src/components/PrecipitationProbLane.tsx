@@ -1,4 +1,10 @@
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
+import {
+  createMinutelyChartHorizontalGeometry,
+  getMinutelyTimeTickIndices,
+} from '../services/minutelyChart';
 import './Dashboard.css';
 
 // Gradient from light blue (low prob) to dark blue (high prob)
@@ -30,13 +36,28 @@ function formatPrecip(value: number | null): string | number {
 interface PrecipitationProbLaneProps {
   data: WeatherPoint[];
   compact?: boolean;
+  minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
 }
 
 export default function PrecipitationProbLane({
   data,
   compact = false,
+  minutelySelection = null,
 }: PrecipitationProbLaneProps) {
+  const layout = useTimelineLayout(data.length);
   const labelInterval = 3;
+  const selectedIndex = !compact ? (minutelySelection?.index ?? null) : null;
+  const selectedEndIndex = selectedIndex == null ? null : selectedIndex + layout.expandedSpan;
+  const minutelyPoints = minutelySelection?.data?.points ?? [];
+  const minutelyTicks = getMinutelyTimeTickIndices(minutelyPoints);
+  const minutelyGeometry =
+    selectedIndex != null && selectedEndIndex != null && minutelyPoints.length > 0
+      ? createMinutelyChartHorizontalGeometry(
+          layout.getColumnLeft(selectedIndex),
+          layout.getRangeWidth(selectedIndex, selectedEndIndex),
+          minutelyPoints.length,
+        )
+      : null;
 
   return (
     <div
@@ -59,15 +80,21 @@ export default function PrecipitationProbLane({
             precipText &&
             (index % labelInterval === 0 ||
               (item.precipitation != null && item.precipitation >= 1.5));
+          const isMinutelyExpanded =
+            selectedIndex != null &&
+            selectedEndIndex != null &&
+            index >= selectedIndex &&
+            index < selectedEndIndex;
 
           return (
             <div
               key={index}
               className="lane-cell"
               style={{
+                width: `${layout.getColumnWidth(index)}px`,
                 flexDirection: 'column',
-                justifyContent: compact ? 'flex-start' : 'center',
-                padding: compact ? '2px 0 0' : 0,
+                justifyContent: compact ? 'flex-start' : isMinutelyExpanded ? 'flex-end' : 'center',
+                padding: compact ? '2px 0 0' : isMinutelyExpanded ? '0 0 2px' : 0,
               }}
             >
               {compact && barHeight > 0 && (
@@ -83,19 +110,22 @@ export default function PrecipitationProbLane({
                   }}
                 />
               )}
-              {!compact && index % labelInterval === 0 && prob != null && text && (
-                <span
-                  style={{
-                    fontSize: '10px',
-                    lineHeight: 1,
-                    color: probColor(prob),
-                    fontWeight: 'bold',
-                    zIndex: 1,
-                  }}
-                >
-                  {text}%
-                </span>
-              )}
+              {!compact &&
+                (isMinutelyExpanded || index % labelInterval === 0) &&
+                prob != null &&
+                text && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      lineHeight: 1,
+                      color: probColor(prob),
+                      fontWeight: 'bold',
+                      zIndex: 1,
+                    }}
+                  >
+                    {text}%
+                  </span>
+                )}
               {compact && showPrecipText && (
                 <span
                   style={{
@@ -131,6 +161,23 @@ export default function PrecipitationProbLane({
             </div>
           );
         })}
+        {minutelyGeometry && minutelySelection?.status === 'success' && (
+          <div className="minutely-time-axis" aria-hidden="true">
+            {minutelyTicks.map((pointIndex) => {
+              const point = minutelyPoints[pointIndex];
+              if (!point) return null;
+              return (
+                <span
+                  key={`${point.fxTime}-${pointIndex}`}
+                  className="minutely-time-axis-tick"
+                  style={{ left: `${minutelyGeometry.getPointCenter(pointIndex)}px` }}
+                >
+                  {point.fxTime.slice(11, 16)}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

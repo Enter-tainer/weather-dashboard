@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface UvRun {
@@ -40,6 +41,7 @@ function computeUvRuns(data: WeatherPoint[]): UvRun[] {
 }
 
 export default function UVLane({ data }: UVLaneProps) {
+  const layout = useTimelineLayout(data.length);
   const runs = useMemo(() => computeUvRuns(data), [data]);
 
   return (
@@ -50,15 +52,19 @@ export default function UVLane({ data }: UVLaneProps) {
       <div className="lane-data" style={{ position: 'relative' }}>
         {/* Base cells to keep grid columns */}
         {data.map((item, index) => (
-          <div key={index} className="lane-cell" />
+          <div
+            key={index}
+            className="lane-cell"
+            style={{ width: `${layout.getColumnWidth(index)}px` }}
+          />
         ))}
 
         {/* Overlay: one badge centered over each merged run */}
         {runs.map((run, runIdx) => {
           const rounded = run.rounded;
           const showText = rounded != null && rounded > 0;
-          const leftPx = `calc(${run.start} * var(--col-width-hour))`;
-          const widthPx = `calc(${run.length} * var(--col-width-hour))`;
+          const leftPx = `${layout.getColumnLeft(run.start)}px`;
+          const widthPx = `${layout.getRangeWidth(run.start, run.start + run.length)}px`;
 
           return (
             <div

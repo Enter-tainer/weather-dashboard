@@ -1,16 +1,25 @@
 import { useCanvas } from '../hooks/useCanvas';
-import { cssVar } from '../services/themeColors';
+import { CloudRain } from 'lucide-react';
+import { useMemo } from 'react';
 import {
-  DEFAULT_HOUR_WIDTH,
-  getHourCenter,
-  getHourLeft,
-  getTimelineWidth,
-} from '../services/timelineLayout';
+  createMinutelyChartHorizontalGeometry,
+  getHourlyPrecipBarHeight,
+  getMinutelyPrecipBarHeight,
+  getMinutelyTimeTickIndices,
+  PRECIP_AXIS_MAX_MM_HOUR,
+  PRECIP_AXIS_TICKS_MM_HOUR,
+} from '../services/minutelyChart';
+import { cssVar } from '../services/themeColors';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
 const LANE_HEIGHT = 150;
 const MAX_ALT = 10000; // meters
+const EMPTY_MINUTELY_POINTS: NonNullable<MinutelyPrecipitationSelection['data']>['points'] = [];
+const EMPTY_MINUTELY_INDICES = new Set<number>();
 
 // Fallback altitudes (meters) when geopotential height is unavailable
 const FALLBACK_ALT: Readonly<Record<number, number>> = {
@@ -43,6 +52,9 @@ const ALT_BREAKS = [
 interface CloudAndRainLaneProps {
   data: WeatherPoint[];
   hourWidth?: number;
+  minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
+  minutelyAvailableIndices?: Set<number> | undefined;
+  onMinutelySelect?: ((index: number) => void) | undefined;
 }
 
 function altToY(alt: number): number {
@@ -93,6 +105,13 @@ function precipCssColor(code: number | null, alpha = 0.6): string {
   return `rgba(var(--precip-rain-rgb), ${alpha})`;
 }
 
+function formatMinutelyPrecipLabel(precip: number): string {
+  if (precip >= 10) return Math.round(precip).toString();
+  if (precip >= 1) return precip.toFixed(1);
+  if (precip >= 0.05) return precip.toFixed(2).replace(/^0/, '').replace(/0$/, '');
+  return '<.05';
+}
+
 // Uniform cloud color — only alpha varies with coverage
 function cloudColor(cover: number, rgb: string, alphaScale: number): string {
   const alpha = (cover / 100) * alphaScale;
@@ -102,10 +121,29 @@ function cloudColor(cover: number, rgb: string, alphaScale: number): string {
 export default function CloudAndRainLane({
   data,
   hourWidth = DEFAULT_HOUR_WIDTH,
+  minutelySelection = null,
+  minutelyAvailableIndices = EMPTY_MINUTELY_INDICES,
+  onMinutelySelect,
 }: CloudAndRainLaneProps) {
-  const width = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const width = layout.totalWidth;
   const precipBarWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
   const showPrecipLabels = hourWidth >= 12;
+  const selectedIndex = minutelySelection?.index ?? null;
+  const selectedEndIndex = selectedIndex == null ? null : selectedIndex + layout.expandedSpan;
+  const minutelyPoints = minutelySelection?.data?.points ?? EMPTY_MINUTELY_POINTS;
+  const minutelyPointCount = minutelyPoints.length;
+  const minutelyTicks = useMemo(() => getMinutelyTimeTickIndices(minutelyPoints), [minutelyPoints]);
+  const minutelyLabelGeometry =
+    selectedIndex != null && selectedEndIndex != null && minutelyPointCount > 0
+      ? createMinutelyChartHorizontalGeometry(
+          0,
+          layout.getRangeWidth(selectedIndex, selectedEndIndex),
+          minutelyPointCount,
+        )
+      : null;
+  const availableStartIndex =
+    minutelyAvailableIndices.size > 0 ? Math.min(...minutelyAvailableIndices) : null;
 
   const canvasRef = useCanvas(
     width,
@@ -138,7 +176,8 @@ export default function CloudAndRainLane({
       for (let i = 0; i < data.length; i++) {
         const d = data[i];
         if (!d) continue;
-        const x = getHourLeft(i, hourWidth);
+        const x = layout.getColumnLeft(i);
+        const columnWidth = layout.getColumnWidth(i);
 
         if (d.cloudByLevel) {
           for (let li = 0; li < d.cloudByLevel.length - 1; li++) {
@@ -158,7 +197,7 @@ export default function CloudAndRainLane({
             if (yBot - yTop <= 0) continue;
 
             ctx.fillStyle = cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
-            ctx.fillRect(x, yTop, hourWidth + 1, yBot - yTop);
+            ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
           }
         } else {
           // Fallback: use low/mid/high cloud cover
@@ -173,8 +212,79 @@ export default function CloudAndRainLane({
             const yBot = altToY(layer.altLow);
 
             ctx.fillStyle = cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
-            ctx.fillRect(x, yTop, hourWidth + 1, yBot - yTop);
+            ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
           }
+        }
+
+        if (
+          selectedIndex != null &&
+          selectedEndIndex != null &&
+          i >= selectedIndex &&
+          i < selectedEndIndex
+        ) {
+          if (i !== selectedIndex) continue;
+          const detailWidth = layout.getRangeWidth(selectedIndex, selectedEndIndex);
+          const chartX = createMinutelyChartHorizontalGeometry(x, detailWidth, minutelyPointCount);
+          const chartTop = h - 40.5;
+          const chartBottom = h - 0.5;
+          const chartHeight = chartBottom - chartTop;
+
+          ctx.save();
+          for (const axisValue of PRECIP_AXIS_TICKS_MM_HOUR) {
+            const fraction = axisValue / PRECIP_AXIS_MAX_MM_HOUR;
+            const y = chartBottom - fraction * chartHeight;
+            ctx.setLineDash(fraction === 0 ? [] : [2, 3]);
+            ctx.lineWidth = fraction === 0 ? 1 : 0.5;
+            ctx.strokeStyle = cssVar('--lane-border', 'rgba(0,0,0,0.12)');
+            ctx.beginPath();
+            ctx.moveTo(chartX.plotLeft, y);
+            ctx.lineTo(chartX.plotRight, y);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = cssVar('--lane-border', 'rgba(0,0,0,0.12)');
+          ctx.beginPath();
+          ctx.moveTo(chartX.plotLeft + 0.5, chartTop);
+          ctx.lineTo(chartX.plotLeft + 0.5, chartBottom);
+          ctx.stroke();
+
+          ctx.setLineDash([2, 3]);
+          ctx.lineWidth = 0.5;
+          for (const pointIndex of minutelyTicks) {
+            const tickX = chartX.getPointCenter(pointIndex);
+            ctx.beginPath();
+            ctx.moveTo(tickX, chartTop);
+            ctx.lineTo(tickX, chartBottom);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+
+          if (minutelySelection?.status === 'success') {
+            for (let pointIndex = 0; pointIndex < minutelyPoints.length; pointIndex++) {
+              const point = minutelyPoints[pointIndex];
+              if (!point) continue;
+              const centerX = chartX.getPointCenter(pointIndex);
+              const barWidth = Math.max(2, Math.min(8, chartX.slotWidth - 2));
+              const barHeight = getMinutelyPrecipBarHeight(point.precip);
+
+              ctx.fillStyle = precipColor(
+                point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
+                0.18,
+              );
+              ctx.fillRect(centerX - barWidth / 2, chartBottom - 1, barWidth, 1);
+
+              if (barHeight > 0) {
+                ctx.fillStyle = precipColor(
+                  point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
+                  0.82,
+                );
+                ctx.fillRect(centerX - barWidth / 2, chartBottom - barHeight, barWidth, barHeight);
+              }
+            }
+          }
+          ctx.restore();
+          continue;
         }
 
         // Ensemble precipitation (background)
@@ -182,18 +292,18 @@ export default function CloudAndRainLane({
           ctx.fillStyle = `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, 0.08)`;
           d.precipMembers.forEach((precip) => {
             if (precip > 0.1) {
-              const barHeight = Math.min(40, precip * 4);
-              ctx.fillRect(x, h - barHeight, hourWidth, barHeight);
+              const barHeight = getHourlyPrecipBarHeight(precip);
+              ctx.fillRect(x, h - barHeight, columnWidth, barHeight);
             }
           });
         }
 
         // Main precipitation bar — colored by type
         if (d.precipitation != null && d.precipitation > 0) {
-          const barHeight = Math.min(40, d.precipitation * 4);
+          const barHeight = getHourlyPrecipBarHeight(d.precipitation);
           ctx.fillStyle = precipColor(d.weatherCode, 0.5);
           ctx.fillRect(
-            x + hourWidth / 2 - precipBarWidth / 2,
+            x + columnWidth / 2 - precipBarWidth / 2,
             h - barHeight,
             precipBarWidth,
             barHeight,
@@ -208,12 +318,21 @@ export default function CloudAndRainLane({
       ctx.beginPath();
       let started = false;
       for (let i = 0; i < data.length; i++) {
+        if (
+          selectedIndex != null &&
+          selectedEndIndex != null &&
+          i >= selectedIndex &&
+          i < selectedEndIndex
+        ) {
+          started = false;
+          continue;
+        }
         const blh = data[i]?.boundaryLayerHeight;
         if (blh == null) {
           started = false;
           continue;
         }
-        const x = getHourCenter(i, hourWidth);
+        const x = layout.getColumnCenter(i);
         const y = altToY(blh);
         if (!started) {
           ctx.moveTo(x, y);
@@ -223,7 +342,17 @@ export default function CloudAndRainLane({
       ctx.stroke();
       ctx.setLineDash([]);
     },
-    [data, hourWidth, precipBarWidth],
+    [
+      data,
+      layout,
+      minutelyPoints,
+      minutelySelection,
+      minutelyPointCount,
+      minutelyTicks,
+      precipBarWidth,
+      selectedIndex,
+      selectedEndIndex,
+    ],
   );
 
   return (
@@ -257,20 +386,65 @@ export default function CloudAndRainLane({
           {data.map((item, index) => {
             const barHeight =
               item.precipitation != null && item.precipitation > 0
-                ? Math.min(40, item.precipitation * 4)
+                ? getHourlyPrecipBarHeight(item.precipitation)
                 : 0;
+            const isMinutelyExpanded =
+              selectedIndex != null &&
+              selectedEndIndex != null &&
+              index >= selectedIndex &&
+              index < selectedEndIndex;
+            const isMinutelyClickable =
+              !minutelySelection &&
+              availableStartIndex != null &&
+              index >= availableStartIndex &&
+              index < Math.min(data.length, availableStartIndex + 2) &&
+              !!onMinutelySelect;
             return (
               <div
                 key={index}
                 className="lane-cell"
                 style={{
+                  width: `${layout.getColumnWidth(index)}px`,
                   flexDirection: 'column',
                   justifyContent: 'flex-end',
                   paddingBottom: `${barHeight + 2}px`,
                 }}
               >
+                {isMinutelyClickable && (
+                  <button
+                    type="button"
+                    className="minutely-rain-hit-target"
+                    onClick={() => onMinutelySelect?.(availableStartIndex)}
+                    aria-label="展开未来两小时的 5 分钟降水"
+                    title="展开未来两小时的 5 分钟降水"
+                  >
+                    {index === availableStartIndex && (
+                      <span
+                        className="minutely-rain-hint"
+                        style={{
+                          width: `${layout.getRangeWidth(
+                            availableStartIndex,
+                            Math.min(data.length, availableStartIndex + 2),
+                          )}px`,
+                        }}
+                        aria-hidden="true"
+                      >
+                        <CloudRain size={10} />
+                        <span>5m</span>
+                      </span>
+                    )}
+                  </button>
+                )}
                 {showPrecipLabels && item.precipitation != null && item.precipitation > 0 && (
                   <span
+                    className={[
+                      'hourly-precip-label',
+                      isMinutelyExpanded ? 'is-minutely-reference' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    aria-label={`小时降水 ${item.precipitation.toFixed(1)} 毫米`}
+                    title={`Open-Meteo 小时降水 ${item.precipitation.toFixed(1)} mm`}
                     style={{
                       color: precipCssColor(item.weatherCode, 1),
                       fontSize: '9px',
@@ -286,6 +460,84 @@ export default function CloudAndRainLane({
             );
           })}
         </div>
+        {minutelySelection && (
+          <div
+            className={['minutely-rain-inline', onMinutelySelect ? 'is-collapsible' : '']
+              .filter(Boolean)
+              .join(' ')}
+            style={{
+              left: `${layout.getColumnLeft(minutelySelection.index)}px`,
+              width: `${layout.getRangeWidth(
+                minutelySelection.index,
+                Math.min(data.length, minutelySelection.index + layout.expandedSpan),
+              )}px`,
+            }}
+            role={onMinutelySelect ? 'button' : undefined}
+            tabIndex={onMinutelySelect ? 0 : undefined}
+            aria-label={onMinutelySelect ? '收起 5 分钟降水' : undefined}
+            title={onMinutelySelect ? '点击收起' : undefined}
+            onClick={onMinutelySelect ? () => onMinutelySelect(minutelySelection.index) : undefined}
+            onKeyDown={
+              onMinutelySelect
+                ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onMinutelySelect(minutelySelection.index);
+                    }
+                  }
+                : undefined
+            }
+          >
+            {minutelySelection.data?.summary && (
+              <div className="minutely-rain-inline-header">
+                <div
+                  className="minutely-rain-inline-summary"
+                  title={minutelySelection.data.summary}
+                >
+                  {minutelySelection.data.summary}
+                </div>
+              </div>
+            )}
+            {minutelySelection.status === 'success' && minutelyLabelGeometry && (
+              <div className="minutely-rain-value-labels">
+                {minutelyPoints.map((point, pointIndex) => {
+                  if (point.precip <= 0 || pointIndex % 3 !== 1) return null;
+                  return (
+                    <span
+                      key={`${point.fxTime}-${pointIndex}`}
+                      className="minutely-rain-value-label"
+                      aria-label={`5分钟降水 ${point.precip.toFixed(2)} 毫米`}
+                      title={`${point.fxTime.slice(11, 16)} · ${point.precip.toFixed(2)} mm / 5min`}
+                      style={{
+                        left: `${minutelyLabelGeometry.getPointCenter(pointIndex)}px`,
+                        bottom: `${getMinutelyPrecipBarHeight(point.precip) + 2}px`,
+                        color: precipCssColor(
+                          point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
+                          1,
+                        ),
+                      }}
+                    >
+                      {formatMinutelyPrecipLabel(point.precip)}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            {minutelySelection.status === 'loading' && (
+              <div className="minutely-rain-inline-message" role="status">
+                <span className="loading-spinner" /> 正在加载 5 分钟预报…
+              </div>
+            )}
+            {minutelySelection.status === 'error' && (
+              <div className="minutely-rain-inline-message is-error" role="alert">
+                {minutelySelection.error}
+              </div>
+            )}
+            {minutelySelection.status === 'success' && minutelyPoints.length === 0 && (
+              <div className="minutely-rain-inline-message">未来两小时没有可用的 5 分钟预报点</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

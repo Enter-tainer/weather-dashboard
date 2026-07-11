@@ -1,6 +1,7 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
-import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -17,7 +18,8 @@ export default function PressureLane({
   maxP,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: PressureLaneProps) {
-  const width = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const width = layout.totalWidth;
   const height = 45; // --lane-height-pressure
 
   const canvasRef = useCanvas(
@@ -28,7 +30,7 @@ export default function PressureLane({
         if (maxP === minP) return h / 2;
         return h - 5 - ((p - minP) / (maxP - minP)) * (h - 10);
       };
-      const getX = (index: number) => getHourCenter(index, hourWidth);
+      const getX = (index: number) => layout.getColumnCenter(index);
 
       // Detect location-change boundaries (break lines here)
       const isBreak = (i: number) => i > 0 && data[i]?.cityName !== data[i - 1]?.cityName;
@@ -73,7 +75,7 @@ export default function PressureLane({
       }
       ctx.stroke();
     },
-    [data, minP, maxP, hourWidth],
+    [data, minP, maxP, layout],
   );
 
   return (

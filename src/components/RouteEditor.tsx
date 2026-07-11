@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type Ref } from 'react';
-import { Settings, X, Plus, Trash2 } from 'lucide-react';
+import { CloudRain, Eye, EyeOff, Settings, X, Plus, Trash2 } from 'lucide-react';
 import { parseRoute, stringifyRoute, generate7Days } from '../services/urlParser';
 import { reverseGeocode } from '../services/geocoding';
 import { updateSearchParams } from '../services/urlState';
+import {
+  clearQWeatherCredentials,
+  loadQWeatherCredentials,
+  saveQWeatherCredentials,
+} from '../services/qweatherCredentials';
 import type { RouteEntry } from '../types/weather';
 import './RouteEditor.css';
 
@@ -56,6 +61,13 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [entries, setEntries] = useState<EditorRouteEntry[]>([]);
   const [quickCity, setQuickCity] = useState('');
+  const [qweatherApiKey, setQweatherApiKey] = useState('');
+  const [qweatherApiHost, setQweatherApiHost] = useState('');
+  const [rememberQWeather, setRememberQWeather] = useState(false);
+  const [showQWeatherKey, setShowQWeatherKey] = useState(false);
+  const [qweatherStatus, setQweatherStatus] = useState<
+    { kind: 'idle' | 'success' | 'error'; message: string } | undefined
+  >();
 
   useImperativeHandle(
     ref,
@@ -68,6 +80,17 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
   // Load existing configuration when opening the modal
   useEffect(() => {
     if (!isOpen) return undefined;
+
+    const credentials = loadQWeatherCredentials();
+    setQweatherApiKey(credentials?.apiKey ?? '');
+    setQweatherApiHost(credentials?.apiHost ?? '');
+    setRememberQWeather(credentials?.persistent ?? false);
+    setShowQWeatherKey(false);
+    setQweatherStatus(
+      credentials
+        ? { kind: 'success', message: '已配置，可点击当前两小时的降水图标测试' }
+        : { kind: 'idle', message: '尚未配置' },
+    );
 
     let cancelled = false;
 
@@ -83,6 +106,32 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
       cancelled = true;
     };
   }, [isOpen]);
+
+  const saveQWeather = useCallback(() => {
+    try {
+      saveQWeatherCredentials(
+        { apiKey: qweatherApiKey, apiHost: qweatherApiHost },
+        rememberQWeather,
+      );
+      setQweatherStatus({
+        kind: 'success',
+        message: rememberQWeather ? '已保存在此浏览器' : '已保存到本次浏览器会话',
+      });
+    } catch (error) {
+      setQweatherStatus({
+        kind: 'error',
+        message: error instanceof Error ? error.message : '无法保存和风天气凭证',
+      });
+    }
+  }, [qweatherApiHost, qweatherApiKey, rememberQWeather]);
+
+  const clearQWeather = useCallback(() => {
+    clearQWeatherCredentials();
+    setQweatherApiKey('');
+    setQweatherApiHost('');
+    setRememberQWeather(false);
+    setQweatherStatus({ kind: 'idle', message: '已清除浏览器中的和风天气凭证' });
+  }, []);
 
   const handleApply = useCallback((newEntries: RouteEntry[]) => {
     const sorted = sortEntriesByDate(newEntries);
@@ -212,6 +261,80 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
                   一键应用
                 </button>
               </div>
+            </div>
+
+            <div className="route-editor-section qweather-settings">
+              <h4>
+                <CloudRain size={14} aria-hidden="true" /> 和风天气分钟降水 (BYOK)
+              </h4>
+              <p className="qweather-settings-description">
+                凭证只保存在你的浏览器，并由浏览器直接发送给和风天气。本项目不会接收或转发它。
+              </p>
+              <label className="qweather-field">
+                <span>专属 API Host</span>
+                <input
+                  type="text"
+                  value={qweatherApiHost}
+                  placeholder="abcxyz.qweatherapi.com"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  onChange={(event) => {
+                    setQweatherApiHost(event.target.value);
+                    setQweatherStatus(undefined);
+                  }}
+                />
+              </label>
+              <label className="qweather-field">
+                <span>API Key</span>
+                <span className="qweather-key-input">
+                  <input
+                    type={showQWeatherKey ? 'text' : 'password'}
+                    value={qweatherApiKey}
+                    placeholder="输入你自己的 API Key"
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => {
+                      setQweatherApiKey(event.target.value);
+                      setQweatherStatus(undefined);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="qweather-key-toggle"
+                    onClick={() => setShowQWeatherKey((shown) => !shown)}
+                    aria-label={showQWeatherKey ? '隐藏 API Key' : '显示 API Key'}
+                  >
+                    {showQWeatherKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </span>
+              </label>
+              <label className="qweather-remember">
+                <input
+                  type="checkbox"
+                  checked={rememberQWeather}
+                  onChange={(event) => setRememberQWeather(event.target.checked)}
+                />
+                <span>
+                  记住在此浏览器
+                  <small>使用 localStorage；共享设备或不受信任页面建议关闭</small>
+                </span>
+              </label>
+              <div className="qweather-actions">
+                <button type="button" className="secondary-btn" onClick={clearQWeather}>
+                  清除凭证
+                </button>
+                <button type="button" className="primary-btn" onClick={saveQWeather}>
+                  保存凭证
+                </button>
+              </div>
+              {qweatherStatus && (
+                <div
+                  className={`qweather-status is-${qweatherStatus.kind}`}
+                  role={qweatherStatus.kind === 'error' ? 'alert' : 'status'}
+                >
+                  {qweatherStatus.message}
+                </div>
+              )}
             </div>
 
             <div className="route-editor-section">

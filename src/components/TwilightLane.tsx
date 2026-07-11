@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import './Dashboard.css';
 import { cssVar } from '../services/themeColors';
-import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 
 interface TwilightPalette {
@@ -56,6 +57,7 @@ function lerpColor(a: string, b: string, t: number): string {
 
 export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: TwilightLaneProps) {
   const [, setThemeRevision] = useState(0);
+  const layout = useTimelineLayout(data.length, hourWidth);
 
   useEffect(() => {
     const handleThemeChange = () => setThemeRevision((revision) => revision + 1);
@@ -80,7 +82,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
       const t = s / resolution;
       const alt = alt1 + (alt2 - alt1) * t;
       const color = altitudeToColor(alt, palette);
-      const pct = ((i + 0.5 + t) / data.length) * 100;
+      const pct = (layout.getPoint(i + t) / layout.totalWidth) * 100;
       stops.push(`${color} ${pct.toFixed(2)}%`);
     }
   }
@@ -90,7 +92,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
     const lastIdx = data.length - 1;
     const finalAlt = data[lastIdx]?.sunAltitude ?? 10;
     const finalColor = altitudeToColor(finalAlt, palette);
-    const finalPct = ((lastIdx + 0.5) / data.length) * 100;
+    const finalPct = (layout.getColumnCenter(lastIdx) / layout.totalWidth) * 100;
     stops.push(`${finalColor} ${finalPct.toFixed(2)}%`);
 
     // Add end stops to stretch nicely to the very edges of the div
@@ -101,7 +103,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
 
   const gradient = `linear-gradient(to right, ${stops.join(', ')})`;
 
-  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const totalWidth = layout.totalWidth;
 
   return (
     <div className="lane" style={{ height: '12px', minHeight: '12px' }}>

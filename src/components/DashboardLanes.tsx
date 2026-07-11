@@ -20,10 +20,18 @@ import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
 import TimelineCaptureOverlay from './TimelineCaptureOverlay';
 import { useSoundingSelection } from '../hooks/useSoundingSelection';
-import { DEFAULT_HOUR_WIDTH, getTimelineHourWidth } from '../services/timelineLayout';
+import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
+import TimelineLayoutProvider from './TimelineLayoutProvider';
+import {
+  createTimelineLayout,
+  DEFAULT_HOUR_WIDTH,
+  EXPANDED_MINUTELY_WIDTH,
+  getTimelineHourWidth,
+} from '../services/timelineLayout';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
+import { useMemo } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
 interface EmptyTimelineStateProps {
@@ -39,10 +47,13 @@ interface DashboardLanesProps {
   compactMode: boolean;
   hoursPerColumn?: number;
   scales: DashboardScales;
-  scrollerRef?: RefObject<HTMLDivElement | null>;
+  scrollerRef?: RefObject<HTMLDivElement | null> | undefined;
   captureMode?: boolean;
   captureSelection?: CaptureSelection | null;
   onCaptureSelectionChange?: (selection: CaptureSelection) => void;
+  minutelyAvailableIndices?: Set<number> | undefined;
+  minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
+  onMinutelySelect?: ((index: number) => void) | undefined;
 }
 
 interface TimelineLanesProps extends Omit<DashboardLanesProps, 'data'> {
@@ -63,6 +74,9 @@ export interface DashboardLaneStackProps {
   renderMode?: DashboardLaneRenderMode;
   activeSoundingTime?: string | null;
   onSelectSounding?: (item: WeatherTimeline[number]) => void;
+  minutelyAvailableIndices?: Set<number> | undefined;
+  onMinutelySelect?: ((index: number) => void) | undefined;
+  minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
 }
 
 type TimelineStyle = CSSProperties & {
@@ -102,71 +116,93 @@ export function DashboardLaneStack({
   renderMode = 'interactive',
   activeSoundingTime = null,
   onSelectSounding,
+  minutelyAvailableIndices,
+  onMinutelySelect,
+  minutelySelection,
 }: DashboardLaneStackProps) {
   const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
   const interactive = renderMode === 'interactive';
   const hourWidth = getTimelineHourWidth();
   const usesEnsembleFallback = data.some((item) => item.dataSource === 'ensemble');
+  const expandedIndex = minutelySelection?.index ?? null;
+  const layout = useMemo(
+    () => createTimelineLayout(data.length, hourWidth, expandedIndex, EXPANDED_MINUTELY_WIDTH, 2),
+    [data.length, expandedIndex, hourWidth],
+  );
   const timelineStyle: TimelineStyle = {
     '--col-width-hour': `${hourWidth}px`,
+    width: `${layout.totalWidth}px`,
   };
 
   return (
-    <div
-      className={[
-        'lanes-container',
-        switching ? 'is-switching' : '',
-        renderMode === 'capture' ? 'is-capture-render' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      style={timelineStyle}
-    >
-      {usesEnsembleFallback && (
-        <div className="data-source-notice" role="status">
-          Forecast 不可用，正在使用 ensemble 近似；缺失字段显示为 —
-        </div>
-      )}
-      <DashboardBackground data={data} hourWidth={hourWidth} />
-      <WeatherAmbientBackground data={data} compact={compactMode} hourWidth={hourWidth} />
-      <LocationLane
-        data={data}
-        switchInfo={switchInfo}
-        onCityClick={onCityClick}
-        interactive={interactive}
-        hourWidth={hourWidth}
-      />
-      <TimeAxis data={data} hourWidth={hourWidth} hoursPerColumn={hoursPerColumn} />
-      <TwilightLane data={data} hourWidth={hourWidth} />
-      <WeatherIconLane data={data} />
-      <UVLane data={data} />
-      {!compactMode && (
-        <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} hourWidth={hourWidth} />
-      )}
-      {compactMode && <TemperatureTextLane data={data} />}
-      {!compactMode && (
-        <div className="cloud-sounding-region">
-          <CloudEnsembleLane data={data} hourWidth={hourWidth} />
-          <CloudAndRainLane data={data} hourWidth={hourWidth} />
-          {interactive && onSelectSounding && (
-            <CloudSoundingHitLayer
+    <TimelineLayoutProvider layout={layout}>
+      <div
+        className={[
+          'lanes-container',
+          switching ? 'is-switching' : '',
+          renderMode === 'capture' ? 'is-capture-render' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        style={timelineStyle}
+      >
+        {usesEnsembleFallback && (
+          <div className="data-source-notice" role="status">
+            Forecast 不可用，正在使用 ensemble 近似；缺失字段显示为 —
+          </div>
+        )}
+        <DashboardBackground data={data} hourWidth={hourWidth} />
+        <WeatherAmbientBackground data={data} compact={compactMode} hourWidth={hourWidth} />
+        <LocationLane
+          data={data}
+          switchInfo={switchInfo}
+          onCityClick={onCityClick}
+          interactive={interactive}
+          hourWidth={hourWidth}
+        />
+        <TimeAxis data={data} hourWidth={hourWidth} hoursPerColumn={hoursPerColumn} />
+        <TwilightLane data={data} hourWidth={hourWidth} />
+        <WeatherIconLane data={data} />
+        <UVLane data={data} />
+        {!compactMode && (
+          <ThermoHygroLane data={data} minTemp={minTemp} maxTemp={maxTemp} hourWidth={hourWidth} />
+        )}
+        {compactMode && <TemperatureTextLane data={data} />}
+        {!compactMode && (
+          <div className="cloud-sounding-region">
+            <CloudEnsembleLane data={data} hourWidth={hourWidth} />
+            <CloudAndRainLane
               data={data}
-              activeTime={activeSoundingTime}
-              onSelect={onSelectSounding}
               hourWidth={hourWidth}
+              minutelySelection={minutelySelection}
+              minutelyAvailableIndices={minutelyAvailableIndices}
+              onMinutelySelect={onMinutelySelect}
             />
-          )}
-        </div>
-      )}
-      <PrecipitationProbLane data={data} compact={compactMode} />
-      {!compactMode && <CapeLane data={data} />}
-      <WindLane data={data} maxBft={maxBft} compact={compactMode} hourWidth={hourWidth} />
-      {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} hourWidth={hourWidth} />}
-      <AirQualityLane data={data} />
-      <AerosolLane data={data} hourWidth={hourWidth} />
-      {interactive && <CurrentTimeIndicator data={data} hourWidth={hourWidth} />}
-      {interactive && !loadingDone && <LoadingMoreIndicator />}
-    </div>
+            {interactive && onSelectSounding && (
+              <CloudSoundingHitLayer
+                data={data}
+                activeTime={activeSoundingTime}
+                onSelect={onSelectSounding}
+                hourWidth={hourWidth}
+                bottomOffset={minutelySelection ? 88 : 58}
+              />
+            )}
+          </div>
+        )}
+        <PrecipitationProbLane
+          data={data}
+          compact={compactMode}
+          minutelySelection={minutelySelection}
+        />
+        {!compactMode && <CapeLane data={data} />}
+        <WindLane data={data} maxBft={maxBft} compact={compactMode} hourWidth={hourWidth} />
+        {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} hourWidth={hourWidth} />}
+        <AirQualityLane data={data} />
+        <AerosolLane data={data} hourWidth={hourWidth} />
+        {interactive && <CurrentTimeIndicator data={data} hourWidth={hourWidth} />}
+        {interactive && !loadingDone && <LoadingMoreIndicator />}
+      </div>
+    </TimelineLayoutProvider>
   );
 }
 
@@ -179,10 +215,38 @@ function TimelineLanes({
   compactMode,
   hoursPerColumn = 1,
   scales,
+  scrollerRef,
   captureMode = false,
+  minutelyAvailableIndices,
+  minutelySelection,
+  onMinutelySelect,
 }: TimelineLanesProps) {
   const { activeSoundingItem, closeSounding, selectSoundingItem, soundingIndex, stepSounding } =
     useSoundingSelection(data);
+  const selectMinutely = (index: number) => {
+    const opening = minutelySelection?.index !== index;
+    onMinutelySelect?.(index);
+    if (!opening) return;
+
+    const scroller = scrollerRef?.current;
+    if (!scroller) return;
+    window.requestAnimationFrame(() => {
+      const panelLeft = index * getTimelineHourWidth();
+      const viewLeft = scroller.scrollLeft;
+      const viewRight = viewLeft + scroller.clientWidth;
+      const padding = 12;
+      if (
+        panelLeft < viewLeft + padding ||
+        panelLeft + EXPANDED_MINUTELY_WIDTH > viewRight - padding
+      ) {
+        const visibleGutter = Math.max(
+          padding,
+          (scroller.clientWidth - EXPANDED_MINUTELY_WIDTH) / 2,
+        );
+        scroller.scrollTo({ left: Math.max(0, panelLeft - visibleGutter), behavior: 'smooth' });
+      }
+    });
+  };
 
   return (
     <>
@@ -198,6 +262,9 @@ function TimelineLanes({
         renderMode="interactive"
         activeSoundingTime={activeSoundingItem?.time ?? null}
         onSelectSounding={selectSoundingItem}
+        minutelyAvailableIndices={minutelyAvailableIndices}
+        onMinutelySelect={selectMinutely}
+        minutelySelection={minutelySelection}
       />
       {!captureMode && activeSoundingItem && (
         <SoundingDrawer
@@ -225,6 +292,9 @@ export default function DashboardLanes({
   captureMode = false,
   captureSelection = null,
   onCaptureSelectionChange,
+  minutelyAvailableIndices,
+  minutelySelection,
+  onMinutelySelect,
 }: DashboardLanesProps) {
   const hasData = data && data.length > 0;
   const hourWidth = getTimelineHourWidth();
@@ -242,7 +312,11 @@ export default function DashboardLanes({
             compactMode={compactMode}
             hoursPerColumn={hoursPerColumn}
             scales={scales}
+            scrollerRef={scrollerRef}
             captureMode={captureMode}
+            minutelyAvailableIndices={minutelyAvailableIndices}
+            minutelySelection={minutelySelection}
+            onMinutelySelect={onMinutelySelect}
           />
           {captureMode && captureSelection && onCaptureSelectionChange && (
             <TimelineCaptureOverlay
@@ -251,6 +325,7 @@ export default function DashboardLanes({
               onSelectionChange={onCaptureSelectionChange}
               hourWidth={hourWidth || DEFAULT_HOUR_WIDTH}
               hoursPerColumn={hoursPerColumn}
+              expandedIndex={minutelySelection?.index ?? null}
             />
           )}
         </>

@@ -1,4 +1,5 @@
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface AirQualityLaneProps {
@@ -6,6 +7,7 @@ interface AirQualityLaneProps {
 }
 
 export default function AirQualityLane({ data }: AirQualityLaneProps) {
+  const layout = useTimelineLayout(data.length);
   const labelInterval = 1;
 
   const getAqiColor = (aqi: number | null | undefined): string => {
@@ -39,7 +41,12 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
               <div
                 key={index}
                 className="lane-cell"
-                style={{ backgroundColor: bgColor, fontSize: '11px', color }}
+                style={{
+                  width: `${layout.getColumnWidth(index)}px`,
+                  backgroundColor: bgColor,
+                  fontSize: '11px',
+                  color,
+                }}
               >
                 {index % labelInterval === 0 ? (item.aqiUS ?? '') : ''}
               </div>
@@ -59,7 +66,11 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
               <div
                 key={index}
                 className="lane-cell"
-                style={{ backgroundColor: bgColor, color: 'var(--metric-text)' }}
+                style={{
+                  width: `${layout.getColumnWidth(index)}px`,
+                  backgroundColor: bgColor,
+                  color: 'var(--metric-text)',
+                }}
               >
                 {index % labelInterval === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
               </div>

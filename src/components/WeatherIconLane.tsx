@@ -20,6 +20,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 
 const WEATHER_NAMES: Record<number, string> = {
   0: '晴',
@@ -280,6 +281,7 @@ function WeatherTooltip({
 }
 
 export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
+  const layout = useTimelineLayout(data.length);
   const [activeRun, setActiveRun] = useState<number | null>(null);
   const handleClose = useCallback(() => setActiveRun(null), []);
 
@@ -313,6 +315,7 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
               key={index}
               className="lane-cell"
               style={{
+                width: `${layout.getColumnWidth(index)}px`,
                 backgroundColor: bgColor,
                 borderLeft: ci?.isStart ? '1px solid var(--weather-run-border)' : 'none',
               }}
@@ -329,8 +332,8 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
           const midItem = data[midIndex];
           if (!midItem) return null;
           const isNight = (midItem.sunAltitude ?? 10) < 0;
-          const leftPx = `calc(${run.start} * var(--col-width-hour))`;
-          const widthPx = `calc(${run.length} * var(--col-width-hour))`;
+          const leftPx = `${layout.getColumnLeft(run.start)}px`;
+          const widthPx = `${layout.getRangeWidth(run.start, run.start + run.length)}px`;
           const hasEnsemble = (midItem.weatherCodeMembers?.length ?? 0) > 0;
 
           return (

@@ -7,6 +7,7 @@ import {
   captureRangeLabel,
   captureSelectionFromCurrentDay,
   captureSelectionFromViewport,
+  includeRequiredCaptureRange,
   normalizeCaptureSelection,
   sliceTimelineForCapture,
   updateCaptureSelectionByDrag,
@@ -27,6 +28,30 @@ function makeTimeline(length: number): WeatherTimeline {
 }
 
 describe('timeline capture selection', () => {
+  it('keeps a required expanded range whole when the selection intersects it', () => {
+    expect(
+      includeRequiredCaptureRange(
+        { startIndex: 4, endIndex: 7 },
+        { startIndex: 6, endIndex: 8 },
+        12,
+      ),
+    ).toEqual({ startIndex: 4, endIndex: 8 });
+    expect(
+      includeRequiredCaptureRange(
+        { startIndex: 7, endIndex: 9 },
+        { startIndex: 6, endIndex: 8 },
+        12,
+      ),
+    ).toEqual({ startIndex: 6, endIndex: 9 });
+    expect(
+      includeRequiredCaptureRange(
+        { startIndex: 0, endIndex: 4 },
+        { startIndex: 6, endIndex: 8 },
+        12,
+      ),
+    ).toEqual({ startIndex: 0, endIndex: 4 });
+  });
+
   it('normalizes selections to integer hourly bounds', () => {
     expect(normalizeCaptureSelection({ startIndex: 2.4, endIndex: 7.6 }, 10)).toEqual({
       startIndex: 2,

@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import {
   type CaptureDragMode,
   type CaptureSelection,
   updateCaptureSelectionByDrag,
 } from '../services/timelineCapture';
-import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import {
+  createTimelineLayout,
+  DEFAULT_HOUR_WIDTH,
+  EXPANDED_MINUTELY_WIDTH,
+  type TimelineLayout,
+} from '../services/timelineLayout';
 
 interface TimelineCaptureOverlayProps {
   dataLength: number;
@@ -13,6 +18,7 @@ interface TimelineCaptureOverlayProps {
   onSelectionChange: (selection: CaptureSelection) => void;
   hourWidth?: number;
   hoursPerColumn?: number;
+  expandedIndex?: number | null;
 }
 
 interface CaptureDragState {
@@ -21,17 +27,33 @@ interface CaptureDragState {
   initialSelection: CaptureSelection;
 }
 
+function getClosestBoundaryIndex(layout: TimelineLayout, x: number): number {
+  if (layout.length === 0) return 0;
+  if (x <= 0) return 0;
+  if (x >= layout.totalWidth) return layout.length;
+
+  const index = layout.getColumnIndexAt(x);
+  const left = layout.getColumnLeft(index);
+  const right = layout.getColumnLeft(index + 1);
+  return x - left <= right - x ? index : index + 1;
+}
+
 export default function TimelineCaptureOverlay({
   dataLength,
   selection,
   onSelectionChange,
   hourWidth = DEFAULT_HOUR_WIDTH,
   hoursPerColumn = 1,
+  expandedIndex = null,
 }: TimelineCaptureOverlayProps) {
   const [dragState, setDragState] = useState<CaptureDragState | null>(null);
-  const left = selection.startIndex * hourWidth;
-  const width = (selection.endIndex - selection.startIndex) * hourWidth;
-  const totalWidth = dataLength * hourWidth;
+  const layout = useMemo(
+    () => createTimelineLayout(dataLength, hourWidth, expandedIndex, EXPANDED_MINUTELY_WIDTH, 2),
+    [dataLength, expandedIndex, hourWidth],
+  );
+  const left = layout.getColumnLeft(selection.startIndex);
+  const width = layout.getRangeWidth(selection.startIndex, selection.endIndex);
+  const totalWidth = layout.totalWidth;
 
   const startDrag = useCallback(
     (mode: CaptureDragMode, event: ReactPointerEvent<HTMLElement>) => {
@@ -51,7 +73,16 @@ export default function TimelineCaptureOverlay({
 
     const handlePointerMove = (event: PointerEvent) => {
       event.preventDefault();
-      const deltaHours = Math.round((event.clientX - dragState.startClientX) / hourWidth);
+      const initialBoundaryIndex =
+        dragState.mode === 'end'
+          ? dragState.initialSelection.endIndex
+          : dragState.initialSelection.startIndex;
+      const initialBoundaryX = layout.getColumnLeft(initialBoundaryIndex);
+      const targetBoundaryIndex = getClosestBoundaryIndex(
+        layout,
+        initialBoundaryX + event.clientX - dragState.startClientX,
+      );
+      const deltaHours = targetBoundaryIndex - initialBoundaryIndex;
       onSelectionChange(
         updateCaptureSelectionByDrag(
           dragState.initialSelection,
@@ -75,7 +106,7 @@ export default function TimelineCaptureOverlay({
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [dataLength, dragState, hourWidth, onSelectionChange]);
+  }, [dataLength, dragState, layout, onSelectionChange]);
 
   return (
     <div

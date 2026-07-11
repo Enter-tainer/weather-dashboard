@@ -1,11 +1,7 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
-import {
-  DEFAULT_HOUR_WIDTH,
-  getHourCenter,
-  getHourLeft,
-  getTimelineWidth,
-} from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -88,7 +84,8 @@ function getAodTextStyle(): { fill: string; stroke: string } {
 }
 
 export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: AerosolLaneProps) {
-  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const totalWidth = layout.totalWidth;
   const barInset = hourWidth >= 12 ? 2 : 1;
 
   const canvasRef = useCanvas(
@@ -100,18 +97,19 @@ export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: Ae
       for (let i = 0; i < data.length; i++) {
         const d = data[i];
         if (!d) continue;
-        const x = getHourLeft(i, hourWidth);
-        const cx = getHourCenter(i, hourWidth);
+        const x = layout.getColumnLeft(i);
+        const cx = layout.getColumnCenter(i);
+        const columnWidth = layout.getColumnWidth(i);
 
         // Background color band
         ctx.fillStyle = aodColor(d.aod);
-        ctx.fillRect(x, 0, hourWidth, h);
+        ctx.fillRect(x, 0, columnWidth, h);
 
         // Bar height proportional to AOD
         if (d.aod != null && d.aod > 0) {
           const barH = Math.min(d.aod / MAX_AOD, 1) * (h - 4);
           ctx.fillStyle = aodBarColor(d.aod);
-          ctx.fillRect(x + barInset, h - 2 - barH, Math.max(1, hourWidth - barInset * 2), barH);
+          ctx.fillRect(x + barInset, h - 2 - barH, Math.max(1, columnWidth - barInset * 2), barH);
         }
 
         // Text label for notable values
@@ -126,7 +124,7 @@ export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: Ae
         }
       }
     },
-    [data, hourWidth, barInset],
+    [data, layout, barInset],
   );
 
   return (

@@ -6,9 +6,9 @@
   <img alt="Weather Dashboard social preview" src="./og-image-light.webp">
 </picture>
 
-A [Windy](https://www.windy.com/)-style weather dashboard built with React + Canvas. All data comes from [Open-Meteo](https://open-meteo.com/) (free, no API key needed).
+A [Windy](https://www.windy.com/)-style weather dashboard built with React + Canvas. Forecast data comes from [Open-Meteo](https://open-meteo.com/); current two-hour, 5-minute precipitation details come from [QWeather](https://www.qweather.com/).
 
-一个类 [Windy](https://www.windy.com/) 风格的天气面板，用 React + Canvas 画的，数据全部来自 [Open-Meteo](https://open-meteo.com/)（免费，不需要 API key）。
+一个类 [Windy](https://www.windy.com/) 风格的天气面板，用 React + Canvas 画的。常规预报来自 [Open-Meteo](https://open-meteo.com/)，当前两小时的 5 分钟降水明细来自[和风天气](https://www.qweather.com/)。
 
 The focus is on **information density** — ensemble forecasts, CAPE, cloud layers, pressure fields, all stacked on a single horizontally-scrollable timeline.
 
@@ -33,6 +33,9 @@ The focus is on **information density** — ensemble forecasts, CAPE, cloud laye
 
 - **Precipitation** — probability (%) side-by-side with volume (mm)
 - **降水** — 概率 (%) 和降水量 (mm) 并排对照
+
+- **Minutely precipitation** — click either of the two precipitation cells marked `5m` to expand one continuous two-hour QWeather chart; screenshot export preserves the expanded chart
+- **分钟级降水** — 点击降水行里带 `5m` 提示的任一单元格，直接在原时间轴中展开连续两小时的和风天气明细；截图导出会保留展开结果
 
 - **Wind** — Beaufort scale blocks + gust peaks
 - **风力** — 蒲福风级色块 + 阵风峰值
@@ -139,6 +142,24 @@ Open the URL printed in the terminal (usually `localhost:5174`). Add `?route=...
 
 打开终端输出的地址（一般是 `localhost:5174`），在地址栏加 `?route=...` 就能切换城市。
 
+### Test QWeather BYOK locally / 本地测试和风 BYOK
+
+1. Open a route containing today and a location in China, for example `/?route=Beijing~北京:YYYY-MM-DD`.
+2. Open the gear menu, find **QWeather Minutely Precipitation (BYOK)**, and enter your API Key and dedicated API Host.
+3. Keep **Remember in this browser** off to use `sessionStorage`, or enable it to use `localStorage`.
+4. Save the credential, then click either of the two precipitation cells marked `5m`. They expand together as one continuous 5-minute chart; use the × action to collapse it again.
+
+中文步骤：
+
+1. 打开包含今天及中国地点的路线，例如 `/?route=Beijing~北京:YYYY-MM-DD`。
+2. 打开齿轮设置，在**和风天气分钟降水 (BYOK)** 中填写自己的 API Key 与专属 API Host。
+3. 不勾选“记住在此浏览器”时使用 `sessionStorage`；勾选后使用 `localStorage`。
+4. 保存凭证，然后点击当前小时或下一小时上的降水图标。
+
+The API Key is sent directly from the browser to the user's QWeather API Host via the `X-QW-Api-Key` header. It is never sent to this project's server. Like any browser-stored credential, it can be read by JavaScript running on the same origin, so avoid persistent storage on shared devices.
+
+API Key 由浏览器通过 `X-QW-Api-Key` 请求头直接发送到用户自己的和风 API Host，不经过本项目服务器。与所有浏览器内凭证一样，同源 JavaScript 可以读取它，因此不要在共享设备上持久保存。
+
 Build output is fully static: / 构建产物是纯静态的：
 
 ```bash
@@ -147,11 +168,13 @@ pnpm build    # outputs to dist/  输出到 dist/
 
 ## Deployment / 部署
 
-Pure frontend, no backend. Drop it on any static host: / 纯前端，没有后端，随便丢到静态托管上：
+The build is fully static. Deploy `dist/` to any static host, or use the included Wrangler command for Cloudflare Workers Static Assets:
 
-- **Vercel** — import repo, set framework to Vite / 导入仓库，框架选 Vite
-- **Netlify** — Build command `pnpm build`, Publish directory `dist`
-- **GitHub Pages** — run build via Actions / 用 Actions 跑一下 build 就好
+构建结果是纯静态文件，可以把 `dist/` 部署到任意静态托管平台，也可以使用 Wrangler 部署到 Cloudflare Workers Static Assets：
+
+```bash
+pnpm deploy
+```
 
 Geocoding is done client-side via Open-Meteo's `/v1/search` — no extra backend needed.
 

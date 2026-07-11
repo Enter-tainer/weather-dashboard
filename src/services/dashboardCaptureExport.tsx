@@ -3,6 +3,7 @@ import { toCanvas } from 'html-to-image';
 import DashboardCaptureRender from '../components/DashboardCaptureRender';
 import type { CanvasCaptureStatus } from '../hooks/canvasCaptureContext';
 import type { SwitchInfo } from '../hooks/useDashboardData';
+import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import { captureFileName, type CaptureSelection } from './timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 
@@ -13,6 +14,7 @@ interface ExportDashboardCaptureOptions {
   hoursPerColumn?: number;
   scales: DashboardScales;
   switchInfo: SwitchInfo;
+  minutelySelection?: MinutelyPrecipitationSelection | null;
 }
 
 const CANVAS_READY_TIMEOUT_MS = 1200;
@@ -60,6 +62,7 @@ export async function exportDashboardCapture({
   hoursPerColumn = 1,
   scales,
   switchInfo,
+  minutelySelection = null,
 }: ExportDashboardCaptureOptions): Promise<void> {
   const host = document.createElement('div');
   host.className = 'dashboard-capture-host';
@@ -77,6 +80,7 @@ export async function exportDashboardCapture({
       hoursPerColumn={hoursPerColumn}
       scales={scales}
       switchInfo={switchInfo}
+      minutelySelection={minutelySelection}
       onCanvasStatusChange={(status) => {
         canvasStatus = status;
         lastCanvasStatusChange = Date.now();

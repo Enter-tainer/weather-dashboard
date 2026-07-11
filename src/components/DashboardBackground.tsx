@@ -1,5 +1,6 @@
 import type { WeatherTimeline } from '../types/weather';
-import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface DashboardBackgroundProps {
@@ -11,9 +12,10 @@ export default function DashboardBackground({
   data,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: DashboardBackgroundProps) {
+  const layout = useTimelineLayout(data.length, hourWidth);
   if (!data || data.length === 0) return null;
 
-  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const totalWidth = layout.totalWidth;
 
   return (
     <div
@@ -30,8 +32,8 @@ export default function DashboardBackground({
       {/* Night Bands */}
       {data.nightBands &&
         data.nightBands.map((band, idx) => {
-          const leftPx = band.left * hourWidth + hourWidth / 2;
-          const rightPx = band.right * hourWidth + hourWidth / 2;
+          const leftPx = layout.getPoint(band.left);
+          const rightPx = layout.getPoint(band.right);
           return (
             <div
               key={`night-${idx}`}
@@ -62,7 +64,8 @@ export default function DashboardBackground({
           <div
             key={`grid-${index}`}
             style={{
-              width: `${hourWidth}px`,
+              width: `${layout.getColumnWidth(index)}px`,
+              flexShrink: 0,
               height: '100%',
               borderRight: '1px solid var(--grid-line)',
             }}

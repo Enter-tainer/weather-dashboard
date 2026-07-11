@@ -36,6 +36,26 @@ export function normalizeCaptureSelection(
   return { startIndex: start, endIndex: end };
 }
 
+export function includeRequiredCaptureRange(
+  selection: CaptureSelection,
+  requiredRange: CaptureSelection,
+  dataLength: number,
+): CaptureSelection {
+  const current = normalizeCaptureSelection(selection, dataLength);
+  const required = normalizeCaptureSelection(requiredRange, dataLength);
+  const intersects =
+    current.startIndex < required.endIndex && current.endIndex > required.startIndex;
+  if (!intersects) return current;
+
+  return normalizeCaptureSelection(
+    {
+      startIndex: Math.min(current.startIndex, required.startIndex),
+      endIndex: Math.max(current.endIndex, required.endIndex),
+    },
+    dataLength,
+  );
+}
+
 export function captureSelectionFromViewport(
   scrollLeft: number,
   clientWidth: number,

@@ -3,12 +3,8 @@ import type { CSSProperties, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
-import {
-  DEFAULT_HOUR_WIDTH,
-  getHourCenter,
-  getHourLeft,
-  getTimelineWidth,
-} from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
 
 const LANE_HEIGHT = 80;
@@ -331,7 +327,8 @@ export default function ThermoHygroLane({
   maxTemp,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: ThermoHygroLaneProps) {
-  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const totalWidth = layout.totalWidth;
   const ensembles = useMemo(() => data.map((d) => getEnsemble(d)), [data]);
   const barWidth = Math.max(2, Math.min(DEFAULT_BAR_W, hourWidth * 0.7));
   const labelInterval = hourWidth < 12 ? 6 : 3;
@@ -363,13 +360,13 @@ export default function ThermoHygroLane({
         const d = data[i];
         if (!d) continue;
         const ens = ensembles[i];
-        const cx = getHourCenter(i, hourWidth);
-        const bx = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
+        const cx = layout.getColumnCenter(i);
+        const bx = cx - barWidth / 2;
 
         // ── Highlight for hover/active cell ──
         if (i === activeIndex) {
           ctx.fillStyle = cellHover;
-          ctx.fillRect(getHourLeft(i, hourWidth), 0, hourWidth, LANE_HEIGHT);
+          ctx.fillRect(layout.getColumnLeft(i), 0, layout.getColumnWidth(i), LANE_HEIGHT);
         }
 
         // ── Temperature bar ──
@@ -438,7 +435,7 @@ export default function ThermoHygroLane({
       for (let i = 0; i < data.length; i += labelInterval) {
         const d = data[i];
         if (!d || d.temperature == null) continue;
-        const cx = getHourCenter(i, hourWidth);
+        const cx = layout.getColumnCenter(i);
 
         // Main temperature
         ctx.font = 'bold 10px system-ui';
@@ -465,22 +462,12 @@ export default function ThermoHygroLane({
       for (let i = 0; i < data.length; i += labelInterval) {
         const d = data[i];
         if (!d || d.humidity == null) continue;
-        const cx = getHourCenter(i, hourWidth);
+        const cx = layout.getColumnCenter(i);
         ctx.fillStyle = mutedLabel;
         ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
       }
     },
-    [
-      data,
-      minTemp,
-      maxTemp,
-      hasTempScale,
-      ensembles,
-      activeIndex,
-      hourWidth,
-      barWidth,
-      labelInterval,
-    ],
+    [data, minTemp, maxTemp, hasTempScale, ensembles, activeIndex, layout, barWidth, labelInterval],
   );
 
   const activeRef = activeIndex != null ? cellRefs[activeIndex] : undefined;
@@ -522,7 +509,8 @@ export default function ThermoHygroLane({
               key={i}
               ref={cellRefs[i]}
               style={{
-                width: `${hourWidth}px`,
+                width: `${layout.getColumnWidth(i)}px`,
+                flexShrink: 0,
                 height: '100%',
                 cursor: 'pointer',
               }}

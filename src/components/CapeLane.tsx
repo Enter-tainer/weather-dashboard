@@ -1,4 +1,5 @@
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface CapeLaneProps {
@@ -6,6 +7,7 @@ interface CapeLaneProps {
 }
 
 export default function CapeLane({ data }: CapeLaneProps) {
+  const layout = useTimelineLayout(data.length);
   // CAPE J/kg ranges. Usually <1000 is mild, 1000-2000 is moderate, >2000 is severe
   const getCapeColor = (cape: number | null): string => {
     if (cape == null) return 'transparent';
@@ -34,6 +36,7 @@ export default function CapeLane({ data }: CapeLaneProps) {
               key={index}
               className="lane-cell"
               style={{
+                width: `${layout.getColumnWidth(index)}px`,
                 backgroundColor: bgColor,
                 flexDirection: 'column',
                 justifyContent: 'center',

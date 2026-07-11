@@ -1,11 +1,7 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
-import {
-  DEFAULT_HOUR_WIDTH,
-  getHourCenter,
-  getHourLeft,
-  getTimelineWidth,
-} from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { getBeaufort } from '../services/weatherMetrics';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
@@ -26,7 +22,8 @@ export default function WindLane({
   compact = false,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: WindLaneProps) {
-  const width = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const width = layout.totalWidth;
   const barWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
   const compactLabelInterval = hourWidth < 12 ? 3 : 1;
   const fullLabelInterval = hourWidth < 12 ? 6 : 3;
@@ -40,8 +37,9 @@ export default function WindLane({
       const gustColor = cssVar('--danger', '#d32f2f');
 
       data.forEach((d, i) => {
-        const x = getHourLeft(i, hourWidth);
-        const cx = getHourCenter(i, hourWidth);
+        const x = layout.getColumnLeft(i);
+        const cx = layout.getColumnCenter(i);
+        const columnWidth = layout.getColumnWidth(i);
         // Chart available height: 45px (bottom 30px max reserved for arrow area, 5px top padding)
         const drawHeight = 45;
 
@@ -51,7 +49,7 @@ export default function WindLane({
           d.windMembers.forEach((w) => {
             const bw = getBeaufort(w);
             const h = (bw / maxBft) * drawHeight;
-            if (h > 0) ctx.fillRect(x, LANE_HEIGHT - 30 - h, hourWidth, h);
+            if (h > 0) ctx.fillRect(x, LANE_HEIGHT - 30 - h, columnWidth, h);
           });
         }
 
@@ -72,7 +70,7 @@ export default function WindLane({
         }
       });
     },
-    [data, maxBft, hourWidth, barWidth],
+    [data, maxBft, layout, barWidth],
   );
 
   if (compact) {
@@ -93,6 +91,7 @@ export default function WindLane({
                 key={index}
                 className="lane-cell"
                 style={{
+                  width: `${layout.getColumnWidth(index)}px`,
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
@@ -180,6 +179,7 @@ export default function WindLane({
               key={index}
               className="lane-cell"
               style={{
+                width: `${layout.getColumnWidth(index)}px`,
                 flexDirection: 'column',
                 justifyContent: 'flex-end',
                 paddingBottom: '3px',

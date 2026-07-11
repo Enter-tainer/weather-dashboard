@@ -50,11 +50,119 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-family:
     system-ui,
     -apple-system,
     sans-serif;
+}
+
+.qweather-settings h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qweather-settings-description {
+  margin: -3px 0 13px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.qweather-field {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+.qweather-key-input {
+  position: relative;
+  display: block;
+}
+
+.qweather-key-input input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 38px;
+}
+
+.qweather-key-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  transform: translateY(-50%);
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.qweather-key-toggle:hover,
+.qweather-key-toggle:focus-visible {
+  background: var(--control-bg-hover);
+  color: var(--text-main);
+  outline: 0;
+}
+
+.qweather-remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--text-light);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.qweather-remember input {
+  width: 15px;
+  height: 15px;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--primary);
+}
+
+.qweather-remember span {
+  display: grid;
+  gap: 2px;
+}
+
+.qweather-remember small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.qweather-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.qweather-status {
+  margin-top: 9px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.qweather-status.is-success {
+  color: var(--primary);
+}
+
+.qweather-status.is-error {
+  color: var(--danger);
 }
 
 .route-editor-header {
@@ -243,6 +351,9 @@
   justify-content: flex-end;
   gap: 12px;
   background: var(--modal-surface-muted);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 
 .primary-btn {

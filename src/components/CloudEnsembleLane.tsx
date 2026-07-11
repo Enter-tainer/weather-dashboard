@@ -1,6 +1,7 @@
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
-import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -15,14 +16,15 @@ export default function CloudEnsembleLane({
   data,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: CloudEnsembleLaneProps) {
-  const width = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const width = layout.totalWidth;
 
   const canvasRef = useCanvas(
     width,
     LANE_HEIGHT,
     (ctx, w, h) => {
       const getY = (cov: number) => h - 5 - (cov / 100) * (h - 10);
-      const getX = (index: number) => getHourCenter(index, hourWidth);
+      const getX = (index: number) => layout.getColumnCenter(index);
 
       // Detect location-change boundaries (break lines here)
       const isBreak = (i: number) => i > 0 && data[i]?.cityName !== data[i - 1]?.cityName;
@@ -61,7 +63,7 @@ export default function CloudEnsembleLane({
       }
       ctx.stroke();
     },
-    [data, hourWidth],
+    [data, layout],
   );
 
   return (

@@ -1,4 +1,20 @@
 export const DEFAULT_HOUR_WIDTH = 22;
+export const EXPANDED_MINUTELY_WIDTH = 264;
+
+export interface TimelineLayout {
+  length: number;
+  hourWidth: number;
+  expandedIndex: number | null;
+  expandedSpan: number;
+  expandedWidth: number;
+  totalWidth: number;
+  getColumnWidth: (index: number) => number;
+  getColumnLeft: (index: number) => number;
+  getColumnCenter: (index: number) => number;
+  getColumnIndexAt: (x: number) => number;
+  getPoint: (position: number) => number;
+  getRangeWidth: (startIndex: number, endIndex: number) => number;
+}
 
 export function getTimelineHourWidth(): number {
   return DEFAULT_HOUR_WIDTH;
@@ -14,4 +30,98 @@ export function getHourLeft(index: number, hourWidth = DEFAULT_HOUR_WIDTH): numb
 
 export function getHourCenter(index: number, hourWidth = DEFAULT_HOUR_WIDTH): number {
   return getHourLeft(index, hourWidth) + hourWidth / 2;
+}
+
+export function createTimelineLayout(
+  length: number,
+  hourWidth = DEFAULT_HOUR_WIDTH,
+  expandedIndex: number | null = null,
+  expandedWidth = EXPANDED_MINUTELY_WIDTH,
+  expandedSpan = 1,
+): TimelineLayout {
+  const safeLength = Math.max(0, length);
+  const activeExpandedIndex =
+    expandedIndex != null && expandedIndex >= 0 && expandedIndex < safeLength
+      ? expandedIndex
+      : null;
+  const safeExpandedSpan =
+    activeExpandedIndex == null
+      ? 0
+      : Math.max(1, Math.min(expandedSpan, safeLength - activeExpandedIndex));
+  const safeExpandedWidth = Math.max(hourWidth * safeExpandedSpan, expandedWidth);
+  const expandedColumnWidth =
+    safeExpandedSpan > 0 ? safeExpandedWidth / safeExpandedSpan : hourWidth;
+  const expandedEndIndex =
+    activeExpandedIndex == null ? null : activeExpandedIndex + safeExpandedSpan;
+  const extraWidth =
+    activeExpandedIndex == null ? 0 : safeExpandedWidth - hourWidth * safeExpandedSpan;
+  const totalWidth = safeLength * hourWidth + extraWidth;
+
+  const getColumnWidth = (index: number): number =>
+    activeExpandedIndex != null &&
+    expandedEndIndex != null &&
+    index >= activeExpandedIndex &&
+    index < expandedEndIndex
+      ? expandedColumnWidth
+      : hourWidth;
+  const getColumnLeft = (index: number): number => {
+    const safeIndex = Math.max(0, index);
+    if (
+      activeExpandedIndex == null ||
+      expandedEndIndex == null ||
+      safeIndex <= activeExpandedIndex
+    ) {
+      return safeIndex * hourWidth;
+    }
+    if (safeIndex < expandedEndIndex) {
+      return (
+        activeExpandedIndex * hourWidth + (safeIndex - activeExpandedIndex) * expandedColumnWidth
+      );
+    }
+    return safeIndex * hourWidth + extraWidth;
+  };
+  const getColumnCenter = (index: number): number =>
+    getColumnLeft(index) + getColumnWidth(index) / 2;
+  const getColumnIndexAt = (x: number): number => {
+    if (safeLength === 0 || !Number.isFinite(x)) return 0;
+    const safeX = Math.max(0, Math.min(totalWidth - Number.EPSILON, x));
+    let low = 0;
+    let high = safeLength - 1;
+
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      const left = getColumnLeft(middle);
+      const right = getColumnLeft(middle + 1);
+      if (safeX < left) high = middle - 1;
+      else if (safeX >= right) low = middle + 1;
+      else return middle;
+    }
+
+    return Math.max(0, Math.min(safeLength - 1, low));
+  };
+  const getPoint = (position: number): number => {
+    if (!Number.isFinite(position) || safeLength === 0) return 0;
+    const columnPosition = Math.max(0, Math.min(safeLength, position + 0.5));
+    if (columnPosition >= safeLength) return totalWidth;
+    const index = Math.floor(columnPosition);
+    const fraction = columnPosition - index;
+    return getColumnLeft(index) + getColumnWidth(index) * fraction;
+  };
+  const getRangeWidth = (startIndex: number, endIndex: number): number =>
+    Math.max(0, getColumnLeft(endIndex) - getColumnLeft(startIndex));
+
+  return {
+    length: safeLength,
+    hourWidth,
+    expandedIndex: activeExpandedIndex,
+    expandedSpan: safeExpandedSpan,
+    expandedWidth: safeExpandedWidth,
+    totalWidth,
+    getColumnWidth,
+    getColumnLeft,
+    getColumnCenter,
+    getColumnIndexAt,
+    getPoint,
+    getRangeWidth,
+  };
 }

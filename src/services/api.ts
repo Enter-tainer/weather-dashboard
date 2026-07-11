@@ -370,6 +370,8 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
 
     combined.push({
       cityName: originalName || name,
+      latitude,
+      longitude,
       time,
       timeUtcMs: toUtc(time).getTime(),
       timezone: resolvedTz,

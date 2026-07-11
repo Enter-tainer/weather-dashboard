@@ -1,11 +1,7 @@
 import { useMemo } from 'react';
 import { useCanvas } from '../hooks/useCanvas';
-import {
-  DEFAULT_HOUR_WIDTH,
-  getHourCenter,
-  getHourLeft,
-  getTimelineWidth,
-} from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
 
 const LANE_HEIGHT = 56;
@@ -120,7 +116,8 @@ export default function TemperatureEnsembleLane({
   maxTemp,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: TemperatureEnsembleLaneProps) {
-  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const totalWidth = layout.totalWidth;
   const barWidth = Math.max(2, Math.min(12, hourWidth * 0.7));
   const labelInterval = hourWidth < 12 ? 6 : 2;
 
@@ -145,8 +142,8 @@ export default function TemperatureEnsembleLane({
         const d = data[i];
         if (!d || d.temperature == null) continue;
         const ens = ensembles[i];
-        const cx = getHourCenter(i, hourWidth);
-        const x = getHourLeft(i, hourWidth) + (hourWidth - barWidth) / 2;
+        const cx = layout.getColumnCenter(i);
+        const x = cx - barWidth / 2;
 
         // Use main forecast temperature for bar height (matches TemperatureTextLane above)
         const temp = d.temperature;
@@ -205,14 +202,14 @@ export default function TemperatureEnsembleLane({
         if (!item || item.temperature == null) continue;
         const temp = item.temperature;
         const text = `${Math.round(temp)}`;
-        const tx = getHourCenter(i, hourWidth);
+        const tx = layout.getColumnCenter(i);
         const ty = h - 3;
         ctx.strokeText(text, tx, ty);
         ctx.fillStyle = tempTextColor(temp);
         ctx.fillText(text, tx, ty);
       }
     },
-    [data, minTemp, maxTemp, hasTempScale, ensembles, hourWidth, barWidth, labelInterval],
+    [data, minTemp, maxTemp, hasTempScale, ensembles, layout, barWidth, labelInterval],
   );
 
   return (

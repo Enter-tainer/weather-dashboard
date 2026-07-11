@@ -397,6 +397,162 @@
   box-sizing: border-box;
 }
 
+.minutely-rain-hit-target {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  width: 100%;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.minutely-rain-hit-target:focus-visible {
+  outline: 1px solid var(--precip-prob-60);
+  outline-offset: -1px;
+}
+
+.minutely-rain-hint {
+  position: absolute;
+  bottom: 3px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--precip-prob-80);
+  font-size: 8px;
+  font-weight: 700;
+  pointer-events: none;
+  text-shadow: 0 0 3px var(--control-bg);
+}
+
+.minutely-rain-inline {
+  position: absolute;
+  bottom: 0;
+  z-index: 6;
+  height: 88px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.minutely-rain-inline.is-collapsible {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.minutely-rain-inline.is-collapsible:focus-visible {
+  outline: 1px solid var(--precip-prob-60);
+  outline-offset: -1px;
+}
+
+.minutely-rain-inline-header {
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  left: 6px;
+  display: flex;
+  justify-content: flex-start;
+  color: var(--metric-text-strong);
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.minutely-rain-inline-summary {
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 2px 5px;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--timeline-bg) 82%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: var(--metric-text-strong);
+  font-weight: 600;
+  line-height: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(3px);
+}
+
+.minutely-rain-value-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.minutely-rain-value-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px var(--label-stroke);
+  paint-order: stroke fill;
+}
+
+.hourly-precip-label.is-minutely-reference {
+  position: absolute;
+  bottom: 61px;
+}
+
+.minutely-time-axis {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.minutely-time-axis-tick {
+  position: absolute;
+  top: 5px;
+  transform: translateX(-50%);
+  color: var(--chart-label-muted);
+  font-size: 8px;
+  line-height: 1;
+  text-shadow:
+    0 0 2px var(--timeline-bg),
+    0 0 2px var(--timeline-bg);
+  white-space: nowrap;
+}
+
+.minutely-time-axis-tick::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 1px;
+  height: 4px;
+  background: var(--lane-border);
+}
+
+.minutely-rain-inline-message {
+  position: absolute;
+  inset: 35px 8px 5px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.minutely-rain-inline-message .loading-spinner {
+  width: 13px;
+  height: 13px;
+}
+
+.minutely-rain-inline-message.is-error {
+  color: var(--danger);
+}
+
 /* Day/Night alternating background stripes */
 .cell-day {
   background-color: var(--cell-day);

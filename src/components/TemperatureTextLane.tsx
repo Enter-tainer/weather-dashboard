@@ -1,4 +1,5 @@
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface TemperatureTextLaneProps {
@@ -6,6 +7,7 @@ interface TemperatureTextLaneProps {
 }
 
 export default function TemperatureTextLane({ data }: TemperatureTextLaneProps) {
+  const layout = useTimelineLayout(data.length);
   const labelInterval = 3;
 
   return (
@@ -15,7 +17,11 @@ export default function TemperatureTextLane({ data }: TemperatureTextLaneProps) 
           <div
             key={index}
             className="lane-cell"
-            style={{ flexDirection: 'column', justifyContent: 'center' }}
+            style={{
+              width: `${layout.getColumnWidth(index)}px`,
+              flexDirection: 'column',
+              justifyContent: 'center',
+            }}
           >
             {index % labelInterval === 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

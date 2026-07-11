@@ -4,13 +4,19 @@ import { DashboardLaneStack } from './DashboardLanes';
 import { CanvasCaptureProvider } from '../hooks/canvasCapture';
 import type { CanvasCaptureStatus } from '../hooks/canvasCaptureContext';
 import type { SwitchInfo } from '../hooks/useDashboardData';
+import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import {
   captureLocationLabel,
   captureRangeLabel,
+  normalizeCaptureSelection,
   sliceTimelineForCapture,
   type CaptureSelection,
 } from '../services/timelineCapture';
-import { getTimelineHourWidth } from '../services/timelineLayout';
+import {
+  createTimelineLayout,
+  EXPANDED_MINUTELY_WIDTH,
+  getTimelineHourWidth,
+} from '../services/timelineLayout';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 
 const CAPTURE_LEGEND_WIDTH = 48;
@@ -22,6 +28,7 @@ interface DashboardCaptureRenderProps {
   hoursPerColumn?: number;
   scales: DashboardScales;
   switchInfo: SwitchInfo;
+  minutelySelection?: MinutelyPrecipitationSelection | null;
   onCanvasStatusChange?: ((status: CanvasCaptureStatus) => void) | undefined;
 }
 
@@ -32,11 +39,43 @@ export default function DashboardCaptureRender({
   hoursPerColumn = 1,
   scales,
   switchInfo,
+  minutelySelection = null,
   onCanvasStatusChange,
 }: DashboardCaptureRenderProps) {
-  const captureData = useMemo(() => sliceTimelineForCapture(data, selection), [data, selection]);
+  const normalizedSelection = useMemo(
+    () => normalizeCaptureSelection(selection, data.length),
+    [data.length, selection],
+  );
+  const captureData = useMemo(
+    () => sliceTimelineForCapture(data, normalizedSelection),
+    [data, normalizedSelection],
+  );
   const hourWidth = getTimelineHourWidth();
-  const width = CAPTURE_LEGEND_WIDTH + captureData.length * hourWidth;
+  const captureMinutelySelection = useMemo(() => {
+    if (
+      !minutelySelection ||
+      minutelySelection.index < normalizedSelection.startIndex ||
+      minutelySelection.index + 2 > normalizedSelection.endIndex
+    ) {
+      return null;
+    }
+
+    const localIndex = minutelySelection.index - normalizedSelection.startIndex;
+    const localItem = captureData[localIndex];
+    return localItem ? { ...minutelySelection, index: localIndex, item: localItem } : null;
+  }, [captureData, minutelySelection, normalizedSelection]);
+  const captureLayout = useMemo(
+    () =>
+      createTimelineLayout(
+        captureData.length,
+        hourWidth,
+        captureMinutelySelection?.index ?? null,
+        EXPANDED_MINUTELY_WIDTH,
+        2,
+      ),
+    [captureData.length, captureMinutelySelection?.index, hourWidth],
+  );
+  const width = CAPTURE_LEGEND_WIDTH + captureLayout.totalWidth;
 
   return (
     <CanvasCaptureProvider onStatusChange={onCanvasStatusChange}>
@@ -58,6 +97,7 @@ export default function DashboardCaptureRender({
             scales={scales}
             switchInfo={switchInfo}
             renderMode="capture"
+            minutelySelection={captureMinutelySelection}
           />
         </div>
       </div>

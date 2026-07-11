@@ -1,6 +1,7 @@
 import { Sunrise, Sunset, Moon } from 'lucide-react';
 import type { WeatherPoint, WeatherTimeline } from '../types/weather';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface IndexedWeatherPoint {
@@ -54,6 +55,7 @@ export default function TimeAxis({
   hourWidth = DEFAULT_HOUR_WIDTH,
   hoursPerColumn = 1,
 }: TimeAxisProps) {
+  const layout = useTimelineLayout(data.length, hourWidth);
   const hourLabelInterval = 3;
   const eventLabelFontSize = '9px';
   const eventIconSize = 10;
@@ -82,8 +84,8 @@ export default function TimeAxis({
         {/* Darker localized overlay for the header night periods */}
         {data.nightBands &&
           data.nightBands.map((band, idx) => {
-            const leftPx = band.left * hourWidth + hourWidth / 2;
-            const rightPx = band.right * hourWidth + hourWidth / 2;
+            const leftPx = layout.getPoint(band.left);
+            const rightPx = layout.getPoint(band.right);
             return (
               <div
                 key={`header-night-${idx}`}
@@ -133,8 +135,13 @@ export default function TimeAxis({
                   key={`daylabel-${day.startIndex}`}
                   style={{
                     position: 'absolute',
-                    left: `${(day.startIndex - group.startIndex) * hourWidth}px`,
-                    width: `${day.items.length * hourWidth}px`,
+                    left: `${
+                      layout.getColumnLeft(day.startIndex) - layout.getColumnLeft(group.startIndex)
+                    }px`,
+                    width: `${layout.getRangeWidth(
+                      day.startIndex,
+                      day.startIndex + day.items.length,
+                    )}px`,
                     height: '100%',
                     pointerEvents: 'none',
                     zIndex: 10,
@@ -171,34 +178,39 @@ export default function TimeAxis({
               ))}
 
               {/* Lane cells for this city */}
-              {group.items.map(({ item, index }) => (
-                <div
-                  key={index}
-                  className="lane-cell"
-                  style={{
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    paddingBottom: '4px',
-                    zIndex: 5,
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: 'auto' }}>
-                    {shouldShowHourLabel(item.hour) ? item.hour : ''}
-                  </div>
+              {group.items.map(({ item, index }) => {
+                return (
                   <div
+                    key={index}
+                    className="lane-cell"
                     style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: '40px',
-                      bottom: 0,
-                      width: '1px',
-                      backgroundColor: shouldShowGridLine(item.hour)
-                        ? 'var(--lane-border)'
-                        : 'transparent',
+                      width: `${layout.getColumnWidth(index)}px`,
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      paddingBottom: '4px',
+                      zIndex: 5,
                     }}
-                  />
-                </div>
-              ))}
+                  >
+                    <div
+                      style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: 'auto' }}
+                    >
+                      {shouldShowHourLabel(item.hour) ? item.hour : ''}
+                    </div>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: '40px',
+                        bottom: 0,
+                        width: '1px',
+                        backgroundColor: shouldShowGridLine(item.hour)
+                          ? 'var(--lane-border)'
+                          : 'transparent',
+                      }}
+                    />
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -207,8 +219,8 @@ export default function TimeAxis({
         {data.sunEvents &&
           data.sunEvents.map((ev, i) => {
             if (ev.absoluteIndex == null) return null;
-            const exactX = ev.absoluteIndex * hourWidth + hourWidth / 2;
-            if (exactX < 0 || exactX > data.length * hourWidth) return null;
+            const exactX = layout.getPoint(ev.absoluteIndex);
+            if (exactX < 0 || exactX > layout.totalWidth) return null;
 
             const mm = ev.time.getMinutes().toString().padStart(2, '0');
             const hh = ev.time.getHours().toString().padStart(2, '0');
@@ -263,8 +275,8 @@ export default function TimeAxis({
         {data.moonEvents &&
           data.moonEvents.map((ev, i) => {
             if (ev.absoluteIndex == null) return null;
-            const exactX = ev.absoluteIndex * hourWidth + hourWidth / 2;
-            if (exactX < 0 || exactX > data.length * hourWidth) return null;
+            const exactX = layout.getPoint(ev.absoluteIndex);
+            if (exactX < 0 || exactX > layout.totalWidth) return null;
 
             const mm = ev.time.getMinutes().toString().padStart(2, '0');
             const hh = ev.time.getHours().toString().padStart(2, '0');

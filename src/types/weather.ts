@@ -38,6 +38,8 @@ export interface TemperatureEnsemble {
 
 export interface WeatherPoint {
   cityName: string;
+  latitude?: number;
+  longitude?: number;
   time: string;
   timeUtcMs?: number;
   timezone?: string;
@@ -84,6 +86,21 @@ export interface WeatherPoint {
   moonPhase?: number | undefined;
   moonFraction?: number | undefined;
   dataSource?: WeatherDataSource | undefined;
+}
+
+export type PrecipitationType = 'rain' | 'snow';
+
+export interface MinutelyPrecipitationPoint {
+  fxTime: string;
+  precip: number;
+  type: PrecipitationType;
+}
+
+export interface MinutelyPrecipitation {
+  updateTime: string;
+  fxLink: string;
+  summary: string;
+  points: MinutelyPrecipitationPoint[];
 }
 
 export type SunEventType = 'sunrise' | 'sunset';

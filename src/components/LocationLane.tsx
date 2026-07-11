@@ -1,7 +1,8 @@
 import { MapPin } from 'lucide-react';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { WeatherPoint } from '../types/weather';
-import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface CityGroup {
@@ -25,6 +26,7 @@ export default function LocationLane({
   interactive = true,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: LocationLaneProps) {
+  const layout = useTimelineLayout(data.length, hourWidth);
   const cityGroups: CityGroup[] = [];
   let currentGroup: CityGroup | null = null;
   for (let i = 0; i < data.length; i++) {
@@ -43,10 +45,7 @@ export default function LocationLane({
       className="lane location-lane"
       style={{ height: '24px', borderBottom: 'none', backgroundColor: 'var(--legend-bg)' }}
     >
-      <div
-        className="lane-data"
-        style={{ position: 'relative', width: `${getTimelineWidth(data.length, hourWidth)}px` }}
-      >
+      <div className="lane-data" style={{ position: 'relative', width: `${layout.totalWidth}px` }}>
         {cityGroups.map((group) => {
           const slot = switchInfo && switchInfo[group.cityName];
           const isSwitchable = interactive && !!slot;
@@ -56,8 +55,11 @@ export default function LocationLane({
               key={`loc-${group.startIndex}`}
               style={{
                 position: 'absolute',
-                left: `${group.startIndex * hourWidth}px`,
-                width: `${group.items.length * hourWidth}px`,
+                left: `${layout.getColumnLeft(group.startIndex)}px`,
+                width: `${layout.getRangeWidth(
+                  group.startIndex,
+                  group.startIndex + group.items.length,
+                )}px`,
                 height: '100%',
                 display: 'block',
               }}

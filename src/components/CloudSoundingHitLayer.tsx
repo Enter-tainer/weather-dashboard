@@ -1,5 +1,6 @@
 import type { WeatherPoint } from '../types/weather';
-import { DEFAULT_HOUR_WIDTH, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 
 interface CloudSoundingHitLayerProps {
   data: WeatherPoint[];
@@ -20,13 +21,14 @@ export default function CloudSoundingHitLayer({
   bottomOffset = 0,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: CloudSoundingHitLayerProps) {
+  const layout = useTimelineLayout(data.length, hourWidth);
   if (typeof onSelect !== 'function') return null;
 
   return (
     <div
       className="cloud-sounding-hit-layer"
       style={{
-        width: `${getTimelineWidth(data.length, hourWidth)}px`,
+        width: `${layout.totalWidth}px`,
         bottom: bottomOffset ? `${bottomOffset}px` : 0,
       }}
       aria-label="Skew-T 探空图时次"
@@ -38,6 +40,10 @@ export default function CloudSoundingHitLayer({
           className={['cloud-sounding-hit-cell', item.time === activeTime ? 'is-active' : '']
             .filter(Boolean)
             .join(' ')}
+          style={{
+            width: `${layout.getColumnWidth(index)}px`,
+            flexBasis: `${layout.getColumnWidth(index)}px`,
+          }}
           onClick={() => onSelect(item)}
           title={`${item.cityName} ${formatHour(item)}:00 Skew-T`}
           aria-label={`打开 ${item.cityName} ${formatHour(item)}:00 的 Skew-T`}

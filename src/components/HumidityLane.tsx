@@ -1,4 +1,5 @@
 import type { WeatherPoint } from '../types/weather';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
 
 interface HumidityLaneProps {
@@ -6,6 +7,7 @@ interface HumidityLaneProps {
 }
 
 export default function HumidityLane({ data }: HumidityLaneProps) {
+  const layout = useTimelineLayout(data.length);
   return (
     <div
       className="lane humidity-lane"
@@ -16,7 +18,11 @@ export default function HumidityLane({ data }: HumidityLaneProps) {
           <div
             key={index}
             className="lane-cell"
-            style={{ flexDirection: 'column', justifyContent: 'center' }}
+            style={{
+              width: `${layout.getColumnWidth(index)}px`,
+              flexDirection: 'column',
+              justifyContent: 'center',
+            }}
           >
             {index % 3 === 0 && item.humidity != null && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

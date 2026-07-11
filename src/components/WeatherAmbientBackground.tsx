@@ -1,5 +1,6 @@
 import { useCanvas } from '../hooks/useCanvas';
-import { DEFAULT_HOUR_WIDTH, getHourCenter, getTimelineWidth } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 
 type WeatherCategory = 'clear' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder';
@@ -82,9 +83,9 @@ export default function WeatherAmbientBackground({
   compact = false,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: WeatherAmbientBackgroundProps) {
-  const totalWidth = getTimelineWidth(data.length, hourWidth);
+  const layout = useTimelineLayout(data.length, hourWidth);
+  const totalWidth = layout.totalWidth;
   const bgHeight = compact ? COMPACT_BG_HEIGHT : FULL_BG_HEIGHT;
-  const hRadiusPx = hourWidth * 1.2;
 
   const canvasRef = useCanvas(
     totalWidth,
@@ -96,7 +97,8 @@ export default function WeatherAmbientBackground({
         const dist = computeDistribution(item.weatherCodeMembers);
         if (!dist) continue;
 
-        const cx = getHourCenter(i, hourWidth);
+        const cx = layout.getColumnCenter(i);
+        const hRadiusPx = Math.max(hourWidth * 1.2, layout.getColumnWidth(i) * 0.8);
 
         let cumulative = 0;
         for (const seg of dist) {
@@ -125,7 +127,7 @@ export default function WeatherAmbientBackground({
         }
       }
     },
-    [data, hourWidth, hRadiusPx, bgHeight],
+    [data, layout, hourWidth, bgHeight],
   );
 
   return (
