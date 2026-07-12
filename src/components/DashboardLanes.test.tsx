@@ -212,7 +212,7 @@ describe('DashboardLaneStack', () => {
     expect(screen.getByLabelText('小时降水 3.4 毫米')).toBeInTheDocument();
     expect(screen.getByLabelText('小时降水 1.2 毫米')).toBeInTheDocument();
     expect(screen.queryByLabelText('5分钟降水 0.10 毫米')).toBeNull();
-    expect(screen.getByLabelText('5分钟降水 0.25 毫米')).toHaveTextContent('.25');
+    expect(screen.getByLabelText('5分钟降水 0.25 毫米')).toHaveTextContent('0.25');
     expect(screen.queryByLabelText('5分钟降水 0.30 毫米')).toBeNull();
     expect(screen.queryByLabelText('5分钟降水 0.00 毫米')).toBeNull();
     expect(screen.queryByText('5分钟降水强度 · 0–10 mm/h')).toBeNull();

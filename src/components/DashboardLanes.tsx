@@ -31,6 +31,7 @@ import {
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
+import { CLOUD_AND_RAIN_LANE_HEIGHT, CLOUD_PLOT_HEIGHT } from '../services/cloudAndRainScale';
 import { useMemo } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
@@ -184,7 +185,7 @@ export function DashboardLaneStack({
                 activeTime={activeSoundingTime}
                 onSelect={onSelectSounding}
                 hourWidth={hourWidth}
-                bottomOffset={minutelySelection ? 88 : 58}
+                bottomOffset={CLOUD_AND_RAIN_LANE_HEIGHT - CLOUD_PLOT_HEIGHT}
               />
             )}
           </div>
@@ -199,7 +200,13 @@ export function DashboardLaneStack({
         {!compactMode && <PressureLane data={data} minP={minP} maxP={maxP} hourWidth={hourWidth} />}
         <AirQualityLane data={data} />
         <AerosolLane data={data} hourWidth={hourWidth} />
-        {interactive && <CurrentTimeIndicator data={data} hourWidth={hourWidth} />}
+        {interactive && (
+          <CurrentTimeIndicator
+            data={data}
+            hourWidth={hourWidth}
+            minutelySelection={minutelySelection}
+          />
+        )}
         {interactive && !loadingDone && <LoadingMoreIndicator />}
       </div>
     </TimelineLayoutProvider>

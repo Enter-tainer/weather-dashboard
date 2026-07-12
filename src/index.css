@@ -89,6 +89,7 @@
   --twilight-night: #0d0d1a;
 
   --cloud-layer-bg: rgba(230, 232, 235, 0.3);
+  --precip-strip-bg: rgba(13, 71, 161, 0.035);
   --cloud-grid-line: rgba(0, 0, 0, 0.12);
   --cloud-grid-boundary: rgba(0, 0, 0, 0.25);
   --cloud-fill-rgb: 90, 90, 100;
@@ -223,6 +224,7 @@
   --twilight-night: #080b12;
 
   --cloud-layer-bg: rgba(35, 42, 38, 0.48);
+  --precip-strip-bg: rgba(106, 169, 255, 0.06);
   --cloud-grid-line: rgba(221, 233, 224, 0.12);
   --cloud-grid-boundary: rgba(231, 239, 232, 0.24);
   --cloud-fill-rgb: 174, 183, 180;

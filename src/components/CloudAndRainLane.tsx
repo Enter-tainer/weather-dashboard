@@ -3,21 +3,27 @@ import { CloudRain } from 'lucide-react';
 import { useMemo } from 'react';
 import {
   createMinutelyChartHorizontalGeometry,
+  formatMinutelyTime,
   getHourlyPrecipBarHeight,
   getMinutelyPrecipBarHeight,
   getMinutelyTimeTickIndices,
-  PRECIP_AXIS_MAX_MM_HOUR,
-  PRECIP_AXIS_TICKS_MM_HOUR,
+  PRECIP_BAR_MAX_HEIGHT,
+  PRECIP_INTENSITY_BANDS,
 } from '../services/minutelyChart';
 import { cssVar } from '../services/themeColors';
+import {
+  CLOUD_AND_RAIN_LANE_HEIGHT,
+  CLOUD_PLOT_HEIGHT,
+  cloudAltitudeToY,
+  PRECIPITATION_PLOT_HEIGHT,
+  PRECIPITATION_PLOT_TOP,
+} from '../services/cloudAndRainScale';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
-const LANE_HEIGHT = 150;
-const MAX_ALT = 10000; // meters
 const EMPTY_MINUTELY_POINTS: NonNullable<MinutelyPrecipitationSelection['data']>['points'] = [];
 const EMPTY_MINUTELY_INDICES = new Set<number>();
 
@@ -37,40 +43,12 @@ const FALLBACK_ALT: Readonly<Record<number, number>> = {
   300: 9200,
 };
 
-// Non-uniform Y-axis: equal height for low/mid/high cloud regions
-// Breakpoints: [altitude_m, fraction_of_height_from_bottom]
-type AltitudeBreak = readonly [altitude: number, fraction: number];
-
-const ALT_BREAKS = [
-  [0, 0],
-  [2000, 0.333], // low clouds: 0-2km = 1/3
-  [6000, 0.667], // mid clouds: 2-6km = 1/3
-  [10000, 1.0], // high clouds: 6-10km = 1/3
-] as const satisfies readonly AltitudeBreak[];
-
-// Map altitude (meters) to Y pixel using piecewise linear scale
 interface CloudAndRainLaneProps {
   data: WeatherPoint[];
   hourWidth?: number;
   minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
   minutelyAvailableIndices?: Set<number> | undefined;
   onMinutelySelect?: ((index: number) => void) | undefined;
-}
-
-function altToY(alt: number): number {
-  const a = Math.min(Math.max(alt, 0), MAX_ALT);
-  for (let i = 0; i < ALT_BREAKS.length - 1; i++) {
-    const current = ALT_BREAKS[i];
-    const next = ALT_BREAKS[i + 1];
-    if (!current || !next) continue;
-    const [a0, f0] = current;
-    const [a1, f1] = next;
-    if (a <= a1) {
-      const frac = f0 + ((f1 - f0) * (a - a0)) / (a1 - a0);
-      return LANE_HEIGHT * (1 - frac);
-    }
-  }
-  return 0;
 }
 
 // Grid lines at key altitudes matching the legend sidebar
@@ -108,8 +86,8 @@ function precipCssColor(code: number | null, alpha = 0.6): string {
 function formatMinutelyPrecipLabel(precip: number): string {
   if (precip >= 10) return Math.round(precip).toString();
   if (precip >= 1) return precip.toFixed(1);
-  if (precip >= 0.05) return precip.toFixed(2).replace(/^0/, '').replace(/0$/, '');
-  return '<.05';
+  if (precip >= 0.05) return precip.toFixed(2).replace(/0$/, '');
+  return '<0.05';
 }
 
 // Uniform cloud color — only alpha varies with coverage
@@ -133,7 +111,16 @@ export default function CloudAndRainLane({
   const selectedEndIndex = selectedIndex == null ? null : selectedIndex + layout.expandedSpan;
   const minutelyPoints = minutelySelection?.data?.points ?? EMPTY_MINUTELY_POINTS;
   const minutelyPointCount = minutelyPoints.length;
-  const minutelyTicks = useMemo(() => getMinutelyTimeTickIndices(minutelyPoints), [minutelyPoints]);
+  const minutelyTicks = useMemo(
+    () =>
+      getMinutelyTimeTickIndices(
+        minutelyPoints,
+        30,
+        minutelySelection?.item.timezone,
+        minutelySelection?.item.utcOffsetSeconds,
+      ),
+    [minutelyPoints, minutelySelection?.item.timezone, minutelySelection?.item.utcOffsetSeconds],
+  );
   const minutelyLabelGeometry =
     selectedIndex != null && selectedEndIndex != null && minutelyPointCount > 0
       ? createMinutelyChartHorizontalGeometry(
@@ -147,14 +134,16 @@ export default function CloudAndRainLane({
 
   const canvasRef = useCanvas(
     width,
-    LANE_HEIGHT,
+    CLOUD_AND_RAIN_LANE_HEIGHT,
     (ctx, w, h) => {
       const cloudFillRgb = cssVar('--cloud-fill-rgb', '90, 90, 100');
       const cloudFillAlphaScale =
         Number.parseFloat(cssVar('--cloud-fill-alpha-scale', '0.85')) || 0.85;
 
       ctx.fillStyle = cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillRect(0, 0, w, CLOUD_PLOT_HEIGHT);
+      ctx.fillStyle = cssVar('--precip-strip-bg', 'rgba(13, 71, 161, 0.035)');
+      ctx.fillRect(0, PRECIPITATION_PLOT_TOP, w, PRECIPITATION_PLOT_HEIGHT);
 
       // Altitude grid lines (cloud boundaries thicker)
       for (const alt of GRID_ALTS) {
@@ -164,7 +153,7 @@ export default function CloudAndRainLane({
           ? cssVar('--cloud-grid-boundary', 'rgba(0,0,0,0.25)')
           : cssVar('--cloud-grid-line', 'rgba(0,0,0,0.12)');
         ctx.lineWidth = isBoundary ? 1.2 : 0.5;
-        const y = altToY(alt);
+        const y = cloudAltitudeToY(alt);
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
@@ -192,8 +181,8 @@ export default function CloudAndRainLane({
             const altHigh = getCloudAltitude(upper.pressure, upper.altitude);
             if (altLow == null || altHigh == null) continue;
 
-            const yTop = altToY(altHigh);
-            const yBot = altToY(altLow);
+            const yTop = cloudAltitudeToY(altHigh);
+            const yBot = cloudAltitudeToY(altLow);
             if (yBot - yTop <= 0) continue;
 
             ctx.fillStyle = cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
@@ -208,8 +197,8 @@ export default function CloudAndRainLane({
           ];
           for (const layer of layers) {
             if (layer.cover == null || layer.cover < 3) continue;
-            const yTop = altToY(layer.altHigh);
-            const yBot = altToY(layer.altLow);
+            const yTop = cloudAltitudeToY(layer.altHigh);
+            const yBot = cloudAltitudeToY(layer.altLow);
 
             ctx.fillStyle = cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
             ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
@@ -225,25 +214,16 @@ export default function CloudAndRainLane({
           if (i !== selectedIndex) continue;
           const detailWidth = layout.getRangeWidth(selectedIndex, selectedEndIndex);
           const chartX = createMinutelyChartHorizontalGeometry(x, detailWidth, minutelyPointCount);
-          const chartTop = h - 40.5;
+          const chartTop = h - PRECIP_BAR_MAX_HEIGHT - 0.5;
           const chartBottom = h - 0.5;
-          const chartHeight = chartBottom - chartTop;
 
           ctx.save();
-          for (const axisValue of PRECIP_AXIS_TICKS_MM_HOUR) {
-            const fraction = axisValue / PRECIP_AXIS_MAX_MM_HOUR;
-            const y = chartBottom - fraction * chartHeight;
-            ctx.setLineDash(fraction === 0 ? [] : [2, 3]);
-            ctx.lineWidth = fraction === 0 ? 1 : 0.5;
-            ctx.strokeStyle = cssVar('--lane-border', 'rgba(0,0,0,0.12)');
-            ctx.beginPath();
-            ctx.moveTo(chartX.plotLeft, y);
-            ctx.lineTo(chartX.plotRight, y);
-            ctx.stroke();
-          }
-          ctx.setLineDash([]);
           ctx.lineWidth = 1;
           ctx.strokeStyle = cssVar('--lane-border', 'rgba(0,0,0,0.12)');
+          ctx.beginPath();
+          ctx.moveTo(chartX.plotLeft, chartBottom);
+          ctx.lineTo(chartX.plotRight, chartBottom);
+          ctx.stroke();
           ctx.beginPath();
           ctx.moveTo(chartX.plotLeft + 0.5, chartTop);
           ctx.lineTo(chartX.plotLeft + 0.5, chartBottom);
@@ -311,6 +291,21 @@ export default function CloudAndRainLane({
         }
       }
 
+      // One shared rain-intensity scale for hourly and five-minute precipitation.
+      ctx.save();
+      ctx.setLineDash([3, 5]);
+      ctx.lineWidth = 0.75;
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = cssVar('--precip-prob-60', '#0277bd');
+      for (const band of PRECIP_INTENSITY_BANDS) {
+        const y = h - getHourlyPrecipBarHeight(band.maxRate) - 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
       // Boundary layer height — dashed line across all hours
       ctx.setLineDash([3, 3]);
       ctx.lineWidth = 1;
@@ -333,7 +328,7 @@ export default function CloudAndRainLane({
           continue;
         }
         const x = layout.getColumnCenter(i);
-        const y = altToY(blh);
+        const y = cloudAltitudeToY(blh);
         if (!started) {
           ctx.moveTo(x, y);
           started = true;
@@ -358,7 +353,7 @@ export default function CloudAndRainLane({
   return (
     <div
       className="lane cloud-rain-lane"
-      style={{ height: `${LANE_HEIGHT}px`, position: 'relative' }}
+      style={{ height: `${CLOUD_AND_RAIN_LANE_HEIGHT}px`, position: 'relative' }}
     >
       <div className="lane-data" style={{ position: 'relative' }}>
         <canvas
@@ -368,7 +363,7 @@ export default function CloudAndRainLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${CLOUD_AND_RAIN_LANE_HEIGHT}px`,
             zIndex: 1,
           }}
         />
@@ -378,7 +373,7 @@ export default function CloudAndRainLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${CLOUD_AND_RAIN_LANE_HEIGHT}px`,
             display: 'flex',
             zIndex: 2,
           }}
@@ -507,7 +502,11 @@ export default function CloudAndRainLane({
                       key={`${point.fxTime}-${pointIndex}`}
                       className="minutely-rain-value-label"
                       aria-label={`5分钟降水 ${point.precip.toFixed(2)} 毫米`}
-                      title={`${point.fxTime.slice(11, 16)} · ${point.precip.toFixed(2)} mm / 5min`}
+                      title={`${formatMinutelyTime(
+                        point.fxTime,
+                        minutelySelection.item.timezone,
+                        minutelySelection.item.utcOffsetSeconds,
+                      )} · ${point.precip.toFixed(2)} mm / 5min`}
                       style={{
                         left: `${minutelyLabelGeometry.getPointCenter(pointIndex)}px`,
                         bottom: `${getMinutelyPrecipBarHeight(point.precip) + 2}px`,

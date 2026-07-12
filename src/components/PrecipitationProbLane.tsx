@@ -3,6 +3,7 @@ import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import {
   createMinutelyChartHorizontalGeometry,
+  formatMinutelyTime,
   getMinutelyTimeTickIndices,
 } from '../services/minutelyChart';
 import './Dashboard.css';
@@ -49,7 +50,12 @@ export default function PrecipitationProbLane({
   const selectedIndex = !compact ? (minutelySelection?.index ?? null) : null;
   const selectedEndIndex = selectedIndex == null ? null : selectedIndex + layout.expandedSpan;
   const minutelyPoints = minutelySelection?.data?.points ?? [];
-  const minutelyTicks = getMinutelyTimeTickIndices(minutelyPoints);
+  const minutelyTicks = getMinutelyTimeTickIndices(
+    minutelyPoints,
+    30,
+    minutelySelection?.item.timezone,
+    minutelySelection?.item.utcOffsetSeconds,
+  );
   const minutelyGeometry =
     selectedIndex != null && selectedEndIndex != null && minutelyPoints.length > 0
       ? createMinutelyChartHorizontalGeometry(
@@ -172,7 +178,11 @@ export default function PrecipitationProbLane({
                   className="minutely-time-axis-tick"
                   style={{ left: `${minutelyGeometry.getPointCenter(pointIndex)}px` }}
                 >
-                  {point.fxTime.slice(11, 16)}
+                  {formatMinutelyTime(
+                    point.fxTime,
+                    minutelySelection.item.timezone,
+                    minutelySelection.item.utcOffsetSeconds,
+                  )}
                 </span>
               );
             })}

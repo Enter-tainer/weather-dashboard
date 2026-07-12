@@ -1,22 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
+import {
+  getIndicatorPosition,
+  getMinutelyIndicatorPosition,
+} from '../services/currentTimePosition';
 import type { WeatherPoint } from '../types/weather';
-import { DEFAULT_HOUR_WIDTH, type TimelineLayout } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
-
-const MINUTE_MS = 60 * 1000;
-const HOUR_MS = 60 * MINUTE_MS;
 
 interface CurrentTimeIndicatorProps {
   data: WeatherPoint[];
   hourWidth?: number;
-}
-
-function getItemTimeMs(item: WeatherPoint): number | null {
-  const timeUtcMs = item.timeUtcMs;
-  if (timeUtcMs != null && Number.isFinite(timeUtcMs)) return timeUtcMs;
-
-  const ms = new Date(item.time).getTime();
-  return Number.isFinite(ms) ? ms : null;
+  minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
 }
 
 function formatClock(date: Date): string {
@@ -27,37 +22,10 @@ function formatClock(date: Date): string {
   });
 }
 
-function getIndicatorPosition(
-  data: WeatherPoint[],
-  nowMs: number,
-  layout: TimelineLayout,
-): number | null {
-  for (let i = 0; i < data.length; i++) {
-    const item = data[i];
-    if (!item) continue;
-
-    const startMs = getItemTimeMs(item);
-    if (startMs == null) continue;
-
-    const nextItem = data[i + 1];
-    const nextMs = nextItem && nextItem.cityName === item.cityName ? getItemTimeMs(nextItem) : null;
-    const endMs =
-      nextMs != null && nextMs > startMs && nextMs - startMs <= HOUR_MS * 3
-        ? nextMs
-        : startMs + HOUR_MS;
-
-    if (nowMs >= startMs && nowMs < endMs) {
-      const fraction = Math.max(0, Math.min(1, (nowMs - startMs) / (endMs - startMs)));
-      return layout.getPoint(i + fraction);
-    }
-  }
-
-  return null;
-}
-
 export default function CurrentTimeIndicator({
   data,
   hourWidth = DEFAULT_HOUR_WIDTH,
+  minutelySelection = null,
 }: CurrentTimeIndicatorProps) {
   const [now, setNow] = useState(() => new Date());
   const layout = useTimelineLayout(data.length, hourWidth);
@@ -78,8 +46,12 @@ export default function CurrentTimeIndicator({
 
   const left = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return null;
+    if (minutelySelection) {
+      const minutelyLeft = getMinutelyIndicatorPosition(minutelySelection, now.getTime(), layout);
+      if (minutelyLeft != null) return minutelyLeft;
+    }
     return getIndicatorPosition(data, now.getTime(), layout);
-  }, [data, now, layout]);
+  }, [data, now, layout, minutelySelection]);
 
   if (left == null) return null;
 

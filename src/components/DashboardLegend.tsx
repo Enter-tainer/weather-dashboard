@@ -1,4 +1,17 @@
+import type { CSSProperties, ReactNode } from 'react';
 import type { DashboardScales } from '../types/weather';
+import { getHourlyPrecipBarHeight, PRECIP_INTENSITY_BANDS } from '../services/minutelyChart';
+import { cloudAltitudeToY } from '../services/cloudAndRainScale';
+
+const CLOUD_ALTITUDE_TICKS = [
+  { altitude: 10_000, label: '10k' },
+  { altitude: 8_000, label: '8k' },
+  { altitude: 6_000, label: '6k' },
+  { altitude: 5_000, label: '5k' },
+  { altitude: 4_000, label: '4k' },
+  { altitude: 2_000, label: '2k' },
+  { altitude: 1_000, label: '1k' },
+] as const;
 
 interface GitHubLegendCellProps {
   showLink: boolean;
@@ -31,12 +44,6 @@ function GitHubLegendCell({ showLink }: GitHubLegendCellProps) {
   );
 }
 
-interface TemperatureCurveLegendProps {
-  tempSteps: number[];
-  minTemp: number;
-  maxTemp: number;
-}
-
 interface CompactModeLegendProps {
   compactMode: boolean;
 }
@@ -56,31 +63,32 @@ interface DashboardLegendProps {
   showGitHubLink?: boolean;
 }
 
-function TemperatureCurveLegend({ tempSteps, minTemp, maxTemp }: TemperatureCurveLegendProps) {
-  const H = 56;
+interface LegendLabelProps {
+  children: ReactNode;
+  unit?: ReactNode;
+  className?: string;
+}
+
+function LegendLabel({ children, unit, className = '' }: LegendLabelProps) {
   return (
-    <div className="legend-cell" style={{ height: `${H}px`, position: 'relative' }}>
-      {tempSteps.map((t) => {
-        const y = H - ((t - minTemp) / (maxTemp - minTemp)) * H;
-        if (y >= 12 && y <= H - 4) {
-          return (
-            <span
-              key={t}
-              style={{
-                position: 'absolute',
-                right: '4px',
-                top: `${y - 6}px`,
-                fontSize: '9px',
-                color: 'var(--text-subtle)',
-              }}
-            >
-              {t}°
-            </span>
-          );
-        }
-        return null;
-      })}
-    </div>
+    <span className={`legend-title ${className}`.trim()}>
+      {children}
+      {unit != null && <span className="legend-unit">{unit}</span>}
+    </span>
+  );
+}
+
+interface LegendAxisTickProps {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}
+
+function LegendAxisTick({ children, className = '', style }: LegendAxisTickProps) {
+  return (
+    <span className={`legend-axis-tick ${className}`.trim()} style={style}>
+      {children}
+    </span>
   );
 }
 
@@ -95,162 +103,62 @@ function CloudLegendCells() {
           borderBottom: '1px solid var(--lane-border)',
         }}
       >
-        <span
-          style={{
-            position: 'absolute',
-            top: '5px',
-            left: 0,
-            width: '100%',
-            textAlign: 'center',
-            fontSize: '11px',
-            color: 'var(--text-light)',
-          }}
-        >
+        <LegendLabel unit="%" className="legend-scale-title legend-title--tight">
           总云
-          <span style={{ fontSize: '9px', color: 'var(--text-subtle)', marginLeft: '2px' }}>%</span>
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '2px',
-            right: '2px',
-            fontSize: '9px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          100
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '2px',
-            fontSize: '9px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          50
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '38px',
-            right: '2px',
-            fontSize: '9px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          0
-        </span>
+        </LegendLabel>
+        <LegendAxisTick style={{ top: '2px' }}>100</LegendAxisTick>
+        <LegendAxisTick style={{ top: '20px' }}>50</LegendAxisTick>
+        <LegendAxisTick style={{ top: '38px' }}>0</LegendAxisTick>
       </div>
 
       <div
         className="legend-cell"
         style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}
       >
-        <span
-          style={{
-            position: 'absolute',
-            top: '2px',
-            left: 0,
-            width: '100%',
-            textAlign: 'center',
-            fontSize: '11px',
-            color: 'var(--text-light)',
-          }}
-        >
+        <LegendLabel unit="m" className="legend-scale-title">
           云
-          <span style={{ fontSize: '8px', color: 'var(--text-subtle)', marginLeft: '2px' }}>m</span>
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '-4px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          10k
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '19px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          8k
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '44px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          6k
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '57px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          5k
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '69px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          4k
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '94px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          2k
-        </span>
-        <span
-          style={{
-            position: 'absolute',
-            top: '119px',
-            right: '2px',
-            fontSize: '8px',
-            color: 'var(--text-faint)',
-          }}
-        >
-          1k
-        </span>
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '2px',
-            width: '100%',
-            textAlign: 'center',
-            fontSize: '10px',
-            color: 'var(--precip-prob-80)',
-          }}
-        >
-          降水<span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '1px' }}>mm</span>
-        </div>
+        </LegendLabel>
+        {CLOUD_ALTITUDE_TICKS.map((tick) => (
+          <LegendAxisTick
+            key={tick.altitude}
+            className="cloud-altitude-legend-tick"
+            style={{
+              top: `${Math.max(-4, cloudAltitudeToY(tick.altitude) - 6)}px`,
+            }}
+          >
+            {tick.label}
+          </LegendAxisTick>
+        ))}
+        <LegendLabel unit="mm/h" className="legend-rain-title">
+          雨强
+        </LegendLabel>
+        {PRECIP_INTENSITY_BANDS.map((band) => (
+          <div
+            key={band.label}
+            className="rain-intensity-legend-row"
+            aria-label={`${band.label} ${band.maxRate} mm/h`}
+            style={{
+              position: 'absolute',
+              right: 0,
+              bottom: `${getHourlyPrecipBarHeight(band.maxRate)}px`,
+              left: 0,
+              color: 'var(--text-faint)',
+            }}
+          >
+            <LegendAxisTick
+              className="rain-intensity-legend-label"
+              style={{
+                top: 0,
+                paddingLeft: '2px',
+                transform: 'translateY(-50%)',
+                background: 'var(--legend-bg)',
+                lineHeight: '10px',
+              }}
+            >
+              {band.label} {band.maxRate}
+            </LegendAxisTick>
+          </div>
+        ))}
       </div>
     </>
   );
@@ -262,22 +170,14 @@ function PrecipitationLegendCell({ compactMode }: CompactModeLegendProps) {
       className="legend-cell"
       style={{
         height: compactMode ? '42px' : 'var(--lane-height-precip-prob)',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        fontSize: '10px',
-        color: 'var(--text-light)',
       }}
     >
       {compactMode ? (
-        <>
-          <div>降水</div>
-          <div style={{ fontSize: '8px', color: 'var(--text-subtle)' }}>mm / %</div>
-        </>
+        <LegendLabel unit="mm/%">降水</LegendLabel>
       ) : (
-        <div>
+        <LegendLabel unit="%" className="legend-title--tight">
           降水概率
-          <span style={{ fontSize: '8px', color: 'var(--text-subtle)', marginLeft: '2px' }}>%</span>
-        </div>
+        </LegendLabel>
       )}
     </div>
   );
@@ -290,72 +190,14 @@ function WindLegendCell({ compactMode, maxBft }: WindLegendCellProps) {
       style={{ height: compactMode ? '36px' : 'var(--lane-height-wind)', position: 'relative' }}
     >
       {compactMode ? (
-        <>
-          <div>风力</div>
-          <div style={{ fontSize: '8px', color: 'var(--text-subtle)' }}>bft</div>
-        </>
+        <LegendLabel unit="bft">风力</LegendLabel>
       ) : (
         <>
-          <span
-            style={{
-              position: 'absolute',
-              top: '5px',
-              left: 0,
-              width: '100%',
-              textAlign: 'center',
-              fontSize: '11px',
-              color: 'var(--text-light)',
-            }}
-          >
-            风速
-          </span>
-          <span
-            style={{
-              position: 'absolute',
-              bottom: '5px',
-              left: 0,
-              width: '100%',
-              textAlign: 'center',
-              fontSize: '10px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            bft
-          </span>
-
-          <span
-            style={{
-              position: 'absolute',
-              top: '1px',
-              right: '2px',
-              fontSize: '9px',
-              color: 'var(--text-faint)',
-            }}
-          >
-            {maxBft}
-          </span>
-          <span
-            style={{
-              position: 'absolute',
-              top: '25px',
-              right: '2px',
-              fontSize: '9px',
-              color: 'var(--text-faint)',
-            }}
-          >
-            {Math.round(maxBft / 2)}
-          </span>
-          <span
-            style={{
-              position: 'absolute',
-              top: '45px',
-              right: '2px',
-              fontSize: '9px',
-              color: 'var(--text-faint)',
-            }}
-          >
-            0
-          </span>
+          <LegendLabel className="legend-scale-title">风速</LegendLabel>
+          <span className="legend-secondary legend-secondary--bottom">bft</span>
+          <LegendAxisTick style={{ top: '1px' }}>{maxBft}</LegendAxisTick>
+          <LegendAxisTick style={{ top: '25px' }}>{Math.round(maxBft / 2)}</LegendAxisTick>
+          <LegendAxisTick style={{ top: '45px' }}>0</LegendAxisTick>
         </>
       )}
     </div>
@@ -368,42 +210,11 @@ function PressureLegendCell({ minP, maxP }: PressureLegendCellProps) {
       className="legend-cell"
       style={{ height: 'var(--lane-height-pressure)', position: 'relative' }}
     >
-      <span
-        style={{
-          position: 'absolute',
-          top: '2px',
-          left: 0,
-          width: '100%',
-          textAlign: 'center',
-          fontSize: '11px',
-          color: 'var(--text-light)',
-        }}
-      >
+      <LegendLabel unit="hPa" className="legend-scale-title">
         气压
-        <span style={{ fontSize: '8px', color: 'var(--text-subtle)', marginLeft: '2px' }}>hPa</span>
-      </span>
-      <span
-        style={{
-          position: 'absolute',
-          top: '16px',
-          right: '4px',
-          fontSize: '9px',
-          color: 'var(--text-faint)',
-        }}
-      >
-        {maxP}
-      </span>
-      <span
-        style={{
-          position: 'absolute',
-          bottom: '2px',
-          right: '4px',
-          fontSize: '9px',
-          color: 'var(--text-faint)',
-        }}
-      >
-        {minP}
-      </span>
+      </LegendLabel>
+      <LegendAxisTick style={{ top: '16px' }}>{maxP}</LegendAxisTick>
+      <LegendAxisTick style={{ bottom: '2px' }}>{minP}</LegendAxisTick>
     </div>
   );
 }
@@ -422,90 +233,46 @@ export default function DashboardLegend({
         className="legend-cell"
         style={{
           height: 'var(--lane-height-basic)',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          fontSize: '11px',
-          color: 'var(--text-light)',
         }}
       >
-        <div>星期</div>
-        <div style={{ marginTop: '2px' }}>小时</div>
+        <LegendLabel>星期</LegendLabel>
+        <span className="legend-secondary legend-secondary--stacked">小时</span>
       </div>
-      <div
-        className="legend-cell"
-        style={{ height: '12px', fontSize: '9px', color: 'var(--text-subtle)' }}
-      >
-        曙暮
+      <div className="legend-cell" style={{ height: '12px' }}>
+        <span className="legend-secondary">曙暮</span>
       </div>
-      <div
-        className="legend-cell"
-        style={{ height: '28px', fontSize: '11px', color: 'var(--text-light)' }}
-      >
-        天气
+      <div className="legend-cell" style={{ height: '28px' }}>
+        <LegendLabel>天气</LegendLabel>
       </div>
       <div
         className="legend-cell"
         style={{
           height: 'var(--lane-height-uv)',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          fontSize: '11px',
-          color: 'var(--text-light)',
         }}
       >
-        <div>
-          紫外线 <span style={{ fontSize: '8px', color: 'var(--text-subtle)' }}>UV</span>
-        </div>
+        <LegendLabel unit="UV">紫外线</LegendLabel>
       </div>
       {!compactMode && (
         <div
           className="legend-cell"
           style={{ height: 'var(--lane-height-thermal)', position: 'relative' }}
         >
-          <span
-            style={{
-              position: 'absolute',
-              top: '1px',
-              left: 0,
-              width: '100%',
-              textAlign: 'center',
-              fontSize: '10px',
-              color: 'var(--text-light)',
-            }}
-          >
-            温湿度
-          </span>
-          <span
-            style={{
-              position: 'absolute',
-              bottom: '1px',
-              left: 0,
-              width: '100%',
-              textAlign: 'center',
-              fontSize: '8px',
-              color: 'var(--text-subtle)',
-            }}
-          >
-            湿度%
-          </span>
+          <LegendLabel className="legend-scale-title">温湿度</LegendLabel>
+          <span className="legend-secondary legend-secondary--bottom">湿度 %</span>
           {tempSteps.map((t) => {
             const H = 80;
             const PLOT = 80 - 13 - 12; // TOP_LABEL_H + BOT_LABEL_H
             const y = 13 + PLOT * (1 - (t - minTemp) / (maxTemp - minTemp));
             if (y >= 22 && y <= 68) {
               return (
-                <span
+                <LegendAxisTick
                   key={t}
                   style={{
-                    position: 'absolute',
-                    right: '4px',
                     top: `${y - 6}px`,
-                    fontSize: '9px',
-                    color: 'var(--text-subtle)',
                   }}
                 >
                   {t}°
-                </span>
+                </LegendAxisTick>
               );
             }
             return null;
@@ -517,15 +284,9 @@ export default function DashboardLegend({
           className="legend-cell"
           style={{
             height: '35px',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            fontSize: '11px',
-            color: 'var(--text-light)',
           }}
         >
-          <div>
-            温度 <span style={{ fontSize: '9px', color: 'var(--text-subtle)' }}>°C</span>
-          </div>
+          <LegendLabel unit="°C">温度</LegendLabel>
         </div>
       )}
 
@@ -542,15 +303,9 @@ export default function DashboardLegend({
           className="legend-cell"
           style={{
             height: 'var(--lane-height-cape)',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            fontSize: '11px',
-            color: 'var(--text-light)',
           }}
         >
-          <div>
-            对流 <span style={{ fontSize: '8px', color: 'var(--text-subtle)' }}>J/kg</span>
-          </div>
+          <LegendLabel unit="J/kg">对流</LegendLabel>
         </div>
       )}
 
@@ -562,40 +317,26 @@ export default function DashboardLegend({
         className="legend-cell"
         style={{
           height: '30px',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          fontSize: '11px',
-          color: 'var(--text-light)',
         }}
       >
-        <div>AQI</div>
+        <LegendLabel>AQI</LegendLabel>
       </div>
       <div
         className="legend-cell"
         style={{
           height: '20px',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          fontSize: '10px',
-          color: 'var(--text-light)',
         }}
       >
-        <div>
-          能见度 <span style={{ fontSize: '8px', color: 'var(--text-subtle)' }}>km</span>
-        </div>
+        <LegendLabel unit="km">能见度</LegendLabel>
       </div>
       <div
         className="legend-cell"
         style={{
           height: '30px',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          fontSize: '10px',
-          color: 'var(--text-light)',
           borderBottom: 'none',
         }}
       >
-        <div>AOD</div>
+        <LegendLabel>AOD</LegendLabel>
       </div>
     </div>
   );

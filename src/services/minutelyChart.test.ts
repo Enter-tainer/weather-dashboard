@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   createMinutelyChartHorizontalGeometry,
+  formatMinutelyTime,
   getHourlyPrecipBarHeight,
   getMinutelyEquivalentHourlyRate,
   getMinutelyPrecipBarHeight,
   getMinutelyTimeTickIndices,
+  PRECIP_AXIS_TICKS_MM_HOUR,
+  PRECIP_INTENSITY_BANDS,
 } from './minutelyChart';
 
 describe('minutely precipitation chart', () => {
@@ -38,5 +41,20 @@ describe('minutely precipitation chart', () => {
 
     expect(getMinutelyTimeTickIndices(points)).toEqual([3, 9, 15, 21]);
     expect(getMinutelyTimeTickIndices([])).toEqual([]);
+  });
+
+  it('formats forecast timestamps in the selected location timezone', () => {
+    expect(formatMinutelyTime('2026-07-11T17:30+08:00', 'Asia/Taipei')).toBe('17:30');
+    expect(formatMinutelyTime('2026-07-11T09:30:00Z', 'Asia/Taipei')).toBe('17:30');
+    expect(formatMinutelyTime('2026-07-11T09:30:00Z', undefined, 8 * 60 * 60)).toBe('17:30');
+  });
+
+  it('defines short-duration rain intensity guides on the shared y-scale', () => {
+    expect(PRECIP_AXIS_TICKS_MM_HOUR).toEqual([0, 1, 5, 10]);
+    expect(PRECIP_INTENSITY_BANDS).toEqual([
+      { label: '小雨', minRate: 0, maxRate: 1 },
+      { label: '中雨', minRate: 1, maxRate: 5 },
+      { label: '大雨', minRate: 5, maxRate: 10 },
+    ]);
   });
 });
