@@ -10,6 +10,7 @@ import {
   PRECIP_BAR_MAX_HEIGHT,
   PRECIP_INTENSITY_BANDS,
 } from '../services/minutelyChart';
+import { getMinutelyChartTimeParams } from '../services/currentTimePosition';
 import { cssVar } from '../services/themeColors';
 import {
   CLOUD_AND_RAIN_LANE_HEIGHT,
@@ -18,7 +19,7 @@ import {
   PRECIPITATION_PLOT_HEIGHT,
   PRECIPITATION_PLOT_TOP,
 } from '../services/cloudAndRainScale';
-import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH, MINUTELY_EXPANDED_SPAN } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
@@ -106,6 +107,8 @@ export default function CloudAndRainLane({
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
   const precipBarWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
+  const minutelyTimeParams =
+    minutelySelection != null ? getMinutelyChartTimeParams(minutelySelection, layout) : null;
   const showPrecipLabels = hourWidth >= 12;
   const selectedIndex = minutelySelection?.index ?? null;
   const selectedEndIndex = selectedIndex == null ? null : selectedIndex + layout.expandedSpan;
@@ -122,11 +125,15 @@ export default function CloudAndRainLane({
     [minutelyPoints, minutelySelection?.item.timezone, minutelySelection?.item.utcOffsetSeconds],
   );
   const minutelyLabelGeometry =
-    selectedIndex != null && selectedEndIndex != null && minutelyPointCount > 0
+    selectedIndex != null &&
+    selectedEndIndex != null &&
+    minutelyPointCount > 0 &&
+    minutelyTimeParams != null
       ? createMinutelyChartHorizontalGeometry(
           0,
           layout.getRangeWidth(selectedIndex, selectedEndIndex),
           minutelyPointCount,
+          minutelyTimeParams,
         )
       : null;
   const availableStartIndex =
@@ -213,7 +220,16 @@ export default function CloudAndRainLane({
         ) {
           if (i !== selectedIndex) continue;
           const detailWidth = layout.getRangeWidth(selectedIndex, selectedEndIndex);
-          const chartX = createMinutelyChartHorizontalGeometry(x, detailWidth, minutelyPointCount);
+          const chartX =
+            minutelyTimeParams != null
+              ? createMinutelyChartHorizontalGeometry(
+                  x,
+                  detailWidth,
+                  minutelyPointCount,
+                  minutelyTimeParams,
+                )
+              : null;
+          if (!chartX) continue;
           const chartTop = h - PRECIP_BAR_MAX_HEIGHT - 0.5;
           const chartBottom = h - 0.5;
 
@@ -392,7 +408,7 @@ export default function CloudAndRainLane({
               !minutelySelection &&
               availableStartIndex != null &&
               index >= availableStartIndex &&
-              index < Math.min(data.length, availableStartIndex + 2) &&
+              index < Math.min(data.length, availableStartIndex + MINUTELY_EXPANDED_SPAN) &&
               !!onMinutelySelect;
             return (
               <div
@@ -419,7 +435,7 @@ export default function CloudAndRainLane({
                         style={{
                           width: `${layout.getRangeWidth(
                             availableStartIndex,
-                            Math.min(data.length, availableStartIndex + 2),
+                            Math.min(data.length, availableStartIndex + MINUTELY_EXPANDED_SPAN),
                           )}px`,
                         }}
                         aria-hidden="true"

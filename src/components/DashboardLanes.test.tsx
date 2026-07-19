@@ -97,7 +97,7 @@ describe('DashboardLanes', () => {
         compactMode={false}
         scales={SCALES}
         captureMode
-        captureSelection={{ startIndex: 1, endIndex: 3 }}
+        captureSelection={{ startIndex: 1, endIndex: 4 }}
         onCaptureSelectionChange={vi.fn()}
         minutelySelection={{
           index: 1,
@@ -112,14 +112,14 @@ describe('DashboardLanes', () => {
 
     expect(container.querySelector('.timeline-capture-selection')).toHaveStyle({
       left: '22px',
-      width: '264px',
+      width: '396px',
     });
     expect(container.querySelector('.minutely-rain-inline')).toBeInTheDocument();
   });
 });
 
 describe('DashboardLaneStack', () => {
-  it('uses the original two precipitation cells as the minutely click target', () => {
+  it('uses the three precipitation cells around now as the minutely click target', () => {
     const onMinutelySelect = vi.fn();
     render(
       <DashboardLaneStack
@@ -127,17 +127,17 @@ describe('DashboardLaneStack', () => {
         compactMode={false}
         scales={SCALES}
         switchInfo={{}}
-        minutelyAvailableIndices={new Set([1, 2])}
+        minutelyAvailableIndices={new Set([1, 2, 3])}
         onMinutelySelect={onMinutelySelect}
       />,
     );
 
     const triggers = screen.getAllByRole('button', { name: '展开未来两小时的 5 分钟降水' });
-    expect(triggers).toHaveLength(2);
+    expect(triggers).toHaveLength(3);
     expect(triggers.every((trigger) => trigger.closest('.cloud-rain-lane'))).toBe(true);
     expect(triggers.every((trigger) => !trigger.closest('.time-axis'))).toBe(true);
     expect(document.querySelector('.minutely-rain-trigger')).toBeNull();
-    expect(document.querySelector('.minutely-rain-hint')).toHaveStyle({ width: '44px' });
+    expect(document.querySelector('.minutely-rain-hint')).toHaveStyle({ width: '66px' });
 
     fireEvent.click(triggers[1] as HTMLElement);
     expect(onMinutelySelect).toHaveBeenCalledWith(1);
@@ -166,9 +166,9 @@ describe('DashboardLaneStack', () => {
       />,
     );
 
-    expect(container.querySelector('.lanes-container')).toHaveStyle({ width: '308px' });
+    expect(container.querySelector('.lanes-container')).toHaveStyle({ width: '418px' });
     const timeCells = [...container.querySelectorAll<HTMLElement>('.time-axis .lane-cell')];
-    expect(timeCells.map((cell) => cell.style.width)).toEqual(['22px', '132px', '132px', '22px']);
+    expect(timeCells.map((cell) => cell.style.width)).toEqual(['22px', '132px', '132px', '132px']);
     expect(container.querySelector('.minutely-rain-inline')).toHaveStyle({ left: '22px' });
 
     fireEvent.click(screen.getByRole('button', { name: '收起 5 分钟降水' }));

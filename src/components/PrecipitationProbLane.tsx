@@ -6,6 +6,7 @@ import {
   formatMinutelyTime,
   getMinutelyTimeTickIndices,
 } from '../services/minutelyChart';
+import { getMinutelyChartTimeParams } from '../services/currentTimePosition';
 import './Dashboard.css';
 
 // Gradient from light blue (low prob) to dark blue (high prob)
@@ -56,12 +57,18 @@ export default function PrecipitationProbLane({
     minutelySelection?.item.timezone,
     minutelySelection?.item.utcOffsetSeconds,
   );
+  const minutelyTimeParams =
+    minutelySelection != null ? getMinutelyChartTimeParams(minutelySelection, layout) : null;
   const minutelyGeometry =
-    selectedIndex != null && selectedEndIndex != null && minutelyPoints.length > 0
+    selectedIndex != null &&
+    selectedEndIndex != null &&
+    minutelyPoints.length > 0 &&
+    minutelyTimeParams != null
       ? createMinutelyChartHorizontalGeometry(
           layout.getColumnLeft(selectedIndex),
           layout.getRangeWidth(selectedIndex, selectedEndIndex),
           minutelyPoints.length,
+          minutelyTimeParams,
         )
       : null;
 

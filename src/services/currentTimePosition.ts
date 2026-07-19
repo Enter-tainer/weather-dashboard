@@ -1,10 +1,14 @@
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
-import { createMinutelyChartHorizontalGeometry } from './minutelyChart';
+import {
+  createMinutelyChartHorizontalGeometry,
+  type MinutelyChartTimeParams,
+} from './minutelyChart';
 import type { TimelineLayout } from './timelineLayout';
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
+const DEFAULT_STEP_MS = 5 * MINUTE_MS;
 
 function getItemTimeMs(item: WeatherPoint): number | null {
   const timeUtcMs = item.timeUtcMs;
@@ -12,6 +16,34 @@ function getItemTimeMs(item: WeatherPoint): number | null {
 
   const ms = new Date(item.time).getTime();
   return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Derives the wall-clock anchors shared by the minutely bars, time-axis ticks, and
+ * the now-indicator. `originMs` is the start of the selected hour (the expanded
+ * region's left edge) so bars/ticks/now line up with the hourly cell boundaries.
+ */
+export function getMinutelyChartTimeParams(
+  selection: MinutelyPrecipitationSelection,
+  layout: TimelineLayout,
+): MinutelyChartTimeParams | null {
+  const points = selection.data?.points ?? [];
+  if (points.length === 0) return null;
+
+  const firstPointMs = Date.parse(points[0]?.fxTime ?? '');
+  if (!Number.isFinite(firstPointMs)) return null;
+
+  const secondMs = Date.parse(points[1]?.fxTime ?? '');
+  const stepMs =
+    Number.isFinite(secondMs) && secondMs > firstPointMs
+      ? secondMs - firstPointMs
+      : DEFAULT_STEP_MS;
+
+  const originMs = getItemTimeMs(selection.item);
+  if (originMs == null) return null;
+
+  const spanMs = Math.max(DEFAULT_STEP_MS, layout.expandedSpan * HOUR_MS);
+  return { originMs, spanMs, firstPointMs, stepMs };
 }
 
 export function getIndicatorPosition(
@@ -49,24 +81,21 @@ export function getMinutelyIndicatorPosition(
   nowMs: number,
   layout: TimelineLayout,
 ): number | null {
+  const timeParams = getMinutelyChartTimeParams(selection, layout);
+  if (!timeParams) return null;
+
+  // Show the indicator across the whole expanded region; outside it, fall back to
+  // the hourly indicator so the now-line never disappears mid-region.
+  const { originMs, spanMs } = timeParams;
+  if (nowMs < originMs || nowMs >= originMs + spanMs) return null;
+
   const points = selection.data?.points ?? [];
-  if (points.length === 0) return null;
-  const firstMs = Date.parse(points[0]?.fxTime ?? '');
-  if (!Number.isFinite(firstMs)) return null;
-
-  const secondMs = Date.parse(points[1]?.fxTime ?? '');
-  const stepMs =
-    Number.isFinite(secondMs) && secondMs > firstMs ? secondMs - firstMs : 5 * MINUTE_MS;
-  const lastMs = Date.parse(points.at(-1)?.fxTime ?? '');
-  if (nowMs < firstMs - stepMs || (Number.isFinite(lastMs) && nowMs > lastMs + stepMs)) return null;
-
   const endIndex = Math.min(layout.length, selection.index + layout.expandedSpan);
   const geometry = createMinutelyChartHorizontalGeometry(
     layout.getColumnLeft(selection.index),
     layout.getRangeWidth(selection.index, endIndex),
     points.length,
+    timeParams,
   );
-  const firstCenter = geometry.getPointCenter(0);
-  const left = firstCenter + ((nowMs - firstMs) / stepMs) * geometry.slotWidth;
-  return Math.max(geometry.plotLeft, Math.min(geometry.plotRight, left));
+  return geometry.getXForTime(nowMs);
 }

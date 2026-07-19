@@ -1,5 +1,8 @@
 export const DEFAULT_HOUR_WIDTH = 22;
-export const EXPANDED_MINUTELY_WIDTH = 264;
+// Each expanded hour cell keeps a fixed 132px width so a 3-cell minutely region
+// (covering the ≤2h forecast span plus headroom) is 396px wide overall.
+export const MINUTELY_EXPANDED_SPAN = 3;
+export const EXPANDED_MINUTELY_WIDTH = 132 * MINUTELY_EXPANDED_SPAN;
 
 export interface TimelineLayout {
   length: number;

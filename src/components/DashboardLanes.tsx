@@ -26,6 +26,7 @@ import {
   createTimelineLayout,
   DEFAULT_HOUR_WIDTH,
   EXPANDED_MINUTELY_WIDTH,
+  MINUTELY_EXPANDED_SPAN,
   getTimelineHourWidth,
 } from '../services/timelineLayout';
 import type { SwitchInfo } from '../hooks/useDashboardData';
@@ -127,7 +128,14 @@ export function DashboardLaneStack({
   const usesEnsembleFallback = data.some((item) => item.dataSource === 'ensemble');
   const expandedIndex = minutelySelection?.index ?? null;
   const layout = useMemo(
-    () => createTimelineLayout(data.length, hourWidth, expandedIndex, EXPANDED_MINUTELY_WIDTH, 2),
+    () =>
+      createTimelineLayout(
+        data.length,
+        hourWidth,
+        expandedIndex,
+        EXPANDED_MINUTELY_WIDTH,
+        MINUTELY_EXPANDED_SPAN,
+      ),
     [data.length, expandedIndex, hourWidth],
   );
   const timelineStyle: TimelineStyle = {
