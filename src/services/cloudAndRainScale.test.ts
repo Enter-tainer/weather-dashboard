@@ -22,4 +22,15 @@ describe('cloud and rain vertical scale', () => {
     expect(cloudAltitudeToY(6_000)).toBeCloseTo(CLOUD_PLOT_HEIGHT * (1 - 0.667));
     expect(cloudAltitudeToY(10_000)).toBe(0);
   });
+
+  it('honours an explicit plot height for other canvases', () => {
+    const height = 260;
+    expect(cloudAltitudeToY(0, height)).toBe(height);
+    expect(cloudAltitudeToY(2_000, height)).toBeCloseTo(height * (1 - 0.333));
+    expect(cloudAltitudeToY(6_000, height)).toBeCloseTo(height * (1 - 0.667));
+    expect(cloudAltitudeToY(10_000, height)).toBe(0);
+    // Out-of-range altitudes clamp to the axis span, not beyond.
+    expect(cloudAltitudeToY(-500, height)).toBe(height);
+    expect(cloudAltitudeToY(50_000, height)).toBe(0);
+  });
 });

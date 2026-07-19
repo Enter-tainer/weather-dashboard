@@ -1389,6 +1389,82 @@
   border: 1px solid var(--control-border);
 }
 
+/* --- Sun-direction cloud cross-section drawer --- */
+
+.sun-cloud-drawer {
+  width: min(560px, calc(100vw - 20px));
+}
+
+.sun-cloud-shell {
+  gap: 12px;
+}
+
+.sun-cloud-canvas-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sun-cloud-altitude-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 4px 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sun-cloud-altitude-readout strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--sun-cloud-sun-fill);
+}
+
+.sun-cloud-canvas-wrap canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.sun-cloud-axis-caption {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 4px 0 34px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.sun-cloud-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sun-event-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.sun-event-trigger:hover {
+  background: var(--sun-event-trigger-hover);
+}
+
+@media (max-width: 640px) {
+  .sun-cloud-drawer {
+    width: 100vw;
+  }
+}
+
 @media (max-width: 640px) {
   .sounding-drawer {
     top: auto;

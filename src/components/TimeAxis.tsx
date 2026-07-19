@@ -1,5 +1,5 @@
 import { Sunrise, Sunset, Moon } from 'lucide-react';
-import type { WeatherPoint, WeatherTimeline } from '../types/weather';
+import type { SunEvent, WeatherPoint, WeatherTimeline } from '../types/weather';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import './Dashboard.css';
@@ -28,6 +28,7 @@ interface TimeAxisProps {
   data: WeatherTimeline;
   hourWidth?: number;
   hoursPerColumn?: number;
+  onSelectSunEvent?: ((ev: SunEvent) => void) | undefined;
 }
 
 const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const;
@@ -54,6 +55,7 @@ export default function TimeAxis({
   data,
   hourWidth = DEFAULT_HOUR_WIDTH,
   hoursPerColumn = 1,
+  onSelectSunEvent,
 }: TimeAxisProps) {
   const layout = useTimelineLayout(data.length, hourWidth);
   const hourLabelInterval = 3;
@@ -227,22 +229,10 @@ export default function TimeAxis({
             const isSunrise = ev.type === 'sunrise';
             const IconComp = isSunrise ? Sunrise : Sunset;
             const color = isSunrise ? 'var(--sunrise-color)' : 'var(--sunset-color)';
+            const triggerLabel = isSunrise ? '打开日出方向云况剖面' : '打开日落方向云况剖面';
 
-            return (
-              <div
-                key={`sun-${i}`}
-                style={{
-                  position: 'absolute',
-                  left: `${exactX}px`,
-                  top: '34px',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  pointerEvents: 'none',
-                  zIndex: 21,
-                }}
-              >
+            const labelEl = (
+              <>
                 <div
                   style={{
                     display: 'flex',
@@ -267,6 +257,48 @@ export default function TimeAxis({
                     opacity: 0.8,
                   }}
                 />
+              </>
+            );
+
+            if (onSelectSunEvent) {
+              return (
+                <button
+                  type="button"
+                  key={`sun-${i}`}
+                  className="sun-event-trigger"
+                  aria-label={triggerLabel}
+                  title={triggerLabel}
+                  style={{
+                    position: 'absolute',
+                    left: `${exactX}px`,
+                    top: '34px',
+                    transform: 'translateX(-50%)',
+                    pointerEvents: 'auto',
+                    zIndex: 21,
+                  }}
+                  onClick={() => onSelectSunEvent(ev)}
+                >
+                  {labelEl}
+                </button>
+              );
+            }
+
+            return (
+              <div
+                key={`sun-${i}`}
+                style={{
+                  position: 'absolute',
+                  left: `${exactX}px`,
+                  top: '34px',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 21,
+                }}
+              >
+                {labelEl}
               </div>
             );
           })}

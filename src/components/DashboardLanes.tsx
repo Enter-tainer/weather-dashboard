@@ -16,10 +16,14 @@ import WeatherAmbientBackground from './WeatherAmbientBackground';
 import TwilightLane from './TwilightLane';
 import LocationLane from './LocationLane';
 import SoundingDrawer from './SoundingDrawer';
+import SunDirectionCloudDrawer from './SunDirectionCloudDrawer';
 import CloudSoundingHitLayer from './CloudSoundingHitLayer';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
 import TimelineCaptureOverlay from './TimelineCaptureOverlay';
 import { useSoundingSelection } from '../hooks/useSoundingSelection';
+import { useSunViewSelection } from '../hooks/useSunViewSelection';
+import { useSunCloudSection } from '../hooks/useSunCloudSection';
+import { computeSunDirection } from '../services/sunDirection';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import TimelineLayoutProvider from './TimelineLayoutProvider';
 import {
@@ -31,7 +35,7 @@ import {
 } from '../services/timelineLayout';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
-import type { DashboardScales, WeatherTimeline } from '../types/weather';
+import type { DashboardScales, SunEvent, WeatherTimeline } from '../types/weather';
 import { CLOUD_AND_RAIN_LANE_HEIGHT, CLOUD_PLOT_HEIGHT } from '../services/cloudAndRainScale';
 import { useMemo } from 'react';
 import type { CSSProperties, RefObject } from 'react';
@@ -56,10 +60,12 @@ interface DashboardLanesProps {
   minutelyAvailableIndices?: Set<number> | undefined;
   minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
   onMinutelySelect?: ((index: number) => void) | undefined;
+  onSelectSunEvent?: ((ev: SunEvent) => void) | undefined;
 }
 
 interface TimelineLanesProps extends Omit<DashboardLanesProps, 'data'> {
   data: WeatherTimeline;
+  onSelectSunEvent?: ((ev: SunEvent) => void) | undefined;
 }
 
 export type DashboardLaneRenderMode = 'interactive' | 'capture';
@@ -76,6 +82,7 @@ export interface DashboardLaneStackProps {
   renderMode?: DashboardLaneRenderMode;
   activeSoundingTime?: string | null;
   onSelectSounding?: (item: WeatherTimeline[number]) => void;
+  onSelectSunEvent?: ((ev: SunEvent) => void) | undefined;
   minutelyAvailableIndices?: Set<number> | undefined;
   onMinutelySelect?: ((index: number) => void) | undefined;
   minutelySelection?: MinutelyPrecipitationSelection | null | undefined;
@@ -118,6 +125,7 @@ export function DashboardLaneStack({
   renderMode = 'interactive',
   activeSoundingTime = null,
   onSelectSounding,
+  onSelectSunEvent,
   minutelyAvailableIndices,
   onMinutelySelect,
   minutelySelection,
@@ -169,7 +177,12 @@ export function DashboardLaneStack({
           interactive={interactive}
           hourWidth={hourWidth}
         />
-        <TimeAxis data={data} hourWidth={hourWidth} hoursPerColumn={hoursPerColumn} />
+        <TimeAxis
+          data={data}
+          hourWidth={hourWidth}
+          hoursPerColumn={hoursPerColumn}
+          {...(interactive && onSelectSunEvent ? { onSelectSunEvent } : {})}
+        />
         <TwilightLane data={data} hourWidth={hourWidth} />
         <WeatherIconLane data={data} />
         <UVLane data={data} />
@@ -235,9 +248,17 @@ function TimelineLanes({
   minutelyAvailableIndices,
   minutelySelection,
   onMinutelySelect,
+  onSelectSunEvent,
 }: TimelineLanesProps) {
   const { activeSoundingItem, closeSounding, selectSoundingItem, soundingIndex, stepSounding } =
     useSoundingSelection(data);
+  const { activeSunEvent, originItem, selectSunEvent, closeSunView } = useSunViewSelection(data);
+  const sunDirection = useMemo(
+    () =>
+      originItem && activeSunEvent ? computeSunDirection(originItem, activeSunEvent.type) : null,
+    [originItem, activeSunEvent],
+  );
+  const sunSectionState = useSunCloudSection(originItem, sunDirection);
   const selectMinutely = (index: number) => {
     const opening = minutelySelection?.index !== index;
     onMinutelySelect?.(index);
@@ -277,6 +298,7 @@ function TimelineLanes({
         renderMode="interactive"
         activeSoundingTime={activeSoundingItem?.time ?? null}
         onSelectSounding={selectSoundingItem}
+        onSelectSunEvent={onSelectSunEvent ?? selectSunEvent}
         minutelyAvailableIndices={minutelyAvailableIndices}
         onMinutelySelect={selectMinutely}
         minutelySelection={minutelySelection}
@@ -288,6 +310,14 @@ function TimelineLanes({
           total={data.length}
           onClose={closeSounding}
           onStep={stepSounding}
+        />
+      )}
+      {!captureMode && activeSunEvent && originItem && sunDirection && (
+        <SunDirectionCloudDrawer
+          origin={originItem}
+          direction={sunDirection}
+          sectionState={sunSectionState}
+          onClose={closeSunView}
         />
       )}
     </>
@@ -310,6 +340,7 @@ export default function DashboardLanes({
   minutelyAvailableIndices,
   minutelySelection,
   onMinutelySelect,
+  onSelectSunEvent,
 }: DashboardLanesProps) {
   const hasData = data && data.length > 0;
   const hourWidth = getTimelineHourWidth();
@@ -332,6 +363,7 @@ export default function DashboardLanes({
             minutelyAvailableIndices={minutelyAvailableIndices}
             minutelySelection={minutelySelection}
             onMinutelySelect={onMinutelySelect}
+            onSelectSunEvent={onSelectSunEvent}
           />
           {captureMode && captureSelection && onCaptureSelectionChange && (
             <TimelineCaptureOverlay

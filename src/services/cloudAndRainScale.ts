@@ -15,7 +15,10 @@ const ALTITUDE_BREAKS = [
   [10_000, 1],
 ] as const satisfies readonly AltitudeBreak[];
 
-export function cloudAltitudeToY(altitude: number): number {
+// Map a cloud altitude (meters) to a Y coordinate within `height` CSS pixels.
+// Defaults to the timeline cloud lane; pass an explicit height for other canvases
+// (e.g. the sun-direction cross-section drawer) that share the same non-linear axis.
+export function cloudAltitudeToY(altitude: number, height: number = CLOUD_PLOT_HEIGHT): number {
   const safeAltitude = Math.min(Math.max(altitude, 0), MAX_CLOUD_ALTITUDE);
   for (let index = 0; index < ALTITUDE_BREAKS.length - 1; index++) {
     const current = ALTITUDE_BREAKS[index];
@@ -28,7 +31,7 @@ export function cloudAltitudeToY(altitude: number): number {
         startFraction +
         ((endFraction - startFraction) * (safeAltitude - startAltitude)) /
           (endAltitude - startAltitude);
-      return CLOUD_PLOT_HEIGHT * (1 - fraction);
+      return height * (1 - fraction);
     }
   }
   return 0;
