@@ -385,6 +385,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       apparentTemp: nullableNumberAt(forecastHourly.apparent_temperature, i),
       precipitation: nullableNumberAt(forecastHourly.precipitation, i),
       precipitationProb: nullableNumberAt(forecastHourly.precipitation_probability, i),
+      precipitationInterval: 'preceding-hour',
       windSpeed: nullableNumberAt(forecastHourly.wind_speed_10m, i),
       windGusts: nullableNumberAt(forecastHourly.wind_gusts_10m, i),
       windDir: nullableNumberAt(forecastHourly.wind_direction_10m, i),
@@ -543,7 +544,7 @@ export function assembleTimeline(results: WeatherTimeline[]): WeatherTimeline {
       let currentNightStart: number | null = null;
       const firstSunEvent = validSunEvents[0];
       if (firstSunEvent && firstSunEvent.type === 'sunrise') {
-        currentNightStart = currentOffset - 0.5;
+        currentNightStart = currentOffset;
       }
 
       validSunEvents.forEach((ev) => {
@@ -558,7 +559,7 @@ export function assembleTimeline(results: WeatherTimeline[]): WeatherTimeline {
       });
 
       if (currentNightStart !== null) {
-        globalNightBands.push({ left: currentNightStart, right: currentOffset + res.length - 0.5 });
+        globalNightBands.push({ left: currentNightStart, right: currentOffset + res.length });
       }
     }
 

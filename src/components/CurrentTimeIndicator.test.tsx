@@ -67,4 +67,17 @@ describe('CurrentTimeIndicator geometry', () => {
       ) ?? -1,
     );
   });
+
+  it('uses an aggregated interval end instead of assuming a one-hour final cell', () => {
+    const startMs = Date.parse('2026-07-11T12:00:00Z');
+    const data = [
+      makeWeatherPoint({
+        timeUtcMs: startMs,
+        intervalEndUtcMs: startMs + 6 * 60 * 60 * 1000,
+      }),
+    ];
+    const layout = createTimelineLayout(1, 60);
+
+    expect(getIndicatorPosition(data, startMs + 3 * 60 * 60 * 1000, layout)).toBe(30);
+  });
 });

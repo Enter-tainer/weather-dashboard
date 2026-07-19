@@ -23,6 +23,7 @@ import { DEFAULT_HOUR_WIDTH, MINUTELY_EXPANDED_SPAN } from '../services/timeline
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
+import { getPrecipitationPointForCell } from '../services/timelineTime';
 import './Dashboard.css';
 
 const EMPTY_MINUTELY_POINTS: NonNullable<MinutelyPrecipitationSelection['data']>['points'] = [];
@@ -172,6 +173,7 @@ export default function CloudAndRainLane({
       for (let i = 0; i < data.length; i++) {
         const d = data[i];
         if (!d) continue;
+        const precipitationPoint = getPrecipitationPointForCell(data, i);
         const x = layout.getColumnLeft(i);
         const columnWidth = layout.getColumnWidth(i);
 
@@ -248,7 +250,7 @@ export default function CloudAndRainLane({
           ctx.setLineDash([2, 3]);
           ctx.lineWidth = 0.5;
           for (const pointIndex of minutelyTicks) {
-            const tickX = chartX.getPointCenter(pointIndex);
+            const tickX = chartX.getPointStart(pointIndex);
             ctx.beginPath();
             ctx.moveTo(tickX, chartTop);
             ctx.lineTo(tickX, chartBottom);
@@ -284,9 +286,9 @@ export default function CloudAndRainLane({
         }
 
         // Ensemble precipitation (background)
-        if (d.precipMembers && d.precipMembers.length > 0) {
+        if (precipitationPoint?.precipMembers && precipitationPoint.precipMembers.length > 0) {
           ctx.fillStyle = `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, 0.08)`;
-          d.precipMembers.forEach((precip) => {
+          precipitationPoint.precipMembers.forEach((precip) => {
             if (precip > 0.1) {
               const barHeight = getHourlyPrecipBarHeight(precip);
               ctx.fillRect(x, h - barHeight, columnWidth, barHeight);
@@ -295,9 +297,9 @@ export default function CloudAndRainLane({
         }
 
         // Main precipitation bar — colored by type
-        if (d.precipitation != null && d.precipitation > 0) {
-          const barHeight = getHourlyPrecipBarHeight(d.precipitation);
-          ctx.fillStyle = precipColor(d.weatherCode, 0.5);
+        if (precipitationPoint?.precipitation != null && precipitationPoint.precipitation > 0) {
+          const barHeight = getHourlyPrecipBarHeight(precipitationPoint.precipitation);
+          ctx.fillStyle = precipColor(precipitationPoint.weatherCode, 0.5);
           ctx.fillRect(
             x + columnWidth / 2 - precipBarWidth / 2,
             h - barHeight,
@@ -343,7 +345,7 @@ export default function CloudAndRainLane({
           started = false;
           continue;
         }
-        const x = layout.getColumnCenter(i);
+        const x = layout.getTimePosition(i);
         const y = cloudAltitudeToY(blh);
         if (!started) {
           ctx.moveTo(x, y);
@@ -395,9 +397,10 @@ export default function CloudAndRainLane({
           }}
         >
           {data.map((item, index) => {
+            const precipitationPoint = getPrecipitationPointForCell(data, index);
             const barHeight =
-              item.precipitation != null && item.precipitation > 0
-                ? getHourlyPrecipBarHeight(item.precipitation)
+              precipitationPoint?.precipitation != null && precipitationPoint.precipitation > 0
+                ? getHourlyPrecipBarHeight(precipitationPoint.precipitation)
                 : 0;
             const isMinutelyExpanded =
               selectedIndex != null &&
@@ -446,27 +449,29 @@ export default function CloudAndRainLane({
                     )}
                   </button>
                 )}
-                {showPrecipLabels && item.precipitation != null && item.precipitation > 0 && (
-                  <span
-                    className={[
-                      'hourly-precip-label',
-                      isMinutelyExpanded ? 'is-minutely-reference' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    aria-label={`小时降水 ${item.precipitation.toFixed(1)} 毫米`}
-                    title={`Open-Meteo 小时降水 ${item.precipitation.toFixed(1)} mm`}
-                    style={{
-                      color: precipCssColor(item.weatherCode, 1),
-                      fontSize: '9px',
-                      fontWeight: 'bold',
-                      WebkitTextStroke: '2px var(--label-stroke)',
-                      paintOrder: 'stroke fill',
-                    }}
-                  >
-                    {item.precipitation.toFixed(1)}
-                  </span>
-                )}
+                {showPrecipLabels &&
+                  precipitationPoint?.precipitation != null &&
+                  precipitationPoint.precipitation > 0 && (
+                    <span
+                      className={[
+                        'hourly-precip-label',
+                        isMinutelyExpanded ? 'is-minutely-reference' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      aria-label={`小时降水 ${precipitationPoint.precipitation.toFixed(1)} 毫米`}
+                      title={`Open-Meteo 小时降水 ${precipitationPoint.precipitation.toFixed(1)} mm`}
+                      style={{
+                        color: precipCssColor(precipitationPoint.weatherCode, 1),
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        WebkitTextStroke: '2px var(--label-stroke)',
+                        paintOrder: 'stroke fill',
+                      }}
+                    >
+                      {precipitationPoint.precipitation.toFixed(1)}
+                    </span>
+                  )}
               </div>
             );
           })}

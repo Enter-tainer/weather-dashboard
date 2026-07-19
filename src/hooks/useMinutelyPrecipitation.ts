@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMinutelyPrecipitation } from '../services/qweather';
 import type { MinutelyPrecipitation, WeatherPoint } from '../types/weather';
-
-const HOUR_MS = 60 * 60 * 1000;
+import { getWeatherPointTimeMs, HOUR_MS } from '../services/timelineTime';
 
 export type MinutelyPrecipitationStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -14,20 +13,14 @@ export interface MinutelyPrecipitationSelection {
   error: string | null;
 }
 
-function getTimeMs(item: WeatherPoint): number | null {
-  if (item.timeUtcMs != null && Number.isFinite(item.timeUtcMs)) return item.timeUtcMs;
-  const parsed = new Date(item.time).getTime();
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number): Set<number> {
   const eligible = new Set<number>();
   const currentIndex = data.findIndex((item, index) => {
-    const startMs = getTimeMs(item);
+    const startMs = getWeatherPointTimeMs(item);
     if (startMs == null) return false;
 
     const next = data[index + 1];
-    const nextMs = next?.cityName === item.cityName ? getTimeMs(next) : null;
+    const nextMs = next?.cityName === item.cityName ? getWeatherPointTimeMs(next) : null;
     const endMs = nextMs != null && nextMs > startMs ? nextMs : startMs + HOUR_MS;
     return nowMs >= startMs && nowMs < endMs;
   });
@@ -38,8 +31,8 @@ export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number):
 
   eligible.add(currentIndex);
   const next = data[currentIndex + 1];
-  const currentMs = getTimeMs(current);
-  const nextMs = next ? getTimeMs(next) : null;
+  const currentMs = getWeatherPointTimeMs(current);
+  const nextMs = next ? getWeatherPointTimeMs(next) : null;
   if (
     next &&
     next.cityName === current.cityName &&
@@ -54,7 +47,7 @@ export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number):
   }
 
   const third = data[currentIndex + 2];
-  const thirdMs = third ? getTimeMs(third) : null;
+  const thirdMs = third ? getWeatherPointTimeMs(third) : null;
   if (
     next &&
     third &&

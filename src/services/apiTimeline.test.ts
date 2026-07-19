@@ -74,9 +74,9 @@ describe('assembleTimeline', () => {
       ['sunset', 4],
     ]);
     expect(assembled.nightBands).toEqual([
-      { left: -0.5, right: 1 },
-      { left: 2, right: 2.5 },
-      { left: 4, right: 4.5 },
+      { left: 0, right: 1 },
+      { left: 2, right: 3 },
+      { left: 4, right: 5 },
     ]);
     expect(assembled.moonEvents?.map((event) => [event.type, event.absoluteIndex])).toEqual([
       ['moonrise', 1.5],

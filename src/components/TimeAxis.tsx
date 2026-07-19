@@ -63,7 +63,7 @@ export default function TimeAxis({
   const eventIconSize = 10;
   const showAggregateLabels = hoursPerColumn > 1;
   const shouldShowHourLabel = (hour: number): boolean =>
-    showAggregateLabels || (hour !== 0 && hour % hourLabelInterval === 0);
+    showAggregateLabels || hour % hourLabelInterval === 0;
   const shouldShowGridLine = (hour: number): boolean =>
     showAggregateLabels || hour % hourLabelInterval === 0;
   // Group data items by city block
@@ -86,8 +86,8 @@ export default function TimeAxis({
         {/* Darker localized overlay for the header night periods */}
         {data.nightBands &&
           data.nightBands.map((band, idx) => {
-            const leftPx = layout.getPoint(band.left);
-            const rightPx = layout.getPoint(band.right);
+            const leftPx = layout.getTimePosition(band.left);
+            const rightPx = layout.getTimePosition(band.right);
             return (
               <div
                 key={`header-night-${idx}`}
@@ -194,14 +194,22 @@ export default function TimeAxis({
                     }}
                   >
                     <div
-                      style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: 'auto' }}
+                      style={{
+                        position: 'absolute',
+                        bottom: '4px',
+                        left: index === 0 ? '2px' : 0,
+                        transform: index === 0 ? undefined : 'translateX(-50%)',
+                        fontSize: '12px',
+                        color: 'var(--text-subtle)',
+                        whiteSpace: 'nowrap',
+                      }}
                     >
                       {shouldShowHourLabel(item.hour) ? item.hour : ''}
                     </div>
                     <div
                       style={{
                         position: 'absolute',
-                        right: 0,
+                        left: 0,
                         top: '40px',
                         bottom: 0,
                         width: '1px',
@@ -221,7 +229,7 @@ export default function TimeAxis({
         {data.sunEvents &&
           data.sunEvents.map((ev, i) => {
             if (ev.absoluteIndex == null) return null;
-            const exactX = layout.getPoint(ev.absoluteIndex);
+            const exactX = layout.getTimePosition(ev.absoluteIndex);
             if (exactX < 0 || exactX > layout.totalWidth) return null;
 
             const mm = ev.time.getMinutes().toString().padStart(2, '0');
@@ -307,7 +315,7 @@ export default function TimeAxis({
         {data.moonEvents &&
           data.moonEvents.map((ev, i) => {
             if (ev.absoluteIndex == null) return null;
-            const exactX = layout.getPoint(ev.absoluteIndex);
+            const exactX = layout.getTimePosition(ev.absoluteIndex);
             if (exactX < 0 || exactX > layout.totalWidth) return null;
 
             const mm = ev.time.getMinutes().toString().padStart(2, '0');

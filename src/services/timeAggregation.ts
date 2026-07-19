@@ -5,6 +5,7 @@ import type {
   WeatherPoint,
   WeatherTimeline,
 } from '../types/weather';
+import { getPrecipitationPointForCell, getWeatherPointIntervalEndMs } from './timelineTime';
 
 function average(values: Array<number | null | undefined>): number | null {
   const valid = values.filter((value): value is number => Number.isFinite(value));
@@ -55,7 +56,22 @@ function localDateKey(item: WeatherPoint): string {
   return item.time.slice(0, 10);
 }
 
-function aggregateWindow(items: WeatherPoint[]): WeatherPoint {
+function sumPrecipitationMembers(items: WeatherPoint[]): number[] | undefined {
+  const memberArrays = items
+    .map((item) => item.precipMembers)
+    .filter((members): members is number[] => members != null && members.length > 0);
+  if (memberArrays.length === 0) return undefined;
+
+  const memberCount = Math.max(...memberArrays.map((members) => members.length));
+  return Array.from({ length: memberCount }, (_, memberIndex) =>
+    memberArrays.reduce((total, members) => total + (members[memberIndex] ?? 0), 0),
+  );
+}
+
+function aggregateWindow(
+  items: WeatherPoint[],
+  precipitationItems: WeatherPoint[] = items,
+): WeatherPoint {
   const first = items[0];
   if (!first) {
     throw new Error('Cannot aggregate an empty weather window');
@@ -72,7 +88,11 @@ function aggregateWindow(items: WeatherPoint[]): WeatherPoint {
   const no2 = averageOptional(items.map((item) => item.no2));
   const so2 = averageOptional(items.map((item) => item.so2));
   const dust = averageOptional(items.map((item) => item.dust));
-  const sunAltitude = averageOptional(items.map((item) => item.sunAltitude));
+  // Twilight is an exact-time curve. Keep the sample at the aggregate cell's start boundary.
+  const sunAltitude = first.sunAltitude;
+  const last = items[items.length - 1] ?? first;
+  const intervalEndUtcMs = getWeatherPointIntervalEndMs(last);
+  const precipMembers = sumPrecipitationMembers(precipitationItems);
 
   const result: WeatherPoint = {
     ...first,
@@ -81,8 +101,9 @@ function aggregateWindow(items: WeatherPoint[]): WeatherPoint {
     humidity: average(items.map((item) => item.humidity)),
     dewPoint: average(items.map((item) => item.dewPoint)),
     apparentTemp: average(items.map((item) => item.apparentTemp)),
-    precipitation: sum(items.map((item) => item.precipitation)),
-    precipitationProb: max(items.map((item) => item.precipitationProb)),
+    precipitation: sum(precipitationItems.map((item) => item.precipitation)),
+    precipitationProb: max(precipitationItems.map((item) => item.precipitationProb)),
+    precipitationInterval: 'cell',
     windSpeed: average(items.map((item) => item.windSpeed)),
     windGusts: max(items.map((item) => item.windGusts)),
     windDir: average(items.map((item) => item.windDir)),
@@ -100,6 +121,9 @@ function aggregateWindow(items: WeatherPoint[]): WeatherPoint {
       ? 'ensemble'
       : first.dataSource,
   };
+
+  if (intervalEndUtcMs != null) result.intervalEndUtcMs = intervalEndUtcMs;
+  if (precipMembers) result.precipMembers = precipMembers;
 
   if (aqiUS != null) result.aqiUS = Math.round(aqiUS);
   if (aqiEU != null) result.aqiEU = Math.round(aqiEU);
@@ -123,15 +147,17 @@ function aggregateEvents<T extends SunEvent | MoonEventList[number]>(
 
   return events.flatMap((event) => {
     if (event.absoluteIndex == null) return [event];
+    const finalSourceBoundary = groupRanges[groupRanges.length - 1]?.end;
+    if (event.absoluteIndex === finalSourceBoundary) {
+      return [{ ...event, absoluteIndex: groupRanges.length }];
+    }
     const sourceIndex = Math.max(0, Math.floor(event.absoluteIndex));
     const groupIndex = indexToGroup[sourceIndex];
     if (groupIndex == null) return [];
     const group = groupRanges[groupIndex] ?? { start: sourceIndex, end: sourceIndex + 1 };
     const groupLength = Math.max(1, group.end - group.start);
     const offsetWithinGroup = (event.absoluteIndex - group.start) / groupLength;
-    return [
-      { ...event, absoluteIndex: groupIndex + Math.max(0, Math.min(0.95, offsetWithinGroup)) },
-    ];
+    return [{ ...event, absoluteIndex: groupIndex + Math.max(0, Math.min(1, offsetWithinGroup)) }];
   });
 }
 
@@ -192,7 +218,11 @@ export function aggregateTimelineByHours(
     }
 
     groupRanges.push({ start, end: index });
-    aggregated.push(aggregateWindow(group));
+    const precipitationItems = group.flatMap((_, groupOffset) => {
+      const point = getPrecipitationPointForCell(data, start + groupOffset);
+      return point ? [point] : [];
+    });
+    aggregated.push(aggregateWindow(group, precipitationItems));
   }
 
   const sunEvents = aggregateEvents(data.sunEvents, indexToGroup, groupRanges);

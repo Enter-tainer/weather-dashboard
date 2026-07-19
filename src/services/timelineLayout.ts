@@ -15,7 +15,8 @@ export interface TimelineLayout {
   getColumnLeft: (index: number) => number;
   getColumnCenter: (index: number) => number;
   getColumnIndexAt: (x: number) => number;
-  getPoint: (position: number) => number;
+  /** Maps an hour offset to the timeline. Integer offsets are column boundaries. */
+  getTimePosition: (position: number) => number;
   getRangeWidth: (startIndex: number, endIndex: number) => number;
 }
 
@@ -102,9 +103,9 @@ export function createTimelineLayout(
 
     return Math.max(0, Math.min(safeLength - 1, low));
   };
-  const getPoint = (position: number): number => {
+  const getTimePosition = (position: number): number => {
     if (!Number.isFinite(position) || safeLength === 0) return 0;
-    const columnPosition = Math.max(0, Math.min(safeLength, position + 0.5));
+    const columnPosition = Math.max(0, Math.min(safeLength, position));
     if (columnPosition >= safeLength) return totalWidth;
     const index = Math.floor(columnPosition);
     const fraction = columnPosition - index;
@@ -124,7 +125,7 @@ export function createTimelineLayout(
     getColumnLeft,
     getColumnCenter,
     getColumnIndexAt,
-    getPoint,
+    getTimePosition,
     getRangeWidth,
   };
 }

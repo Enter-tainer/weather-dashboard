@@ -27,6 +27,8 @@ describe('minutely precipitation chart', () => {
     expect(geometry.plotRight).toBe(496);
     // One 5-min slot = 5/180 of the 396px region.
     expect(geometry.slotWidth).toBeCloseTo((5 / 180) * 396);
+    // The exact forecast timestamp is a slot boundary.
+    expect(geometry.getPointStart(0)).toBeCloseTo(100 + (5 / 180) * 396);
     // Bar 0 centres the slot starting at 15:05, i.e. 15:07.5 → (7.5/180)*396 from plotLeft.
     expect(geometry.getPointCenter(0)).toBeCloseTo(100 + (7.5 / 180) * 396);
     // Bar 23 centres the slot starting at 17:00, i.e. 17:02.5 → (122.5/180)*396 from plotLeft.

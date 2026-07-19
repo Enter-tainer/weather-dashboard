@@ -24,7 +24,7 @@ export default function CloudEnsembleLane({
     LANE_HEIGHT,
     (ctx, w, h) => {
       const getY = (cov: number) => h - 5 - (cov / 100) * (h - 10);
-      const getX = (index: number) => layout.getColumnCenter(index);
+      const getX = (index: number) => layout.getTimePosition(index);
 
       // Detect location-change boundaries (break lines here)
       const isBreak = (i: number) => i > 0 && data[i]?.cityName !== data[i - 1]?.cityName;

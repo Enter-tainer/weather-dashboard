@@ -6,6 +6,7 @@ import type {
   WeatherTimeline,
 } from '../types/weather';
 import { DEFAULT_HOUR_WIDTH } from './timelineLayout';
+import { getWeatherPointIntervalEndMs, getWeatherPointTimeMs } from './timelineTime';
 
 export const CAPTURE_COL_WIDTH = DEFAULT_HOUR_WIDTH;
 export const MIN_CAPTURE_HOURS = 1;
@@ -149,7 +150,7 @@ function isEventInCaptureRange(
   startIndex: number,
   endIndex: number,
 ): boolean {
-  return absoluteIndex >= startIndex - 0.5 && absoluteIndex <= endIndex - 0.5;
+  return absoluteIndex >= startIndex && absoluteIndex < endIndex;
 }
 
 function sliceSunEvents(
@@ -201,8 +202,8 @@ function sliceNightBands(
 ): NightBand[] | undefined {
   if (!bands) return undefined;
 
-  const rangeLeft = startIndex - 0.5;
-  const rangeRight = endIndex - 0.5;
+  const rangeLeft = startIndex;
+  const rangeRight = endIndex;
 
   return bands.flatMap((band) => {
     const left = Math.max(band.left, rangeLeft);
@@ -236,8 +237,8 @@ function pad2(value: number): string {
   return value.toString().padStart(2, '0');
 }
 
-function formatDateTimeForFile(time: string): string {
-  const date = new Date(time);
+function formatDateTimeForFile(time: string | Date): string {
+  const date = time instanceof Date ? time : new Date(time);
   if (Number.isNaN(date.getTime())) return 'unknown';
   return [
     date.getFullYear(),
@@ -248,10 +249,25 @@ function formatDateTimeForFile(time: string): string {
   ].join('');
 }
 
-function formatDateTimeLabel(time: string): string {
-  const date = new Date(time);
-  if (Number.isNaN(date.getTime())) return time;
+function formatDateTimeLabel(time: string | Date): string {
+  const date = time instanceof Date ? time : new Date(time);
+  if (Number.isNaN(date.getTime())) return typeof time === 'string' ? time : 'unknown';
   return `${date.getMonth() + 1}/${date.getDate()} ${pad2(date.getHours())}:00`;
+}
+
+function getLocalIntervalEnd(item: WeatherPoint): Date {
+  const localStart = new Date(item.time);
+  const absoluteStartMs = getWeatherPointTimeMs(item);
+  const absoluteEndMs = getWeatherPointIntervalEndMs(item);
+  if (
+    Number.isNaN(localStart.getTime()) ||
+    absoluteStartMs == null ||
+    absoluteEndMs == null ||
+    absoluteEndMs <= absoluteStartMs
+  ) {
+    return localStart;
+  }
+  return new Date(localStart.getTime() + (absoluteEndMs - absoluteStartMs));
 }
 
 export function captureFileName(data: WeatherTimeline, selection: CaptureSelection): string {
@@ -259,7 +275,7 @@ export function captureFileName(data: WeatherTimeline, selection: CaptureSelecti
   const first = data[normalized.startIndex];
   const last = data[normalized.endIndex - 1];
   const start = first ? formatDateTimeForFile(first.time) : 'start';
-  const end = last ? formatDateTimeForFile(last.time) : 'end';
+  const end = last ? formatDateTimeForFile(getLocalIntervalEnd(last)) : 'end';
   return `weather-${start}-${end}.webp`;
 }
 
@@ -267,7 +283,7 @@ export function captureRangeLabel(data: WeatherTimeline): string {
   const first = data[0];
   const last = data[data.length - 1];
   if (!first || !last) return '';
-  return `${formatDateTimeLabel(first.time)} - ${formatDateTimeLabel(last.time)}`;
+  return `${formatDateTimeLabel(first.time)} - ${formatDateTimeLabel(getLocalIntervalEnd(last))}`;
 }
 
 export function captureLocationLabel(data: WeatherTimeline): string {

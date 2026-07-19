@@ -768,7 +768,7 @@ export function generateMockTimeline(): WeatherTimeline {
 
     // Night bands: before sunrise and after sunset
     if (dayIdx === 0) {
-      nightBands.push({ left: offset - 0.5, right: sunriseIdx });
+      nightBands.push({ left: offset, right: sunriseIdx });
     } else {
       // Connect from previous sunset
       const prevSunset = (dayIdx - 1) * 24 + 18.33;
@@ -776,7 +776,7 @@ export function generateMockTimeline(): WeatherTimeline {
     }
     // After sunset to next sunrise (or end of last day)
     if (dayIdx === generators.length - 1) {
-      nightBands.push({ left: sunsetIdx, right: offset + 23.5 });
+      nightBands.push({ left: sunsetIdx, right: offset + 24 });
     }
 
     offset += 24;

@@ -71,6 +71,29 @@ describe('time aggregation', () => {
     expect(aggregated.map((item) => item.hour)).toEqual([0, 6, 12, 18]);
   });
 
+  it('normalizes preceding-hour precipitation into aggregate interval cells', () => {
+    const timeline = makeWeatherTimeline(
+      Array.from({ length: 4 }, (_, index) =>
+        makePoint(index, {
+          timeUtcMs: Date.parse(`2026-03-27T0${index}:00:00Z`),
+          precipitation: index + 1,
+          precipitationProb: (index + 1) * 10,
+          precipitationInterval: 'preceding-hour',
+        }),
+      ),
+    );
+
+    const aggregated = aggregateTimelineByHours(timeline, 3);
+
+    // [00:00, 03:00) uses the source accumulations ending at 01:00, 02:00 and 03:00.
+    expect(aggregated[0]?.precipitation).toBe(2 + 3 + 4);
+    expect(aggregated[0]?.precipitationProb).toBe(40);
+    expect(aggregated[0]?.precipitationInterval).toBe('cell');
+    expect(aggregated[0]?.intervalEndUtcMs).toBe(Date.parse('2026-03-27T03:00:00Z'));
+    // The final source cell has no following timestamp, so its preceding-hour value is not reused.
+    expect(aggregated[1]?.precipitation).toBeNull();
+  });
+
   it('remaps sun events and night bands into aggregated column space', () => {
     const timeline = makeWeatherTimeline([
       makePoint(0),

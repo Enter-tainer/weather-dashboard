@@ -39,7 +39,7 @@ export default function TemperatureLane({
       if (!Number.isFinite(range) || range === 0) return;
 
       const getY = (val: number) => h - ((val - minTemp) / range) * h;
-      const getX = (index: number) => layout.getColumnCenter(index);
+      const getX = (index: number) => layout.getTimePosition(index);
 
       // Draw gridlines
       ctx.beginPath();

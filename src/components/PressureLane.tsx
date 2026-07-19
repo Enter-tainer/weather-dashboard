@@ -30,7 +30,7 @@ export default function PressureLane({
         if (maxP === minP) return h / 2;
         return h - 5 - ((p - minP) / (maxP - minP)) * (h - 10);
       };
-      const getX = (index: number) => layout.getColumnCenter(index);
+      const getX = (index: number) => layout.getTimePosition(index);
 
       // Detect location-change boundaries (break lines here)
       const isBreak = (i: number) => i > 0 && data[i]?.cityName !== data[i - 1]?.cityName;

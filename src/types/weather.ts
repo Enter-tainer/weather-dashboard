@@ -1,5 +1,6 @@
 export type NullableNumber = number | null;
 export type WeatherDataSource = 'forecast' | 'ensemble';
+export type PrecipitationInterval = 'preceding-hour' | 'cell';
 
 export interface CloudLevel {
   pressure: number;
@@ -42,6 +43,8 @@ export interface WeatherPoint {
   longitude?: number;
   time: string;
   timeUtcMs?: number;
+  /** End of the displayed interval for aggregated timeline points. */
+  intervalEndUtcMs?: number;
   timezone?: string;
   utcOffsetSeconds?: number;
   hour: number;
@@ -52,6 +55,8 @@ export interface WeatherPoint {
   apparentTemp: NullableNumber;
   precipitation: NullableNumber;
   precipitationProb: NullableNumber;
+  /** How precipitation and precipitation probability relate to `time`. */
+  precipitationInterval?: PrecipitationInterval;
   windSpeed: NullableNumber;
   windGusts: NullableNumber;
   windDir: NullableNumber;

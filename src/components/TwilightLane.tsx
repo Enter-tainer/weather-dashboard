@@ -82,17 +82,17 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
       const t = s / resolution;
       const alt = alt1 + (alt2 - alt1) * t;
       const color = altitudeToColor(alt, palette);
-      const pct = (layout.getPoint(i + t) / layout.totalWidth) * 100;
+      const pct = (layout.getTimePosition(i + t) / layout.totalWidth) * 100;
       stops.push(`${color} ${pct.toFixed(2)}%`);
     }
   }
 
-  // Add the final data point's center
+  // Add the final hourly sample at its hour boundary, then hold its color to the end.
   if (data.length > 0) {
     const lastIdx = data.length - 1;
     const finalAlt = data[lastIdx]?.sunAltitude ?? 10;
     const finalColor = altitudeToColor(finalAlt, palette);
-    const finalPct = (layout.getColumnCenter(lastIdx) / layout.totalWidth) * 100;
+    const finalPct = (layout.getTimePosition(lastIdx) / layout.totalWidth) * 100;
     stops.push(`${finalColor} ${finalPct.toFixed(2)}%`);
 
     // Add end stops to stretch nicely to the very edges of the div

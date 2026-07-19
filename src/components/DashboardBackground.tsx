@@ -32,8 +32,8 @@ export default function DashboardBackground({
       {/* Night Bands */}
       {data.nightBands &&
         data.nightBands.map((band, idx) => {
-          const leftPx = layout.getPoint(band.left);
-          const rightPx = layout.getPoint(band.right);
+          const leftPx = layout.getTimePosition(band.left);
+          const rightPx = layout.getTimePosition(band.right);
           return (
             <div
               key={`night-${idx}`}
@@ -66,8 +66,10 @@ export default function DashboardBackground({
             style={{
               width: `${layout.getColumnWidth(index)}px`,
               flexShrink: 0,
+              boxSizing: 'border-box',
               height: '100%',
-              borderRight: '1px solid var(--grid-line)',
+              borderLeft: '1px solid var(--grid-line)',
+              borderRight: index === data.length - 1 ? '1px solid var(--grid-line)' : undefined,
             }}
           />
         ))}

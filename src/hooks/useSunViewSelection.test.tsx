@@ -31,7 +31,7 @@ const SUN_EVENTS: SunEvent[] = [
     time: new Date('2026-07-15T12:00Z'),
     localHour: 19,
     localMinute: 44,
-    absoluteIndex: 2,
+    absoluteIndex: 2.7,
   },
 ];
 DATA.sunEvents = SUN_EVENTS;
@@ -59,7 +59,7 @@ describe('useSunViewSelection', () => {
   });
 
   it('hydrates the sunset event from the ?sunview= URL param', () => {
-    // absoluteIndex 18.7 rounds to 19, matching the 19:00 origin time.
+    // The event belongs to the timeline cell whose left boundary is the origin time.
     window.history.replaceState({}, '', `/?sunview=${encodeURIComponent(`${ORIGIN_TIME}|sunset`)}`);
 
     render(<SunViewProbe />);

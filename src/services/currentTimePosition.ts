@@ -5,18 +5,10 @@ import {
   type MinutelyChartTimeParams,
 } from './minutelyChart';
 import type { TimelineLayout } from './timelineLayout';
+import { getWeatherPointIntervalEndMs, getWeatherPointTimeMs, HOUR_MS } from './timelineTime';
 
 const MINUTE_MS = 60 * 1000;
-const HOUR_MS = 60 * MINUTE_MS;
 const DEFAULT_STEP_MS = 5 * MINUTE_MS;
-
-function getItemTimeMs(item: WeatherPoint): number | null {
-  const timeUtcMs = item.timeUtcMs;
-  if (timeUtcMs != null && Number.isFinite(timeUtcMs)) return timeUtcMs;
-
-  const ms = new Date(item.time).getTime();
-  return Number.isFinite(ms) ? ms : null;
-}
 
 /**
  * Derives the wall-clock anchors shared by the minutely bars, time-axis ticks, and
@@ -39,7 +31,7 @@ export function getMinutelyChartTimeParams(
       ? secondMs - firstPointMs
       : DEFAULT_STEP_MS;
 
-  const originMs = getItemTimeMs(selection.item);
+  const originMs = getWeatherPointTimeMs(selection.item);
   if (originMs == null) return null;
 
   const spanMs = Math.max(DEFAULT_STEP_MS, layout.expandedSpan * HOUR_MS);
@@ -55,21 +47,22 @@ export function getIndicatorPosition(
     const item = data[i];
     if (!item) continue;
 
-    const startMs = getItemTimeMs(item);
+    const startMs = getWeatherPointTimeMs(item);
     if (startMs == null) continue;
 
     const nextItem = data[i + 1];
-    const nextMs = nextItem && nextItem.cityName === item.cityName ? getItemTimeMs(nextItem) : null;
+    const nextMs =
+      nextItem && nextItem.cityName === item.cityName ? getWeatherPointTimeMs(nextItem) : null;
     const endMs =
-      nextMs != null && nextMs > startMs && nextMs - startMs <= HOUR_MS * 3
+      nextMs != null && nextMs > startMs && nextMs - startMs <= HOUR_MS * 6
         ? nextMs
-        : startMs + HOUR_MS;
+        : getWeatherPointIntervalEndMs(item);
+
+    if (endMs == null || endMs <= startMs) continue;
 
     if (nowMs >= startMs && nowMs < endMs) {
       const fraction = Math.max(0, Math.min(1, (nowMs - startMs) / (endMs - startMs)));
-      // TimelineLayout.getPoint uses integer positions for column centers. A clock
-      // interval starts at the column's left edge, hence the half-column offset.
-      return layout.getPoint(i - 0.5 + fraction);
+      return layout.getTimePosition(i + fraction);
     }
   }
 

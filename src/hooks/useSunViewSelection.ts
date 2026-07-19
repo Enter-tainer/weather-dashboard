@@ -36,7 +36,7 @@ export function useSunViewSelection(data: WeatherTimeline | null | undefined): S
       (ev) =>
         ev.type === decoded.type &&
         ev.absoluteIndex != null &&
-        Math.round(ev.absoluteIndex) === originIndex,
+        Math.floor(ev.absoluteIndex) === originIndex,
     );
     if (!match) return { activeSunEvent: null, originItem: null };
 
@@ -49,7 +49,7 @@ export function useSunViewSelection(data: WeatherTimeline | null | undefined): S
   const selectSunEvent = useCallback(
     (ev: SunEvent) => {
       if (ev.absoluteIndex == null) return;
-      const originIndex = Math.round(ev.absoluteIndex);
+      const originIndex = Math.floor(ev.absoluteIndex);
       const origin = Array.isArray(data) ? data[originIndex] : undefined;
       if (!origin?.time) return;
       setSearchParam('sunview', `${origin.time}|${ev.type}`);

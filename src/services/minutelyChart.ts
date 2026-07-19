@@ -30,6 +30,7 @@ export interface MinutelyChartHorizontalGeometry {
   plotLeft: number;
   plotRight: number;
   slotWidth: number;
+  getPointStart: (index: number) => number;
   getPointCenter: (index: number) => number;
   getXForTime: (ms: number) => number;
 }
@@ -50,6 +51,11 @@ export function createMinutelyChartHorizontalGeometry(
   const clampX = (x: number): number => Math.max(plotLeft, Math.min(plotRight, x));
 
   // Each bar represents the 5-min slot starting at fxTime; centre it on that slot.
+  const getPointStart = (index: number): number => {
+    if (pointCount === 0) return plotLeft;
+    return clampX(timeToX(firstPointMs + index * stepMs));
+  };
+
   const getPointCenter = (index: number): number => {
     if (pointCount === 0) return plotLeft;
     const slotCenterMs = firstPointMs + (index + 0.5) * stepMs;
@@ -63,6 +69,7 @@ export function createMinutelyChartHorizontalGeometry(
     plotRight,
     // Pixel width of a single 5-min slot, used to size bars.
     slotWidth: Math.max(0, (stepMs / spanMs) * plotWidth),
+    getPointStart,
     getPointCenter,
     getXForTime,
   };

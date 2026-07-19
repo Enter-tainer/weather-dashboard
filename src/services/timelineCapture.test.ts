@@ -154,8 +154,8 @@ describe('timeline capture slicing', () => {
     expect(sliced.moonEvents?.phase).toBe(0.25);
     expect(sliced.moonEvents?.fraction).toBe(0.5);
     expect(sliced.nightBands).toEqual([
-      { left: -0.5, right: 1.5 },
-      { left: 2, right: 2.5 },
+      { left: 0, right: 1.5 },
+      { left: 2, right: 3 },
     ]);
   });
 
@@ -164,9 +164,9 @@ describe('timeline capture slicing', () => {
     const sliced = sliceTimelineForCapture(timeline, { startIndex: 1, endIndex: 4 });
 
     expect(captureLocationLabel(sliced)).toBe('City A -> City B');
-    expect(captureRangeLabel(sliced)).toBe('3/27 01:00 - 3/27 03:00');
+    expect(captureRangeLabel(sliced)).toBe('3/27 01:00 - 3/27 04:00');
     expect(captureFileName(timeline, { startIndex: 1, endIndex: 4 })).toBe(
-      'weather-20260327-01-20260327-03.webp',
+      'weather-20260327-01-20260327-04.webp',
     );
   });
 });

@@ -7,6 +7,7 @@ import {
   getMinutelyTimeTickIndices,
 } from '../services/minutelyChart';
 import { getMinutelyChartTimeParams } from '../services/currentTimePosition';
+import { getPrecipitationPointForCell } from '../services/timelineTime';
 import './Dashboard.css';
 
 // Gradient from light blue (low prob) to dark blue (high prob)
@@ -82,17 +83,21 @@ export default function PrecipitationProbLane({
     >
       <div className="lane-data">
         {data.map((item, index) => {
-          const prob = item.precipitationProb;
+          const precipitationPoint = getPrecipitationPointForCell(data, index);
+          const prob = precipitationPoint?.precipitationProb ?? null;
           const text = prob != null && prob >= 5 ? `${prob}` : '';
-          const precipText = compact ? formatPrecip(item.precipitation) : '';
+          const precipText = compact ? formatPrecip(precipitationPoint?.precipitation ?? null) : '';
           const barHeight =
-            compact && item.precipitation != null && item.precipitation > 0
-              ? Math.min(18, item.precipitation * 2.2)
+            compact &&
+            precipitationPoint?.precipitation != null &&
+            precipitationPoint.precipitation > 0
+              ? Math.min(18, precipitationPoint.precipitation * 2.2)
               : 0;
           const showPrecipText =
             precipText &&
             (index % labelInterval === 0 ||
-              (item.precipitation != null && item.precipitation >= 1.5));
+              (precipitationPoint?.precipitation != null &&
+                precipitationPoint.precipitation >= 1.5));
           const isMinutelyExpanded =
             selectedIndex != null &&
             selectedEndIndex != null &&
@@ -118,7 +123,7 @@ export default function PrecipitationProbLane({
                     right: '5px',
                     bottom: '13px',
                     height: `${barHeight}px`,
-                    backgroundColor: precipColor(item.weatherCode, 0.22),
+                    backgroundColor: precipColor(precipitationPoint?.weatherCode ?? null, 0.22),
                     borderRadius: '2px 2px 0 0',
                   }}
                 />
@@ -146,7 +151,7 @@ export default function PrecipitationProbLane({
                     top: '3px',
                     fontSize: '9px',
                     lineHeight: 1,
-                    color: precipColor(item.weatherCode, 1),
+                    color: precipColor(precipitationPoint?.weatherCode ?? null, 1),
                     fontWeight: 'bold',
                     WebkitTextStroke: '2px var(--label-stroke)',
                     paintOrder: 'stroke fill',
@@ -183,7 +188,7 @@ export default function PrecipitationProbLane({
                 <span
                   key={`${point.fxTime}-${pointIndex}`}
                   className="minutely-time-axis-tick"
-                  style={{ left: `${minutelyGeometry.getPointCenter(pointIndex)}px` }}
+                  style={{ left: `${minutelyGeometry.getPointStart(pointIndex)}px` }}
                 >
                   {formatMinutelyTime(
                     point.fxTime,

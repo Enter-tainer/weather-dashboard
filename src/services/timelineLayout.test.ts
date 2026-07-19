@@ -34,15 +34,15 @@ describe('createTimelineLayout', () => {
     expect([0, 1, 2, 3].map(layout.getColumnCenter)).toEqual([10, 70, 130, 150]);
   });
 
-  it('maps ranges and fractional positions through the expanded geometry', () => {
+  it('maps ranges and boundary-based time positions through the expanded geometry', () => {
     const layout = createTimelineLayout(4, 20, 1, 100);
 
     expect(layout.getRangeWidth(1, 3)).toBe(120);
-    expect(layout.getPoint(1)).toBe(70);
-    expect(layout.getPoint(1.5)).toBe(120);
-    expect(layout.getPoint(2)).toBe(130);
-    expect(layout.getPoint(-0.5)).toBe(0);
-    expect(layout.getPoint(3.5)).toBe(160);
+    expect(layout.getTimePosition(1)).toBe(20);
+    expect(layout.getTimePosition(1.5)).toBe(70);
+    expect(layout.getTimePosition(2)).toBe(120);
+    expect(layout.getTimePosition(-0.5)).toBe(0);
+    expect(layout.getTimePosition(4)).toBe(160);
     expect(layout.getColumnIndexAt(19)).toBe(0);
     expect(layout.getColumnIndexAt(20)).toBe(1);
     expect(layout.getColumnIndexAt(119)).toBe(1);
@@ -57,6 +57,6 @@ describe('createTimelineLayout', () => {
     expect([0, 1, 2, 3].map(layout.getColumnWidth)).toEqual([20, 60, 60, 20]);
     expect([0, 1, 2, 3].map(layout.getColumnLeft)).toEqual([0, 20, 80, 140]);
     expect(layout.getRangeWidth(1, 3)).toBe(120);
-    expect([0.5, 1, 1.5, 2, 2.5].map(layout.getPoint)).toEqual([20, 50, 80, 110, 140]);
+    expect([0.5, 1, 1.5, 2, 2.5].map(layout.getTimePosition)).toEqual([10, 20, 50, 80, 110]);
   });
 });
