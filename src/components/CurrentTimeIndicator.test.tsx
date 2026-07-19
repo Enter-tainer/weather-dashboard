@@ -24,7 +24,8 @@ describe('CurrentTimeIndicator geometry', () => {
   it('uses the minute forecast geometry while the detail range is expanded', () => {
     const startMs = Date.parse('2026-07-11T15:05:00Z');
     const item = makeWeatherPoint({ timeUtcMs: startMs - 5 * 60 * 1000 });
-    const layout = createTimelineLayout(1, 20, 0, 264, 2);
+    // 3 source hours expanded into a 396px region; each cell is 132px.
+    const layout = createTimelineLayout(3, 20, 0, 396, 3);
     const selection = {
       index: 0,
       item,
@@ -49,7 +50,21 @@ describe('CurrentTimeIndicator geometry', () => {
       layout,
     );
 
-    expect(atFirstPoint).toBeCloseTo(258 / 48);
-    expect(atThirtyMinutes).toBeCloseTo(258 / 48 + (258 / 24) * 6);
+    // now is anchored to the hour start (15:00); 5min in = 1/36 of the 396px region.
+    expect(atFirstPoint).toBeCloseTo((5 / 180) * 396);
+    // 35min after the hour start = 7/36 of the region.
+    expect(atThirtyMinutes).toBeCloseTo((35 / 180) * 396);
+    // The minutely now-line matches the hourly now-line at the same instant.
+    expect(atThirtyMinutes).toBeCloseTo(
+      getIndicatorPosition(
+        [
+          makeWeatherPoint({ timeUtcMs: startMs - 5 * 60 * 1000 }),
+          makeWeatherPoint({ timeUtcMs: startMs + 55 * 60 * 1000 }),
+          makeWeatherPoint({ timeUtcMs: startMs + 115 * 60 * 1000 }),
+        ],
+        startMs + 30 * 60 * 1000,
+        layout,
+      ) ?? -1,
+    );
   });
 });

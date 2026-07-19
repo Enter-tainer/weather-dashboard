@@ -3,7 +3,7 @@ import { makeWeatherPoint } from '../test-utils/weather';
 import { getMinutelyEligibleIndices } from './useMinutelyPrecipitation';
 
 describe('getMinutelyEligibleIndices', () => {
-  it('enables only the current and immediately following hour at the same location', () => {
+  it('enables the current hour and the next two hours at the same location', () => {
     const baseMs = Date.parse('2026-07-11T06:00:00Z');
     const data = Array.from({ length: 4 }, (_, index) =>
       makeWeatherPoint({
@@ -16,7 +16,7 @@ describe('getMinutelyEligibleIndices', () => {
       }),
     );
 
-    expect([...getMinutelyEligibleIndices(data, baseMs + 20 * 60 * 1000)]).toEqual([0, 1]);
+    expect([...getMinutelyEligibleIndices(data, baseMs + 20 * 60 * 1000)]).toEqual([0, 1, 2]);
   });
 
   it('does not enable minutely data without coordinates or a current timeline hour', () => {

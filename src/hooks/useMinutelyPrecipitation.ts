@@ -53,6 +53,22 @@ export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number):
     eligible.add(currentIndex + 1);
   }
 
+  const third = data[currentIndex + 2];
+  const thirdMs = third ? getTimeMs(third) : null;
+  if (
+    next &&
+    third &&
+    third.cityName === current.cityName &&
+    third.latitude != null &&
+    third.longitude != null &&
+    nextMs != null &&
+    thirdMs != null &&
+    thirdMs - nextMs > 0 &&
+    thirdMs - nextMs <= HOUR_MS * 1.5
+  ) {
+    eligible.add(currentIndex + 2);
+  }
+
   return eligible;
 }
 

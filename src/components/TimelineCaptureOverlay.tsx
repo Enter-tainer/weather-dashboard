@@ -9,6 +9,7 @@ import {
   createTimelineLayout,
   DEFAULT_HOUR_WIDTH,
   EXPANDED_MINUTELY_WIDTH,
+  MINUTELY_EXPANDED_SPAN,
   type TimelineLayout,
 } from '../services/timelineLayout';
 
@@ -48,7 +49,14 @@ export default function TimelineCaptureOverlay({
 }: TimelineCaptureOverlayProps) {
   const [dragState, setDragState] = useState<CaptureDragState | null>(null);
   const layout = useMemo(
-    () => createTimelineLayout(dataLength, hourWidth, expandedIndex, EXPANDED_MINUTELY_WIDTH, 2),
+    () =>
+      createTimelineLayout(
+        dataLength,
+        hourWidth,
+        expandedIndex,
+        EXPANDED_MINUTELY_WIDTH,
+        MINUTELY_EXPANDED_SPAN,
+      ),
     [dataLength, expandedIndex, hourWidth],
   );
   const left = layout.getColumnLeft(selection.startIndex);

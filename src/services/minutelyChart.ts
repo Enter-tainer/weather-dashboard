@@ -1,5 +1,9 @@
 export const MINUTELY_CHART_AXIS_WIDTH = 0;
-export const MINUTELY_CHART_RIGHT_INSET = 6;
+// Right inset is 0 so the chart's plot width equals the expanded region width and
+// the minutely now-indicator lines up exactly with the hourly now-indicator (which
+// uses the full cell width). The ≤2h data never reaches the 3-cell region's right
+// edge, so no visual padding is lost.
+export const MINUTELY_CHART_RIGHT_INSET = 0;
 export const PRECIP_BAR_MAX_HEIGHT = 40;
 export const PRECIP_BAR_PX_PER_MM_HOUR = 4;
 export const PRECIP_AXIS_MAX_MM_HOUR = PRECIP_BAR_MAX_HEIGHT / PRECIP_BAR_PX_PER_MM_HOUR;
@@ -11,27 +15,56 @@ export const PRECIP_INTENSITY_BANDS = [
   { label: '大雨', minRate: 5, maxRate: PRECIP_AXIS_MAX_MM_HOUR },
 ] as const;
 
+export interface MinutelyChartTimeParams {
+  /** Wall-clock ms at the start of the selected hour (region left edge anchor). */
+  originMs: number;
+  /** Total time spanned by the expanded region: expandedSpan × HOUR_MS. */
+  spanMs: number;
+  /** Wall-clock ms of the first forecast point (≈ now, aligned to 5 min). */
+  firstPointMs: number;
+  /** Spacing between forecast points (5 min). */
+  stepMs: number;
+}
+
 export interface MinutelyChartHorizontalGeometry {
   plotLeft: number;
   plotRight: number;
   slotWidth: number;
   getPointCenter: (index: number) => number;
+  getXForTime: (ms: number) => number;
 }
 
 export function createMinutelyChartHorizontalGeometry(
   detailLeft: number,
   detailWidth: number,
   pointCount: number,
+  timeParams: MinutelyChartTimeParams,
 ): MinutelyChartHorizontalGeometry {
   const plotLeft = detailLeft + MINUTELY_CHART_AXIS_WIDTH;
   const plotRight = Math.max(plotLeft, detailLeft + detailWidth - MINUTELY_CHART_RIGHT_INSET);
-  const slotWidth = pointCount > 0 ? (plotRight - plotLeft) / pointCount : 0;
+  const plotWidth = plotRight - plotLeft;
+  const { originMs, spanMs, firstPointMs, stepMs } = timeParams;
+
+  const timeToX = (ms: number): number => plotLeft + ((ms - originMs) / spanMs) * plotWidth;
+
+  const clampX = (x: number): number => Math.max(plotLeft, Math.min(plotRight, x));
+
+  // Each bar represents the 5-min slot starting at fxTime; centre it on that slot.
+  const getPointCenter = (index: number): number => {
+    if (pointCount === 0) return plotLeft;
+    const slotCenterMs = firstPointMs + (index + 0.5) * stepMs;
+    return clampX(timeToX(slotCenterMs));
+  };
+
+  const getXForTime = (ms: number): number => clampX(timeToX(ms));
 
   return {
     plotLeft,
     plotRight,
-    slotWidth,
-    getPointCenter: (index: number) => plotLeft + (index + 0.5) * slotWidth,
+    // Pixel width of a single 5-min slot, used to size bars.
+    slotWidth: Math.max(0, (stepMs / spanMs) * plotWidth),
+    getPointCenter,
+    getXForTime,
   };
 }
 

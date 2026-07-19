@@ -15,6 +15,7 @@ import {
 import {
   createTimelineLayout,
   EXPANDED_MINUTELY_WIDTH,
+  MINUTELY_EXPANDED_SPAN,
   getTimelineHourWidth,
 } from '../services/timelineLayout';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
@@ -55,7 +56,7 @@ export default function DashboardCaptureRender({
     if (
       !minutelySelection ||
       minutelySelection.index < normalizedSelection.startIndex ||
-      minutelySelection.index + 2 > normalizedSelection.endIndex
+      minutelySelection.index + MINUTELY_EXPANDED_SPAN > normalizedSelection.endIndex
     ) {
       return null;
     }
@@ -71,7 +72,7 @@ export default function DashboardCaptureRender({
         hourWidth,
         captureMinutelySelection?.index ?? null,
         EXPANDED_MINUTELY_WIDTH,
-        2,
+        MINUTELY_EXPANDED_SPAN,
       ),
     [captureData.length, captureMinutelySelection?.index, hourWidth],
   );

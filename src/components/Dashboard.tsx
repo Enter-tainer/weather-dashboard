@@ -22,6 +22,7 @@ import {
 import {
   createTimelineLayout,
   EXPANDED_MINUTELY_WIDTH,
+  MINUTELY_EXPANDED_SPAN,
   getTimelineHourWidth,
 } from '../services/timelineLayout';
 import { calculateDashboardScales } from '../services/weatherMetrics';
@@ -61,7 +62,7 @@ export default function Dashboard({ testData }: DashboardProps) {
         normalized,
         {
           startIndex: minutely.selection.index,
-          endIndex: minutely.selection.index + 2,
+          endIndex: minutely.selection.index + MINUTELY_EXPANDED_SPAN,
         },
         dataLength,
       );
@@ -84,7 +85,7 @@ export default function Dashboard({ testData }: DashboardProps) {
       getTimelineHourWidth(),
       minutely.selection?.index ?? null,
       EXPANDED_MINUTELY_WIDTH,
-      2,
+      MINUTELY_EXPANDED_SPAN,
     );
     const anchorIndex = scroller ? timelineLayout.getColumnIndexAt(scroller.scrollLeft) : 0;
     const selection = scroller
