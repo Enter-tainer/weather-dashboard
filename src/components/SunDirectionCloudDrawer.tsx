@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { MoveVertical, X } from 'lucide-react';
 import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
 import {
@@ -12,7 +12,9 @@ import { APPROX_PRESSURE_HEIGHTS } from '../services/sounding';
 import { bearingLabel } from '../services/geo';
 import {
   clampToEventWindow,
+  computeSunAltitudeAt,
   findTimeForAltitude,
+  SUN_DRAG_WINDOW_MS,
   type SunDirectionInfo,
 } from '../services/sunDirection';
 import {
@@ -31,6 +33,8 @@ const BOUNDARY_ALTS = new Set([2000, 6000]);
 const SUN_DISC_RADIUS_PX = 7;
 const SUN_RAY_INNER_RADIUS_PX = 8;
 const SUN_RAY_OUTER_RADIUS_PX = 11;
+const TIME_TICK_INTERVAL_MS = 5 * 60_000;
+const TIME_TICK_MIN_GAP_PX = 26;
 
 interface SunDirectionCloudDrawerProps {
   origin: WeatherPoint;
@@ -66,9 +70,9 @@ interface PlotLayout {
   plotBottom: number;
   plotW: number;
   plotH: number;
-  /** Distance (km) at the origin end of the axis (observer). */
+  /** Distance (km) represented by the left edge of the plot. */
   originDist: number;
-  /** Distance (km) at the sun end of the axis. */
+  /** Distance (km) represented by the right edge of the plot. */
   farDist: number;
   maxDist: number;
   /** Lowest altitude drawn on the Y axis (km, negative → below ground). */
@@ -88,19 +92,20 @@ const BASE_AXIS_MAX_ALT_KM = 10; // cloud data tops out at 10 km
 const SUN_HANDLE_ALT_MARGIN_KM = 1;
 
 function makeLayout(w: number, h: number, eventType: SunEventType): PlotLayout {
-  const padLeft = 34;
-  const padRight = 16; // room for the draggable sun handle + rays
+  // Both sides need room: altitude is labelled at the observer, time at the sun.
+  const padLeft = 50;
+  const padRight = 50;
   const padTop = 12;
   const padBottom = 24; // room for the distance axis labels + ticks
   const plotLeft = padLeft;
   const plotRight = w - padRight;
   const plotTop = padTop;
   const plotBottom = h - padBottom;
-  // Sunset: origin (0 km) on the LEFT, sun to the RIGHT (左西右东 — west on the right).
-  // Sunrise: origin (0 km) on the RIGHT, sun to the LEFT (east on the left).
+  // Keep the section in the familiar map orientation: west (sunset) on the LEFT and east
+  // (sunrise) on the RIGHT. The observer therefore switches to the opposite edge.
   const maxDist = SUN_SECTION_DISTANCES_KM[SUN_SECTION_DISTANCES_KM.length - 1] ?? 300;
-  const originDist = eventType === 'sunset' ? 0 : maxDist;
-  const farDist = eventType === 'sunset' ? maxDist : 0;
+  const originDist = eventType === 'sunset' ? maxDist : 0;
+  const farDist = eventType === 'sunset' ? 0 : maxDist;
   // Expand the actual tangent-plane altitude range far enough to contain the sun at both drag
   // limits. Rounding outward leaves roughly 1 km around the outer rays instead of merely adding
   // blank canvas padding or pinning the handle to an unrelated screen position.
@@ -160,6 +165,32 @@ function groundYAt(layout: PlotLayout, distanceKm: number): number {
   return altKmToY(layout, -bulgeKm(distanceKm));
 }
 
+function sunAltitudeToY(layout: PlotLayout, altitudeDeg: number): number {
+  const tangentPlaneKm = layout.maxDist * Math.tan((altitudeDeg * Math.PI) / 180);
+  return altKmToY(layout, tangentPlaneKm);
+}
+
+interface SunTimeTick {
+  trueMs: number;
+  altitudeDeg: number;
+}
+
+function sunTimeTicks(origin: WeatherPoint, direction: SunDirectionInfo): SunTimeTick[] {
+  const startMs = direction.eventTrueMs - SUN_DRAG_WINDOW_MS;
+  const endMs = direction.eventTrueMs + SUN_DRAG_WINDOW_MS;
+  const firstTickMs = Math.ceil(startMs / TIME_TICK_INTERVAL_MS) * TIME_TICK_INTERVAL_MS;
+  const ticks: SunTimeTick[] = [];
+
+  for (let trueMs = firstTickMs; trueMs <= endMs; trueMs += TIME_TICK_INTERVAL_MS) {
+    const altitudeDeg = computeSunAltitudeAt(origin, trueMs);
+    if (altitudeDeg == null || altitudeDeg < MIN_SUN_ALT_DEG || altitudeDeg > MAX_SUN_ALT_DEG) {
+      continue;
+    }
+    ticks.push({ trueMs, altitudeDeg });
+  }
+  return ticks;
+}
+
 // Fill a band that is a STRAIGHT horizontal strip in tangent-plane altitude (constant height
 // above the local ground), so it reads parallel to the curved ground. Used for cloud layers,
 // which sit at constant ASL → tangent-plane altitude = ASL − bulge(d).
@@ -200,6 +231,9 @@ function drawCrossSection(
   layout: PlotLayout,
   sunAltDeg: number,
   isSunset: boolean,
+  origin: WeatherPoint,
+  direction: SunDirectionInfo,
+  activeTimeMs: number,
 ): void {
   const cloudFillRgb = cssVar('--cloud-fill-rgb', '90, 90, 100');
   const cloudFillAlphaScale = Number.parseFloat(cssVar('--cloud-fill-alpha-scale', '0.85')) || 0.85;
@@ -215,12 +249,11 @@ function drawCrossSection(
   ctx.fillStyle = cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
   ctx.fillRect(plotLeft, plotTop, plotW, groundY - plotTop);
 
-  // Curved ground (earth curvature): the sea-level surface sags by bulge(d) = d²/(2R) in the
-  // tangent plane, so at 140 km the ground is ~1.5 km below the observer's horizon. Drawn as a
-  // filled curve + line so the sunlight rays (straight) read correctly against it.
+  // Curved earth: the sea-level surface sags by bulge(d) = d²/(2R) in the tangent plane, so at
+  // 140 km the ground is ~1.5 km below the observer's horizon.
   const groundSteps = 60;
   // Collect ground-curve samples sorted by x so the fill polygon closes cleanly regardless of
-  // whether the axis runs left→right (sunset) or right→left (sunrise) — otherwise the closing
+  // whether the axis runs right→left (sunset) or left→right (sunrise) — otherwise the closing
   // edges cross and produce a strange self-intersecting shape at the bottom. Each sample keeps
   // its distance so the grid lines (which depend on d via bulge) stay aligned after sorting.
   const groundSamples: Array<{ d: number; x: number; y: number }> = [];
@@ -238,11 +271,36 @@ function drawCrossSection(
   ctx.lineTo(plotRight, plotBottom);
   ctx.lineTo(plotLeft, plotBottom);
   ctx.closePath();
-  ctx.fillStyle = cssVar('--sun-cloud-underground', 'rgba(120, 90, 60, 0.10)');
+  ctx.fillStyle = cssVar('--sun-cloud-earth-fill', 'rgba(80, 80, 80, 0.04)');
   ctx.fill();
+
+  // Clip a classic section-view hatch to the curved earth polygon. The single-direction diagonal
+  // pattern reads clearly in both themes and keeps the earth visually secondary to clouds/rays.
+  ctx.save();
+  ctx.beginPath();
+  for (let i = 0; i < groundSamples.length; i++) {
+    const p = groundSamples[i]!;
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.lineTo(plotRight, plotBottom);
+  ctx.lineTo(plotLeft, plotBottom);
+  ctx.closePath();
+  ctx.clip();
+  ctx.strokeStyle = cssVar('--sun-cloud-earth-hatch', 'rgba(55, 65, 60, 0.23)');
+  ctx.lineWidth = 0.7;
+  const hatchRise = plotBottom - plotTop;
+  ctx.beginPath();
+  for (let x = plotLeft - hatchRise; x <= plotRight; x += 9) {
+    ctx.moveTo(x, plotBottom);
+    ctx.lineTo(x + hatchRise, plotTop);
+  }
+  ctx.stroke();
+  ctx.restore();
+
   // Ground line (the curved horizon).
   ctx.strokeStyle = cssVar('--sun-cloud-ground-line', 'rgba(0,0,0,0.28)');
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   for (let i = 0; i < groundSamples.length; i++) {
     const p = groundSamples[i]!;
@@ -250,6 +308,18 @@ function drawCrossSection(
     else ctx.lineTo(p.x, p.y);
   }
   ctx.stroke();
+
+  // Keep a simple printed-diagram label over the hatch.
+  const earthLabelX = distToX(layout, layout.maxDist / 2);
+  const earthLabelY = Math.min(plotBottom - 16, groundYAt(layout, layout.maxDist / 2) + 48);
+  ctx.fillStyle = cssVar('--sun-cloud-earth-label-bg', 'rgba(250, 250, 250, 0.82)');
+  ctx.fillRect(earthLabelX - 18, earthLabelY - 9, 36, 18);
+  const earthLabelColor = cssVar('--sun-cloud-earth-label', 'rgba(55, 62, 58, 0.76)');
+  ctx.fillStyle = earthLabelColor;
+  ctx.font = '600 11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('地球', earthLabelX, earthLabelY);
 
   // Altitude grid lines (cloud boundaries thicker) — each is a constant sea-level altitude, so it
   // SAGS with the curved ground (parallel to it), including the 0 km line which coincides with
@@ -272,10 +342,9 @@ function drawCrossSection(
   }
   ctx.setLineDash([]);
 
-  // Altitude labels: on the OBSERVER side of the plot (where the user reads heights). For sunset
-  // the observer is on the left, for sunrise on the right. At the observer (d = 0) bulge = 0, so
-  // the labels align with the grid lines there.
-  const labelOnLeft = isSunset;
+  // Altitude labels stay on the OBSERVER side. Sunset now has the observer on the right, while
+  // sunrise has the observer on the left. At d = 0, bulge = 0, so the labels align there.
+  const labelOnLeft = !isSunset;
   ctx.fillStyle = labelMuted;
   ctx.font = '9px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
@@ -369,6 +438,46 @@ function drawCrossSection(
     ctx.stroke();
   }
 
+  // Time is the natural vertical coordinate of the draggable sun. Draw a clock scale on the sun
+  // side and keep sparse labels when the local solar motion would otherwise make them overlap.
+  const sunOnLeft = isSunset;
+  const timeAxisX = sunOnLeft ? plotLeft : plotRight;
+  const timeTickDirection = sunOnLeft ? -1 : 1;
+  const timeLabelX = timeAxisX + timeTickDirection * 14;
+  const currentSunY = sunAltitudeToY(layout, sunAltDeg);
+  const timeAxisTop = sunAltitudeToY(layout, MAX_SUN_ALT_DEG);
+  const timeAxisBottom = sunAltitudeToY(layout, MIN_SUN_ALT_DEG);
+  ctx.strokeStyle = cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(timeAxisX, timeAxisTop);
+  ctx.lineTo(timeAxisX, timeAxisBottom);
+  ctx.stroke();
+  ctx.fillStyle = labelMuted;
+  ctx.font = '9px system-ui, sans-serif';
+  ctx.textAlign = sunOnLeft ? 'right' : 'left';
+  ctx.textBaseline = 'middle';
+  let previousLabelY = -Infinity;
+  const sortedTimeTicks = sunTimeTicks(origin, direction)
+    .map((tick) => ({ ...tick, y: sunAltitudeToY(layout, tick.altitudeDeg) }))
+    .sort((a, b) => a.y - b.y);
+  for (const tick of sortedTimeTicks) {
+    if (
+      tick.y < plotTop + 6 ||
+      tick.y > plotBottom - 6 ||
+      tick.y - previousLabelY < TIME_TICK_MIN_GAP_PX ||
+      Math.abs(tick.y - currentSunY) < 14
+    ) {
+      continue;
+    }
+    ctx.beginPath();
+    ctx.moveTo(timeAxisX, tick.y);
+    ctx.lineTo(timeAxisX + timeTickDirection * 5, tick.y);
+    ctx.stroke();
+    ctx.fillText(formatLocalTime(tick.trueMs, origin), timeLabelX, tick.y);
+    previousLabelY = tick.y;
+  }
+
   // --- Sunlight: parallel rays only (no shadow/highlight fills) ---
   // Parallel rays at slope tanα. The fan includes the grazing ray (lowest ray that clears the
   // earth), so the earth-occlusion is visible: for α < 0 the near sky is dark and only far/high
@@ -380,22 +489,26 @@ function drawCrossSection(
   ctx.beginPath();
   ctx.rect(plotLeft, plotTop, plotW, plotBottom - plotTop);
   ctx.clip();
-  ctx.strokeStyle = cssVar('--sun-cloud-ray', 'rgba(246,178,74,0.7)');
-  ctx.lineWidth = 1;
-  for (const ray of rays) {
-    ctx.beginPath();
-    for (let i = 0; i < ray.points.length; i++) {
-      const p = ray.points[i]!;
-      const px = distToX(layout, p.distanceKm);
-      // The Y axis is tangent-plane altitude (TPA): ground is TPA = −bulge(d) (an arc), clouds/grid
-      // are TPA = ASL − bulge(d) (arcs). A ray is STRAIGHT in TPA: TPA(d) = base + d·tanα, so plot
-      // it directly — no bulge added. (Adding bulge would convert to sea-level and curve the ray.)
-      const py = altKmToY(layout, p.altitudeKm);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+  ctx.lineCap = 'round';
+  const strokeRayFan = () => {
+    for (const ray of rays) {
+      ctx.beginPath();
+      for (let i = 0; i < ray.points.length; i++) {
+        const p = ray.points[i]!;
+        const px = distToX(layout, p.distanceKm);
+        // The Y axis is tangent-plane altitude (TPA): ground is TPA = −bulge(d) (an arc),
+        // clouds/grid are TPA = ASL − bulge(d) (arcs). A ray is STRAIGHT in TPA:
+        // TPA(d) = base + d·tanα, so plot it directly — no bulge added.
+        const py = altKmToY(layout, p.altitudeKm);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
-  }
+  };
+  ctx.strokeStyle = cssVar('--sun-cloud-ray', 'rgba(242, 142, 28, 0.94)');
+  ctx.lineWidth = 1.8;
+  strokeRayFan();
   ctx.restore();
 
   // --- Draggable sun handle at the sun end of the axis ---
@@ -405,8 +518,7 @@ function drawCrossSection(
   // plane altitude is maxDist·tan(α) — that is where the handle sits on the TPA axis, and dragging
   // it vertically inverts to α. The expanded axis keeps this physical position visible.
   const sunX = layout.farDist === 0 ? plotLeft : plotRight;
-  const sunTpaKm = layout.maxDist * Math.tan((sunAltDeg * Math.PI) / 180);
-  const sunY = altKmToY(layout, sunTpaKm);
+  const sunY = currentSunY;
   ctx.fillStyle = sunFill;
   ctx.beginPath();
   ctx.arc(sunX, sunY, SUN_DISC_RADIUS_PX, 0, Math.PI * 2);
@@ -426,6 +538,57 @@ function drawCrossSection(
     );
     ctx.stroke();
   }
+
+  // Highlight the selected clock time beside the sun; this moves with the handle while dragging.
+  const activeTimeLabel = formatLocalTime(activeTimeMs, origin);
+  const timeBadgeWidth = 34;
+  const timeBadgeHeight = 16;
+  const timeBadgeX = sunOnLeft
+    ? timeAxisX - SUN_RAY_OUTER_RADIUS_PX - 3 - timeBadgeWidth
+    : timeAxisX + SUN_RAY_OUTER_RADIUS_PX + 3;
+  const timeBadgeY = Math.min(
+    plotBottom - timeBadgeHeight,
+    Math.max(plotTop, sunY - timeBadgeHeight / 2),
+  );
+  ctx.fillStyle = cssVar('--sun-cloud-time-label-bg', '#b85c16');
+  ctx.fillRect(timeBadgeX, timeBadgeY, timeBadgeWidth, timeBadgeHeight);
+  ctx.fillStyle = cssVar('--sun-cloud-time-label-text', '#fff');
+  ctx.font = '600 10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(activeTimeLabel, timeBadgeX + timeBadgeWidth / 2, timeBadgeY + timeBadgeHeight / 2);
+
+  // Mark d=0 explicitly. The badge sits outside the observer edge: right for sunset, left for
+  // sunrise. Keeping it level with the surface avoids covering the lowest cloud layers.
+  const observerOnLeft = !isSunset;
+  const observerX = distToX(layout, 0);
+  const observerY = groundYAt(layout, 0);
+  const observerColor = cssVar('--sun-cloud-observer', '#277a65');
+  ctx.strokeStyle = observerColor;
+  ctx.fillStyle = observerColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(observerX, observerY);
+  ctx.lineTo(observerX + (observerOnLeft ? -7 : 7), observerY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(observerX, observerY, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  const observerBadgeWidth = 30;
+  const observerBadgeHeight = 17;
+  const observerBadgeX = observerOnLeft ? observerX - 7 - observerBadgeWidth : observerX + 7;
+  const observerBadgeY = observerY - observerBadgeHeight / 2;
+  ctx.fillStyle = cssVar('--sun-cloud-observer-label-bg', 'rgba(39, 122, 101, 0.92)');
+  ctx.fillRect(observerBadgeX, observerBadgeY, observerBadgeWidth, observerBadgeHeight);
+  ctx.fillStyle = cssVar('--sun-cloud-observer-label-text', '#fff');
+  ctx.font = '600 10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(
+    '本站',
+    observerBadgeX + observerBadgeWidth / 2,
+    observerBadgeY + observerBadgeHeight / 2,
+  );
 }
 
 export default function SunDirectionCloudDrawer({
@@ -441,6 +604,7 @@ export default function SunDirectionCloudDrawer({
   // Sun altitude in degrees — the single dragged parameter. Start at the event altitude (≈0°).
   const [sunAltDeg, setSunAltDeg] = useState(direction.altitudeDeg);
   const [dragTimeMs, setDragTimeMs] = useState<number | null>(null);
+  const activeTimeMs = dragTimeMs ?? direction.eventTrueMs;
 
   // Give useCanvas the real renderer so its resize / focus / theme redraws repaint the chart
   // after resetting the canvas bitmap dimensions.
@@ -456,14 +620,18 @@ export default function SunDirectionCloudDrawer({
         layout,
         sunAltDeg,
         direction.eventType === 'sunset',
+        origin,
+        direction,
+        activeTimeMs,
       );
     },
-    [sectionState.data, sunAltDeg, direction.eventType],
+    [sectionState.data, sunAltDeg, direction, origin, activeTimeMs],
   );
   const canvasRef = useCanvas(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, paintCanvas, [
     sectionState.data,
     sunAltDeg,
     direction.eventType,
+    activeTimeMs,
   ]);
 
   // Reset to the event altitude when the origin/event changes.
@@ -543,19 +711,12 @@ export default function SunDirectionCloudDrawer({
 
   const { status, data, error } = sectionState;
 
-  const subtitleTimeMs = dragTimeMs ?? direction.eventTrueMs;
-  const subtitleTimeStr = formatLocalTime(subtitleTimeMs, origin);
+  const subtitleTimeStr = formatLocalTime(activeTimeMs, origin);
   const subtitle = `${origin.cityName} · ${subtitleTimeStr} · 方位 ${Math.round(
     direction.bearingDeg,
   )}° ${bearingLabel(direction.bearingDeg)} · 太阳高度 ${sunAltDeg.toFixed(1)}°`;
 
   const isSunset = direction.eventType === 'sunset';
-  // Sunset: observer (本站) on the LEFT, sun (west) on the RIGHT → 左西右东.
-  // Sunrise: observer on the RIGHT, sun (east) on the LEFT.
-  const originSideLabel = isSunset ? '本站（左）' : '本站（右）';
-  const sunSideLabel = isSunset ? '日落方向（右）' : '日出方向（左）';
-  const maxDistKm = SUN_SECTION_DISTANCES_KM[SUN_SECTION_DISTANCES_KM.length - 1] ?? 300;
-
   return (
     <div
       className="sounding-backdrop sun-cloud-backdrop"
@@ -619,21 +780,22 @@ export default function SunDirectionCloudDrawer({
                 <div className="sun-cloud-axis-caption">
                   {isSunset ? (
                     <>
-                      <span>本站 0km（{originSideLabel}）</span>
-                      <span>
-                        {maxDistKm}km → 日落（{sunSideLabel}）
-                      </span>
+                      <span>日落方向</span>
+                      <span>本站位置</span>
                     </>
                   ) : (
                     <>
-                      <span>
-                        日出（{sunSideLabel}）← {maxDistKm}km
-                      </span>
-                      <span>本站 0km（{originSideLabel}）</span>
+                      <span>本站位置</span>
+                      <span>日出方向</span>
                     </>
                   )}
                 </div>
-                <p className="sun-cloud-hint">在图上垂直拖动太阳，改变时刻并观察光路与云层相交</p>
+                <div className="sun-cloud-hint">
+                  <MoveVertical size={14} aria-hidden="true" />
+                  <span>
+                    <strong>上下拖动太阳</strong>，查看不同时刻的光路与云层
+                  </span>
+                </div>
               </div>
             </>
           )}

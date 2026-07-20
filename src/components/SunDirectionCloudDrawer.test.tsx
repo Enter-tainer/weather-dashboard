@@ -22,17 +22,19 @@ function makeCanvasContext(): {
   ctx: CanvasRenderingContext2D;
   fillRect: ReturnType<typeof vi.fn>;
   arc: ReturnType<typeof vi.fn>;
+  fillText: ReturnType<typeof vi.fn>;
 } {
   const fillRect = vi.fn();
   const arc = vi.fn();
-  const properties: Record<PropertyKey, unknown> = { fillRect, arc };
+  const fillText = vi.fn();
+  const properties: Record<PropertyKey, unknown> = { fillRect, arc, fillText };
   const ctx = new Proxy(properties, {
     get(target, property) {
       if (!(property in target)) target[property] = vi.fn();
       return target[property];
     },
   }) as unknown as CanvasRenderingContext2D;
-  return { ctx, fillRect, arc };
+  return { ctx, fillRect, arc, fillText };
 }
 
 function makeOrigin(overrides: Partial<WeatherPoint> = {}): WeatherPoint {
@@ -41,6 +43,7 @@ function makeOrigin(overrides: Partial<WeatherPoint> = {}): WeatherPoint {
     latitude: 39.9,
     longitude: 116.4,
     hour: 19,
+    timezone: 'Asia/Shanghai',
     ...overrides,
   });
 }
@@ -107,6 +110,67 @@ describe('SunDirectionCloudDrawer', () => {
     paint?.(ctx, 540, 410);
     expect(fillRect).toHaveBeenCalled();
     expect(arc).toHaveBeenCalled();
+  });
+
+  it('puts sunset on the left and sunrise on the right', () => {
+    const sunsetView = render(
+      <SunDirectionCloudDrawer
+        origin={makeOrigin()}
+        direction={DIRECTION}
+        sectionState={successState}
+        onClose={onClose}
+      />,
+    );
+    expect(screen.getByText('日落方向')).toBeTruthy();
+    expect(screen.getByText('本站位置')).toBeTruthy();
+    const sunsetPaint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
+    const sunsetCanvas = makeCanvasContext();
+    sunsetPaint(sunsetCanvas.ctx, 540, 410);
+    const sunsetDisc = sunsetCanvas.arc.mock.calls.find((call) => call[2] === 7);
+    expect(sunsetDisc?.[0]).toBe(50);
+    const sunsetStation = sunsetCanvas.fillText.mock.calls.find((call) => call[0] === '本站');
+    expect(sunsetStation?.[1]).toBeGreaterThan(490);
+    sunsetView.unmount();
+
+    const sunriseDirection: SunDirectionInfo = {
+      ...DIRECTION,
+      eventType: 'sunrise',
+      bearingDeg: 60,
+    };
+    render(
+      <SunDirectionCloudDrawer
+        origin={makeOrigin()}
+        direction={sunriseDirection}
+        sectionState={successState}
+        onClose={onClose}
+      />,
+    );
+    expect(screen.getByText('本站位置')).toBeTruthy();
+    expect(screen.getByText('日出方向')).toBeTruthy();
+    const sunrisePaint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
+    const sunriseCanvas = makeCanvasContext();
+    sunrisePaint(sunriseCanvas.ctx, 540, 410);
+    const sunriseDisc = sunriseCanvas.arc.mock.calls.find((call) => call[2] === 7);
+    expect(sunriseDisc?.[0]).toBe(490);
+    const sunriseStation = sunriseCanvas.fillText.mock.calls.find((call) => call[0] === '本站');
+    expect(sunriseStation?.[1]).toBeLessThan(50);
+  });
+
+  it('labels the sun-side axis with the selected time and identifies the earth', () => {
+    render(
+      <SunDirectionCloudDrawer
+        origin={makeOrigin()}
+        direction={DIRECTION}
+        sectionState={successState}
+        onClose={onClose}
+      />,
+    );
+    const paint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
+    const { ctx, fillText } = makeCanvasContext();
+    paint(ctx, 540, 410);
+    expect(fillText.mock.calls.some((call) => call[0] === '19:43')).toBe(true);
+    expect(fillText.mock.calls.some((call) => call[0] === '地球')).toBe(true);
+    expect(fillText.mock.calls.some((call) => call[0] === '本站')).toBe(true);
   });
 
   it('renders the heading with city, bearing, and altitude', () => {
