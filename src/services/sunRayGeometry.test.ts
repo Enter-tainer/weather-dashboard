@@ -38,8 +38,8 @@ function section(columns: CloudSectionColumn[]): CloudSection {
 }
 
 describe('sun altitude drag bounds', () => {
-  it('focuses the interactive view on −3° through +2°', () => {
-    expect(MIN_SUN_ALT_DEG).toBe(-3);
+  it('covers civil twilight from −6° through +2°', () => {
+    expect(MIN_SUN_ALT_DEG).toBe(-6);
     expect(MAX_SUN_ALT_DEG).toBe(2);
   });
 });

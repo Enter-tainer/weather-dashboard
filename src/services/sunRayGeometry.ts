@@ -24,10 +24,11 @@ export const EARTH_RADIUS_KM = 6371;
 export const PLOT_MAX_ALT_KM = 10;
 /**
  * Drag bounds for α (degrees). The useful range for this glow cross-section runs from the late
- * golden hour into civil twilight. At −3° only the highest clouds near the observer still receive
- * direct light; beyond +2° the sun is already well above the horizon for this focused view.
+ * golden hour into civil twilight. The −6° lower bound reaches roughly 30–35 minutes before
+ * sunrise (or after sunset) at mid-latitudes; beyond +2° the sun is already well above the horizon
+ * for this focused view.
  */
-export const MIN_SUN_ALT_DEG = -3;
+export const MIN_SUN_ALT_DEG = -6;
 export const MAX_SUN_ALT_DEG = 2;
 
 /** Earth-curvature (bulge) drop at a downrange distance: d²/(2R), in km. */
