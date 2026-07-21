@@ -1,58 +1,13 @@
 import { useEffect, useState } from 'react';
 import './Dashboard.css';
-import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
-
-interface TwilightPalette {
-  day: string;
-  warmDay: string;
-  golden: string;
-  blue: string;
-  nautical: string;
-  night: string;
-}
+import { altitudeToTwilightColor, getTwilightPalette } from '../services/twilightColor';
 
 interface TwilightLaneProps {
   data: WeatherPoint[];
   hourWidth?: number;
-}
-
-// Map sun altitude (degrees) to a sky color
-function getTwilightPalette(): TwilightPalette {
-  return {
-    day: cssVar('--twilight-day', '#ffffff'),
-    warmDay: cssVar('--twilight-warm-day', '#ffe0b2'),
-    golden: cssVar('--twilight-golden', '#ff9800'),
-    blue: cssVar('--twilight-blue', '#3949ab'),
-    nautical: cssVar('--twilight-nautical', '#1a237e'),
-    night: cssVar('--twilight-night', '#0d0d1a'),
-  };
-}
-
-function altitudeToColor(alt: number, palette: TwilightPalette): string {
-  if (alt >= 10) return palette.day;
-  if (alt >= 6) return lerpColor(palette.warmDay, palette.day, (alt - 6) / 4);
-  if (alt >= -4) return lerpColor(palette.golden, palette.warmDay, (alt + 4) / 10);
-  if (alt >= -6) return lerpColor(palette.blue, palette.golden, (alt + 6) / 2);
-  if (alt >= -12) return lerpColor(palette.nautical, palette.blue, (alt + 12) / 6);
-  if (alt >= -18) return lerpColor(palette.night, palette.nautical, (alt + 18) / 6);
-  return palette.night;
-}
-
-function lerpColor(a: string, b: string, t: number): string {
-  const parse = (color: string): [number, number, number] => [
-    parseInt(color.slice(1, 3), 16),
-    parseInt(color.slice(3, 5), 16),
-    parseInt(color.slice(5, 7), 16),
-  ];
-  const [r1, g1, b1] = parse(a);
-  const [r2, g2, b2] = parse(b);
-  const r = Math.round(r1 + (r2 - r1) * t);
-  const g = Math.round(g1 + (g2 - g1) * t);
-  const bl = Math.round(b1 + (b2 - b1) * t);
-  return `rgb(${r},${g},${bl})`;
 }
 
 export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: TwilightLaneProps) {
@@ -81,7 +36,7 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
     for (let s = 0; s < resolution; s++) {
       const t = s / resolution;
       const alt = alt1 + (alt2 - alt1) * t;
-      const color = altitudeToColor(alt, palette);
+      const color = altitudeToTwilightColor(alt, palette);
       const pct = (layout.getTimePosition(i + t) / layout.totalWidth) * 100;
       stops.push(`${color} ${pct.toFixed(2)}%`);
     }
@@ -91,12 +46,12 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
   if (data.length > 0) {
     const lastIdx = data.length - 1;
     const finalAlt = data[lastIdx]?.sunAltitude ?? 10;
-    const finalColor = altitudeToColor(finalAlt, palette);
+    const finalColor = altitudeToTwilightColor(finalAlt, palette);
     const finalPct = (layout.getTimePosition(lastIdx) / layout.totalWidth) * 100;
     stops.push(`${finalColor} ${finalPct.toFixed(2)}%`);
 
     // Add end stops to stretch nicely to the very edges of the div
-    const firstColor = altitudeToColor(data[0]?.sunAltitude ?? 10, palette);
+    const firstColor = altitudeToTwilightColor(data[0]?.sunAltitude ?? 10, palette);
     stops.unshift(`${firstColor} 0%`);
     stops.push(`${finalColor} 100%`);
   }

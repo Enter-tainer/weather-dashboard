@@ -25,6 +25,11 @@ import {
 } from '../services/sunRayGeometry';
 import type { SunEventType, WeatherPoint } from '../types/weather';
 import type { SunCloudSectionState } from '../hooks/useSunCloudSection';
+import {
+  altitudeToTwilightColor,
+  colorWithAlpha,
+  getTwilightPalette,
+} from '../services/twilightColor';
 import './Dashboard.css';
 
 const CANVAS_WIDTH = 540;
@@ -447,6 +452,27 @@ function drawCrossSection(
   const currentSunY = sunAltitudeToY(layout, sunAltDeg);
   const timeAxisTop = sunAltitudeToY(layout, MAX_SUN_ALT_DEG);
   const timeAxisBottom = sunAltitudeToY(layout, MIN_SUN_ALT_DEG);
+  const twilightTop = sunAltitudeToY(layout, 0);
+  const twilightBottom = sunAltitudeToY(layout, MIN_SUN_ALT_DEG);
+  const twilightLaneWidth = 6;
+  const twilightLaneGap = 6;
+  const twilightLaneX = sunOnLeft
+    ? timeAxisX - twilightLaneGap - twilightLaneWidth
+    : timeAxisX + twilightLaneGap;
+  const twilightPalette = getTwilightPalette();
+  const twilightGradient = ctx.createLinearGradient(0, twilightTop, 0, twilightBottom);
+  for (const altitudeDeg of [0, -2, -4, MIN_SUN_ALT_DEG]) {
+    const position = Math.abs(altitudeDeg) / Math.abs(MIN_SUN_ALT_DEG);
+    twilightGradient.addColorStop(
+      position,
+      colorWithAlpha(altitudeToTwilightColor(altitudeDeg, twilightPalette), 0.82),
+    );
+  }
+  ctx.fillStyle = twilightGradient;
+  ctx.fillRect(twilightLaneX, twilightTop, twilightLaneWidth, twilightBottom - twilightTop);
+  ctx.strokeStyle = cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(twilightLaneX, twilightTop, twilightLaneWidth, twilightBottom - twilightTop);
   ctx.strokeStyle = cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
   ctx.lineWidth = 0.7;
   ctx.beginPath();

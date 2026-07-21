@@ -23,18 +23,27 @@ function makeCanvasContext(): {
   fillRect: ReturnType<typeof vi.fn>;
   arc: ReturnType<typeof vi.fn>;
   fillText: ReturnType<typeof vi.fn>;
+  createLinearGradient: ReturnType<typeof vi.fn>;
+  addColorStop: ReturnType<typeof vi.fn>;
 } {
   const fillRect = vi.fn();
   const arc = vi.fn();
   const fillText = vi.fn();
-  const properties: Record<PropertyKey, unknown> = { fillRect, arc, fillText };
+  const addColorStop = vi.fn();
+  const createLinearGradient = vi.fn(() => ({ addColorStop }));
+  const properties: Record<PropertyKey, unknown> = {
+    fillRect,
+    arc,
+    fillText,
+    createLinearGradient,
+  };
   const ctx = new Proxy(properties, {
     get(target, property) {
       if (!(property in target)) target[property] = vi.fn();
       return target[property];
     },
   }) as unknown as CanvasRenderingContext2D;
-  return { ctx, fillRect, arc, fillText };
+  return { ctx, fillRect, arc, fillText, createLinearGradient, addColorStop };
 }
 
 function makeOrigin(overrides: Partial<WeatherPoint> = {}): WeatherPoint {
@@ -110,6 +119,34 @@ describe('SunDirectionCloudDrawer', () => {
     paint?.(ctx, 540, 410);
     expect(fillRect).toHaveBeenCalled();
     expect(arc).toHaveBeenCalled();
+  });
+
+  it('draws the civil-twilight scale beside the time axis without covering the cloud plot', () => {
+    render(
+      <SunDirectionCloudDrawer
+        origin={makeOrigin()}
+        direction={DIRECTION}
+        sectionState={successState}
+        onClose={onClose}
+      />,
+    );
+    const twilightPaint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
+    const twilightCanvas = makeCanvasContext();
+    twilightPaint(twilightCanvas.ctx, 540, 410);
+    expect(twilightCanvas.createLinearGradient).toHaveBeenCalledTimes(1);
+    expect(twilightCanvas.addColorStop).toHaveBeenCalledTimes(4);
+    expect(twilightCanvas.fillRect.mock.calls).toContainEqual([
+      38,
+      expect.any(Number),
+      6,
+      expect.any(Number),
+    ]);
+    expect(
+      twilightCanvas.fillRect.mock.calls.some(
+        ([x, , width]) =>
+          typeof x === 'number' && typeof width === 'number' && x >= 50 && width > 6,
+      ),
+    ).toBe(true);
   });
 
   it('puts sunset on the left and sunrise on the right', () => {
