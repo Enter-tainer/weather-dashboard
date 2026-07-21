@@ -143,7 +143,7 @@ describe('DashboardLaneStack', () => {
     expect(onMinutelySelect).toHaveBeenCalledWith(1);
   });
 
-  it('widens both selected hours and exposes a working close action', () => {
+  it('only widens two hours when minutely precipitation is opened on the hour', () => {
     const data = makeTimeline(4);
     const selectedItem = data[1];
     const onMinutelySelect = vi.fn();
@@ -161,15 +161,19 @@ describe('DashboardLaneStack', () => {
           status: 'loading',
           data: null,
           error: null,
+          referenceTimeMs: Date.parse(selectedItem.time),
         }}
         onMinutelySelect={onMinutelySelect}
       />,
     );
 
-    expect(container.querySelector('.lanes-container')).toHaveStyle({ width: '418px' });
+    expect(container.querySelector('.lanes-container')).toHaveStyle({ width: '308px' });
     const timeCells = [...container.querySelectorAll<HTMLElement>('.time-axis .lane-cell')];
-    expect(timeCells.map((cell) => cell.style.width)).toEqual(['22px', '132px', '132px', '132px']);
-    expect(container.querySelector('.minutely-rain-inline')).toHaveStyle({ left: '22px' });
+    expect(timeCells.map((cell) => cell.style.width)).toEqual(['22px', '132px', '132px', '22px']);
+    expect(container.querySelector('.minutely-rain-inline')).toHaveStyle({
+      left: '22px',
+      width: '264px',
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '收起 5 分钟降水' }));
     expect(onMinutelySelect).toHaveBeenCalledWith(1);

@@ -29,10 +29,14 @@ import TimelineLayoutProvider from './TimelineLayoutProvider';
 import {
   createTimelineLayout,
   DEFAULT_HOUR_WIDTH,
-  EXPANDED_MINUTELY_WIDTH,
-  MINUTELY_EXPANDED_SPAN,
   getTimelineHourWidth,
 } from '../services/timelineLayout';
+import {
+  getExpandedMinutelyWidth,
+  getMinutelySelectionExpandedSpan,
+  MINUTELY_EXPANDED_MAX_SPAN,
+  MINUTELY_EXPANDED_MIN_SPAN,
+} from '../services/minutelyExpansion';
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, SunEvent, WeatherTimeline } from '../types/weather';
@@ -135,16 +139,11 @@ export function DashboardLaneStack({
   const hourWidth = getTimelineHourWidth();
   const usesEnsembleFallback = data.some((item) => item.dataSource === 'ensemble');
   const expandedIndex = minutelySelection?.index ?? null;
+  const expandedSpan = getMinutelySelectionExpandedSpan(minutelySelection, data.length);
+  const expandedWidth = getExpandedMinutelyWidth(expandedSpan);
   const layout = useMemo(
-    () =>
-      createTimelineLayout(
-        data.length,
-        hourWidth,
-        expandedIndex,
-        EXPANDED_MINUTELY_WIDTH,
-        MINUTELY_EXPANDED_SPAN,
-      ),
-    [data.length, expandedIndex, hourWidth],
+    () => createTimelineLayout(data.length, hourWidth, expandedIndex, expandedWidth, expandedSpan),
+    [data.length, expandedIndex, expandedSpan, expandedWidth, hourWidth],
   );
   const timelineStyle: TimelineStyle = {
     '--col-width-hour': `${hourWidth}px`,
@@ -268,17 +267,18 @@ function TimelineLanes({
     if (!scroller) return;
     window.requestAnimationFrame(() => {
       const panelLeft = index * getTimelineHourWidth();
+      let previewSpan = 0;
+      while (minutelyAvailableIndices?.has(index + previewSpan)) previewSpan++;
+      const panelWidth = getExpandedMinutelyWidth(
+        previewSpan > 0
+          ? Math.max(MINUTELY_EXPANDED_MIN_SPAN, previewSpan)
+          : MINUTELY_EXPANDED_MAX_SPAN,
+      );
       const viewLeft = scroller.scrollLeft;
       const viewRight = viewLeft + scroller.clientWidth;
       const padding = 12;
-      if (
-        panelLeft < viewLeft + padding ||
-        panelLeft + EXPANDED_MINUTELY_WIDTH > viewRight - padding
-      ) {
-        const visibleGutter = Math.max(
-          padding,
-          (scroller.clientWidth - EXPANDED_MINUTELY_WIDTH) / 2,
-        );
+      if (panelLeft < viewLeft + padding || panelLeft + panelWidth > viewRight - padding) {
+        const visibleGutter = Math.max(padding, (scroller.clientWidth - panelWidth) / 2);
         scroller.scrollTo({ left: Math.max(0, panelLeft - visibleGutter), behavior: 'smooth' });
       }
     });
@@ -344,6 +344,7 @@ export default function DashboardLanes({
 }: DashboardLanesProps) {
   const hasData = data && data.length > 0;
   const hourWidth = getTimelineHourWidth();
+  const expandedSpan = getMinutelySelectionExpandedSpan(minutelySelection, data?.length ?? 0);
 
   return (
     <div className="timeline-scroller" ref={scrollerRef}>
@@ -373,6 +374,7 @@ export default function DashboardLanes({
               hourWidth={hourWidth || DEFAULT_HOUR_WIDTH}
               hoursPerColumn={hoursPerColumn}
               expandedIndex={minutelySelection?.index ?? null}
+              expandedSpan={expandedSpan}
             />
           )}
         </>

@@ -12,12 +12,11 @@ import {
   sliceTimelineForCapture,
   type CaptureSelection,
 } from '../services/timelineCapture';
+import { createTimelineLayout, getTimelineHourWidth } from '../services/timelineLayout';
 import {
-  createTimelineLayout,
-  EXPANDED_MINUTELY_WIDTH,
-  MINUTELY_EXPANDED_SPAN,
-  getTimelineHourWidth,
-} from '../services/timelineLayout';
+  getExpandedMinutelyWidth,
+  getMinutelySelectionExpandedSpan,
+} from '../services/minutelyExpansion';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 
 const CAPTURE_LEGEND_WIDTH = 48;
@@ -52,11 +51,12 @@ export default function DashboardCaptureRender({
     [data, normalizedSelection],
   );
   const hourWidth = getTimelineHourWidth();
+  const minutelyExpandedSpan = getMinutelySelectionExpandedSpan(minutelySelection, data.length);
   const captureMinutelySelection = useMemo(() => {
     if (
       !minutelySelection ||
       minutelySelection.index < normalizedSelection.startIndex ||
-      minutelySelection.index + MINUTELY_EXPANDED_SPAN > normalizedSelection.endIndex
+      minutelySelection.index + minutelyExpandedSpan > normalizedSelection.endIndex
     ) {
       return null;
     }
@@ -64,17 +64,21 @@ export default function DashboardCaptureRender({
     const localIndex = minutelySelection.index - normalizedSelection.startIndex;
     const localItem = captureData[localIndex];
     return localItem ? { ...minutelySelection, index: localIndex, item: localItem } : null;
-  }, [captureData, minutelySelection, normalizedSelection]);
+  }, [captureData, minutelyExpandedSpan, minutelySelection, normalizedSelection]);
+  const captureMinutelyExpandedSpan = getMinutelySelectionExpandedSpan(
+    captureMinutelySelection,
+    captureData.length,
+  );
   const captureLayout = useMemo(
     () =>
       createTimelineLayout(
         captureData.length,
         hourWidth,
         captureMinutelySelection?.index ?? null,
-        EXPANDED_MINUTELY_WIDTH,
-        MINUTELY_EXPANDED_SPAN,
+        getExpandedMinutelyWidth(captureMinutelyExpandedSpan),
+        captureMinutelyExpandedSpan,
       ),
-    [captureData.length, captureMinutelySelection?.index, hourWidth],
+    [captureData.length, captureMinutelyExpandedSpan, captureMinutelySelection?.index, hourWidth],
   );
   const width = CAPTURE_LEGEND_WIDTH + captureLayout.totalWidth;
 

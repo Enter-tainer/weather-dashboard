@@ -19,12 +19,11 @@ import {
   normalizeCaptureSelection,
   type CaptureSelection,
 } from '../services/timelineCapture';
+import { createTimelineLayout, getTimelineHourWidth } from '../services/timelineLayout';
 import {
-  createTimelineLayout,
-  EXPANDED_MINUTELY_WIDTH,
-  MINUTELY_EXPANDED_SPAN,
-  getTimelineHourWidth,
-} from '../services/timelineLayout';
+  getExpandedMinutelyWidth,
+  getMinutelySelectionExpandedSpan,
+} from '../services/minutelyExpansion';
 import { calculateDashboardScales } from '../services/weatherMetrics';
 import { aggregateTimelineByHours } from '../services/timeAggregation';
 import type { WeatherTimeline } from '../types/weather';
@@ -51,6 +50,10 @@ export default function Dashboard({ testData }: DashboardProps) {
   }, [data, timeStepHours]);
   const scales = useMemo(() => calculateDashboardScales(displayData), [displayData]);
   const minutely = useMinutelyPrecipitation(displayData ?? [], timeStepHours === 1 && !compactMode);
+  const minutelyExpandedSpan = getMinutelySelectionExpandedSpan(
+    minutely.selection,
+    displayData?.length ?? 0,
+  );
   const hasData = Array.isArray(displayData) && displayData.length > 0;
   const normalizeCaptureForMinutely = useCallback(
     (selection: CaptureSelection): CaptureSelection => {
@@ -62,12 +65,12 @@ export default function Dashboard({ testData }: DashboardProps) {
         normalized,
         {
           startIndex: minutely.selection.index,
-          endIndex: minutely.selection.index + MINUTELY_EXPANDED_SPAN,
+          endIndex: minutely.selection.index + minutelyExpandedSpan,
         },
         dataLength,
       );
     },
-    [displayData?.length, minutely.selection],
+    [displayData?.length, minutely.selection, minutelyExpandedSpan],
   );
   const activeCaptureSelection = useMemo(() => {
     if (!captureMode || !captureSelection || !displayData || displayData.length === 0) {
@@ -84,8 +87,8 @@ export default function Dashboard({ testData }: DashboardProps) {
       displayData.length,
       getTimelineHourWidth(),
       minutely.selection?.index ?? null,
-      EXPANDED_MINUTELY_WIDTH,
-      MINUTELY_EXPANDED_SPAN,
+      getExpandedMinutelyWidth(minutelyExpandedSpan),
+      minutelyExpandedSpan,
     );
     const anchorIndex = scroller ? timelineLayout.getColumnIndexAt(scroller.scrollLeft) : 0;
     const selection = scroller
@@ -105,7 +108,13 @@ export default function Dashboard({ testData }: DashboardProps) {
     setCaptureSelection(normalizeCaptureForMinutely(selection));
     setCaptureMode(true);
     setCaptureStatus('idle');
-  }, [displayData, minutely.selection?.index, normalizeCaptureForMinutely, timeStepHours]);
+  }, [
+    displayData,
+    minutely.selection?.index,
+    minutelyExpandedSpan,
+    normalizeCaptureForMinutely,
+    timeStepHours,
+  ]);
 
   const exitCaptureMode = useCallback(() => {
     setCaptureMode(false);

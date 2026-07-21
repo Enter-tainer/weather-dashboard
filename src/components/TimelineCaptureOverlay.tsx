@@ -8,10 +8,12 @@ import {
 import {
   createTimelineLayout,
   DEFAULT_HOUR_WIDTH,
-  EXPANDED_MINUTELY_WIDTH,
-  MINUTELY_EXPANDED_SPAN,
   type TimelineLayout,
 } from '../services/timelineLayout';
+import {
+  getExpandedMinutelyWidth,
+  MINUTELY_EXPANDED_MAX_SPAN,
+} from '../services/minutelyExpansion';
 
 interface TimelineCaptureOverlayProps {
   dataLength: number;
@@ -20,6 +22,7 @@ interface TimelineCaptureOverlayProps {
   hourWidth?: number;
   hoursPerColumn?: number;
   expandedIndex?: number | null;
+  expandedSpan?: number;
 }
 
 interface CaptureDragState {
@@ -46,6 +49,7 @@ export default function TimelineCaptureOverlay({
   hourWidth = DEFAULT_HOUR_WIDTH,
   hoursPerColumn = 1,
   expandedIndex = null,
+  expandedSpan = MINUTELY_EXPANDED_MAX_SPAN,
 }: TimelineCaptureOverlayProps) {
   const [dragState, setDragState] = useState<CaptureDragState | null>(null);
   const layout = useMemo(
@@ -54,10 +58,10 @@ export default function TimelineCaptureOverlay({
         dataLength,
         hourWidth,
         expandedIndex,
-        EXPANDED_MINUTELY_WIDTH,
-        MINUTELY_EXPANDED_SPAN,
+        getExpandedMinutelyWidth(expandedSpan),
+        expandedSpan,
       ),
-    [dataLength, expandedIndex, hourWidth],
+    [dataLength, expandedIndex, expandedSpan, hourWidth],
   );
   const left = layout.getColumnLeft(selection.startIndex);
   const width = layout.getRangeWidth(selection.startIndex, selection.endIndex);

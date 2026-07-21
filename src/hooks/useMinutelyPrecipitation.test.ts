@@ -19,6 +19,20 @@ describe('getMinutelyEligibleIndices', () => {
     expect([...getMinutelyEligibleIndices(data, baseMs + 20 * 60 * 1000)]).toEqual([0, 1, 2]);
   });
 
+  it('only enables two hours when the forecast starts exactly on the hour', () => {
+    const baseMs = Date.parse('2026-07-11T06:00:00Z');
+    const data = Array.from({ length: 4 }, (_, index) =>
+      makeWeatherPoint({
+        cityName: '北京',
+        latitude: 39.9,
+        longitude: 116.4,
+        timeUtcMs: baseMs + index * 60 * 60 * 1000,
+      }),
+    );
+
+    expect([...getMinutelyEligibleIndices(data, baseMs)]).toEqual([0, 1]);
+  });
+
   it('does not enable minutely data without coordinates or a current timeline hour', () => {
     const nowMs = Date.parse('2026-07-11T06:20:00Z');
     const missingCoordinates = [

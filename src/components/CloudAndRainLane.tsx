@@ -20,7 +20,7 @@ import {
   PRECIPITATION_PLOT_HEIGHT,
   PRECIPITATION_PLOT_TOP,
 } from '../services/cloudAndRainScale';
-import { DEFAULT_HOUR_WIDTH, MINUTELY_EXPANDED_SPAN } from '../services/timelineLayout';
+import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
@@ -144,6 +144,8 @@ export default function CloudAndRainLane({
       : null;
   const availableStartIndex =
     minutelyAvailableIndices.size > 0 ? Math.min(...minutelyAvailableIndices) : null;
+  const availableEndIndex =
+    minutelyAvailableIndices.size > 0 ? Math.max(...minutelyAvailableIndices) + 1 : null;
 
   const canvasRef = useCanvas(
     width,
@@ -433,8 +435,7 @@ export default function CloudAndRainLane({
             const isMinutelyClickable =
               !minutelySelection &&
               availableStartIndex != null &&
-              index >= availableStartIndex &&
-              index < Math.min(data.length, availableStartIndex + MINUTELY_EXPANDED_SPAN) &&
+              minutelyAvailableIndices.has(index) &&
               !!onMinutelySelect;
             return (
               <div
@@ -461,7 +462,7 @@ export default function CloudAndRainLane({
                         style={{
                           width: `${layout.getRangeWidth(
                             availableStartIndex,
-                            Math.min(data.length, availableStartIndex + MINUTELY_EXPANDED_SPAN),
+                            Math.min(data.length, availableEndIndex ?? availableStartIndex + 1),
                           )}px`,
                         }}
                         aria-hidden="true"

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMinutelyPrecipitation } from '../services/qweather';
 import type { MinutelyPrecipitation, WeatherPoint } from '../types/weather';
+import { getMinutelyExpandedSpanForTimes } from '../services/minutelyExpansion';
 import { getWeatherPointTimeMs, HOUR_MS } from '../services/timelineTime';
 
 export type MinutelyPrecipitationStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -11,6 +12,7 @@ export interface MinutelyPrecipitationSelection {
   status: MinutelyPrecipitationStatus;
   data: MinutelyPrecipitation | null;
   error: string | null;
+  referenceTimeMs?: number;
 }
 
 export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number): Set<number> {
@@ -29,9 +31,11 @@ export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number):
   const current = data[currentIndex];
   if (current?.latitude == null || current.longitude == null) return eligible;
 
+  const currentMs = getWeatherPointTimeMs(current);
+  const expandedSpan = getMinutelyExpandedSpanForTimes(currentMs, nowMs);
+
   eligible.add(currentIndex);
   const next = data[currentIndex + 1];
-  const currentMs = getWeatherPointTimeMs(current);
   const nextMs = next ? getWeatherPointTimeMs(next) : null;
   if (
     next &&
@@ -46,7 +50,7 @@ export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number):
     eligible.add(currentIndex + 1);
   }
 
-  const third = data[currentIndex + 2];
+  const third = expandedSpan >= 3 ? data[currentIndex + 2] : null;
   const thirdMs = third ? getWeatherPointTimeMs(third) : null;
   if (
     next &&
@@ -116,12 +120,20 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
       controllerRef.current?.abort();
       const controller = new AbortController();
       controllerRef.current = controller;
-      setSelection({ index, item, status: 'loading', data: null, error: null });
+      const referenceTimeMs = nowMs;
+      setSelection({ index, item, status: 'loading', data: null, error: null, referenceTimeMs });
 
       fetchMinutelyPrecipitation(item.latitude, item.longitude, controller.signal)
         .then((result) => {
           if (controller.signal.aborted) return;
-          setSelection({ index, item, status: 'success', data: result, error: null });
+          setSelection({
+            index,
+            item,
+            status: 'success',
+            data: result,
+            error: null,
+            referenceTimeMs,
+          });
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
@@ -131,10 +143,11 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
             status: 'error',
             data: null,
             error: error instanceof Error ? error.message : '分钟级降水加载失败',
+            referenceTimeMs,
           });
         });
     },
-    [availableIndices, close, data, selection?.index],
+    [availableIndices, close, data, nowMs, selection?.index],
   );
 
   return { availableIndices, selection, select, close };
