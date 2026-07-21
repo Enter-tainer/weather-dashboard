@@ -3,6 +3,7 @@ import {
   createMinutelyChartHorizontalGeometry,
   formatMinutelyTime,
   getHourlyPrecipBarHeight,
+  getMinutelyPrecipAxisMax,
   getMinutelyEquivalentHourlyRate,
   getMinutelyPrecipBarHeight,
   getMinutelyTimeTickIndices,
@@ -47,6 +48,17 @@ describe('minutely precipitation chart', () => {
     expect(getHourlyPrecipBarHeight(6)).toBe(24);
     expect(getMinutelyPrecipBarHeight(1)).toBe(40);
     expect(getHourlyPrecipBarHeight(12)).toBe(40);
+  });
+
+  it('expands the minutely y-scale so heavy bursts retain different bar heights', () => {
+    const axisMax = getMinutelyPrecipAxisMax([1, 10]);
+    expect(axisMax).toBe(120);
+    expect(getMinutelyPrecipBarHeight(1, axisMax)).toBe(4);
+    expect(getMinutelyPrecipBarHeight(10, axisMax)).toBe(40);
+  });
+
+  it('keeps the standard 10 mm/h ceiling for ordinary minutely rain', () => {
+    expect(getMinutelyPrecipAxisMax([0, 0.1, 0.5])).toBe(10);
   });
 
   it('aligns time ticks to wall-clock hours and half-hours', () => {

@@ -76,15 +76,40 @@ export function createMinutelyChartHorizontalGeometry(
 }
 
 export function getHourlyPrecipBarHeight(precipMmPerHour: number): number {
-  return Math.min(PRECIP_BAR_MAX_HEIGHT, Math.max(0, precipMmPerHour) * PRECIP_BAR_PX_PER_MM_HOUR);
+  return getPrecipBarHeight(precipMmPerHour, PRECIP_AXIS_MAX_MM_HOUR);
 }
 
 export function getMinutelyEquivalentHourlyRate(precipMmPerFiveMinutes: number): number {
   return Math.max(0, precipMmPerFiveMinutes) * 12;
 }
 
-export function getMinutelyPrecipBarHeight(precipMmPerFiveMinutes: number): number {
-  return getHourlyPrecipBarHeight(getMinutelyEquivalentHourlyRate(precipMmPerFiveMinutes));
+/**
+ * Pick a linear minutely-chart ceiling which keeps the standard 0–10 mm/h scale for ordinary
+ * rain, but expands to the actual peak during heavy bursts instead of flattening every bar at
+ * 40px. Inputs are five-minute accumulation values in mm.
+ */
+export function getMinutelyPrecipAxisMax(precipitationMmPerFiveMinutes: readonly number[]): number {
+  const peakRate = precipitationMmPerFiveMinutes.reduce(
+    (peak, precip) => Math.max(peak, getMinutelyEquivalentHourlyRate(precip)),
+    0,
+  );
+  return Math.max(PRECIP_AXIS_MAX_MM_HOUR, peakRate);
+}
+
+export function getMinutelyPrecipBarHeight(
+  precipMmPerFiveMinutes: number,
+  axisMaxMmPerHour = PRECIP_AXIS_MAX_MM_HOUR,
+): number {
+  return getPrecipBarHeight(
+    getMinutelyEquivalentHourlyRate(precipMmPerFiveMinutes),
+    axisMaxMmPerHour,
+  );
+}
+
+function getPrecipBarHeight(rateMmPerHour: number, axisMaxMmPerHour: number): number {
+  const safeRate = Math.max(0, rateMmPerHour);
+  const safeAxisMax = Math.max(Number.EPSILON, axisMaxMmPerHour);
+  return Math.min(PRECIP_BAR_MAX_HEIGHT, (safeRate / safeAxisMax) * PRECIP_BAR_MAX_HEIGHT);
 }
 
 interface MinutelyClockParts {

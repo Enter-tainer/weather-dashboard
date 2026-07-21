@@ -5,6 +5,7 @@ import {
   createMinutelyChartHorizontalGeometry,
   formatMinutelyTime,
   getHourlyPrecipBarHeight,
+  getMinutelyPrecipAxisMax,
   getMinutelyPrecipBarHeight,
   getMinutelyTimeTickIndices,
   PRECIP_BAR_MAX_HEIGHT,
@@ -115,6 +116,10 @@ export default function CloudAndRainLane({
   const selectedEndIndex = selectedIndex == null ? null : selectedIndex + layout.expandedSpan;
   const minutelyPoints = minutelySelection?.data?.points ?? EMPTY_MINUTELY_POINTS;
   const minutelyPointCount = minutelyPoints.length;
+  const minutelyAxisMaxMmHour = useMemo(
+    () => getMinutelyPrecipAxisMax(minutelyPoints.map((point) => point.precip)),
+    [minutelyPoints],
+  );
   const minutelyTicks = useMemo(
     () =>
       getMinutelyTimeTickIndices(
@@ -264,7 +269,7 @@ export default function CloudAndRainLane({
               if (!point) continue;
               const centerX = chartX.getPointCenter(pointIndex);
               const barWidth = Math.max(2, Math.min(8, chartX.slotWidth - 2));
-              const barHeight = getMinutelyPrecipBarHeight(point.precip);
+              const barHeight = getMinutelyPrecipBarHeight(point.precip, minutelyAxisMaxMmHour);
 
               ctx.fillStyle = precipColor(
                 point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
@@ -315,12 +320,29 @@ export default function CloudAndRainLane({
       ctx.lineWidth = 0.75;
       ctx.globalAlpha = 0.28;
       ctx.strokeStyle = cssVar('--precip-prob-60', '#0277bd');
-      for (const band of PRECIP_INTENSITY_BANDS) {
-        const y = h - getHourlyPrecipBarHeight(band.maxRate) - 0.5;
+      const expandedLeft = selectedIndex == null ? null : layout.getColumnLeft(selectedIndex);
+      const expandedRight =
+        selectedIndex == null || selectedEndIndex == null
+          ? null
+          : layout.getTimePosition(selectedEndIndex);
+      const strokeGuide = (left: number, right: number, y: number) => {
+        if (right <= left) return;
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
         ctx.stroke();
+      };
+      for (const band of PRECIP_INTENSITY_BANDS) {
+        const hourlyY = h - getHourlyPrecipBarHeight(band.maxRate) - 0.5;
+        if (expandedLeft == null || expandedRight == null) {
+          strokeGuide(0, w, hourlyY);
+          continue;
+        }
+        strokeGuide(0, expandedLeft, hourlyY);
+        strokeGuide(expandedRight, w, hourlyY);
+        const minutelyY =
+          h - getMinutelyPrecipBarHeight(band.maxRate / 12, minutelyAxisMaxMmHour) - 0.5;
+        strokeGuide(expandedLeft, expandedRight, minutelyY);
       }
       ctx.restore();
 
@@ -361,6 +383,7 @@ export default function CloudAndRainLane({
       minutelyPoints,
       minutelySelection,
       minutelyPointCount,
+      minutelyAxisMaxMmHour,
       minutelyTicks,
       precipBarWidth,
       selectedIndex,
@@ -530,7 +553,9 @@ export default function CloudAndRainLane({
                       )} · ${point.precip.toFixed(2)} mm / 5min`}
                       style={{
                         left: `${minutelyLabelGeometry.getPointCenter(pointIndex)}px`,
-                        bottom: `${getMinutelyPrecipBarHeight(point.precip) + 2}px`,
+                        bottom: `${
+                          getMinutelyPrecipBarHeight(point.precip, minutelyAxisMaxMmHour) + 2
+                        }px`,
                         color: precipCssColor(
                           point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
                           1,
