@@ -97,7 +97,6 @@
   --sun-cloud-axis-line: rgba(120, 120, 120, 0.55);
   --sun-cloud-horizon: rgba(120, 90, 60, 0.55);
   --sun-cloud-sun-fill: #f6b24a;
-  --sun-cloud-ray: rgba(246, 178, 74, 0.78);
   --sun-cloud-sunlit: rgba(246, 140, 74, 0.5);
   --sun-cloud-sight: rgba(120, 200, 255, 0.7);
   --sun-cloud-shadow: rgba(18, 18, 40, 0.3);
@@ -251,7 +250,6 @@
   --sun-cloud-axis-line: rgba(170, 180, 175, 0.5);
   --sun-cloud-horizon: rgba(219, 155, 81, 0.55);
   --sun-cloud-sun-fill: #ffc863;
-  --sun-cloud-ray: rgba(255, 184, 72, 0.96);
   --sun-cloud-sunlit: rgba(255, 150, 90, 0.5);
   --sun-cloud-sight: rgba(120, 200, 255, 0.6);
   --sun-cloud-shadow: rgba(8, 10, 24, 0.42);

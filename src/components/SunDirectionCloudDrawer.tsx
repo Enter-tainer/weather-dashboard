@@ -30,6 +30,7 @@ import {
   colorWithAlpha,
   getTwilightPalette,
 } from '../services/twilightColor';
+import { rayleighStyleForRay } from '../services/rayleighScattering';
 import './Dashboard.css';
 
 const CANVAS_WIDTH = 540;
@@ -522,6 +523,7 @@ function drawCrossSection(
   ctx.lineCap = 'round';
   const strokeRayFan = () => {
     for (const ray of rays) {
+      ctx.strokeStyle = rayleighStyleForRay(ray.baseAltKm, sunAltDeg).cssColor;
       ctx.beginPath();
       for (let i = 0; i < ray.points.length; i++) {
         const p = ray.points[i]!;
@@ -536,7 +538,6 @@ function drawCrossSection(
       ctx.stroke();
     }
   };
-  ctx.strokeStyle = cssVar('--sun-cloud-ray', 'rgba(242, 142, 28, 0.94)');
   ctx.lineWidth = 1.8;
   strokeRayFan();
   ctx.restore();
