@@ -95,14 +95,11 @@ export default function PrecipitationProbLane({
               : 0;
           const showPrecipText =
             precipText &&
-            (index % labelInterval === 0 ||
+            (layout.isExpandedColumn(index) ||
+              index % labelInterval === 0 ||
               (precipitationPoint?.precipitation != null &&
                 precipitationPoint.precipitation >= 1.5));
-          const isMinutelyExpanded =
-            selectedIndex != null &&
-            selectedEndIndex != null &&
-            index >= selectedIndex &&
-            index < selectedEndIndex;
+          const isMinutelyExpanded = layout.isExpandedColumn(index);
 
           return (
             <div
@@ -161,21 +158,24 @@ export default function PrecipitationProbLane({
                   {precipText}
                 </span>
               )}
-              {compact && index % labelInterval === 0 && prob != null && text && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: '2px',
-                    fontSize: '10px',
-                    lineHeight: 1,
-                    color: probColor(prob),
-                    fontWeight: 'bold',
-                    zIndex: 1,
-                  }}
-                >
-                  {text}%
-                </span>
-              )}
+              {compact &&
+                (isMinutelyExpanded || index % labelInterval === 0) &&
+                prob != null &&
+                text && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '2px',
+                      fontSize: '10px',
+                      lineHeight: 1,
+                      color: probColor(prob),
+                      fontWeight: 'bold',
+                      zIndex: 1,
+                    }}
+                  >
+                    {text}%
+                  </span>
+                )}
             </div>
           );
         })}

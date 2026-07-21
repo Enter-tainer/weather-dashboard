@@ -98,7 +98,7 @@ export default function WindLane({
                   gap: '1px',
                 }}
               >
-                {index % compactLabelInterval === 0 && (
+                {(layout.isExpandedColumn(index) || index % compactLabelInterval === 0) && (
                   <>
                     <span
                       style={{
@@ -186,7 +186,7 @@ export default function WindLane({
                 alignItems: 'center',
               }}
             >
-              {index % fullLabelInterval === 0 && (
+              {(layout.isExpandedColumn(index) || index % fullLabelInterval === 0) && (
                 <>
                   <span
                     style={{

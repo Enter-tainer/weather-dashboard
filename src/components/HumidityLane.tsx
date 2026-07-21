@@ -24,7 +24,7 @@ export default function HumidityLane({ data }: HumidityLaneProps) {
               justifyContent: 'center',
             }}
           >
-            {index % 3 === 0 && item.humidity != null && (
+            {(layout.isExpandedColumn(index) || index % 3 === 0) && item.humidity != null && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span
                   style={{ fontWeight: 'bold', color: 'var(--precip-prob-60)', fontSize: '12px' }}

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { WeatherPoint } from '../types/weather';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { splitRunsAtExpandedColumns } from '../services/timelineLayout';
 
 const WEATHER_NAMES: Record<number, string> = {
   0: '晴',
@@ -286,7 +287,14 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
   const handleClose = useCallback(() => setActiveRun(null), []);
 
   const runs = useMemo(() => computeMergedRuns(data), [data]);
-  const overlayRefs = useMemo(() => runs.map(() => createRef<HTMLDivElement>()), [runs]);
+  const displayRuns = useMemo(
+    () => splitRunsAtExpandedColumns(runs, layout.isExpandedColumn),
+    [runs, layout],
+  );
+  const overlayRefs = useMemo(
+    () => displayRuns.map(() => createRef<HTMLDivElement>()),
+    [displayRuns],
+  );
 
   const cellInfo = useMemo(() => {
     const info = new Array<{ isStart: boolean; colorIdx: number } | undefined>(data.length);
@@ -324,7 +332,7 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
         })}
 
         {/* Overlay: render icons centered over each merged run */}
-        {runs.map((run, runIdx) => {
+        {displayRuns.map((run, runIdx) => {
           const overlayRef = overlayRefs[runIdx];
           if (!overlayRef) return null;
           if (run.code == null) return null;
@@ -340,6 +348,8 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
             <div
               key={`run-${runIdx}`}
               ref={overlayRef}
+              className="weather-run-overlay"
+              data-start-index={run.start}
               style={{
                 position: 'absolute',
                 left: leftPx,

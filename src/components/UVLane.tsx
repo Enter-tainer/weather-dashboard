@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { WeatherPoint } from '../types/weather';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { splitRunsAtExpandedColumns } from '../services/timelineLayout';
 import './Dashboard.css';
 
 interface UvRun {
@@ -43,6 +44,10 @@ function computeUvRuns(data: WeatherPoint[]): UvRun[] {
 export default function UVLane({ data }: UVLaneProps) {
   const layout = useTimelineLayout(data.length);
   const runs = useMemo(() => computeUvRuns(data), [data]);
+  const displayRuns = useMemo(
+    () => splitRunsAtExpandedColumns(runs, layout.isExpandedColumn),
+    [runs, layout],
+  );
 
   return (
     <div
@@ -60,7 +65,7 @@ export default function UVLane({ data }: UVLaneProps) {
         ))}
 
         {/* Overlay: one badge centered over each merged run */}
-        {runs.map((run, runIdx) => {
+        {displayRuns.map((run, runIdx) => {
           const rounded = run.rounded;
           const showText = rounded != null && rounded > 0;
           const leftPx = `${layout.getColumnLeft(run.start)}px`;
@@ -83,6 +88,7 @@ export default function UVLane({ data }: UVLaneProps) {
             >
               {showText && rounded != null && (
                 <span
+                  className="uv-run-value"
                   style={{
                     fontSize: '10px',
                     color: rounded <= 5 ? '#1d251f' : '#fff',

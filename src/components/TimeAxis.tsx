@@ -62,10 +62,10 @@ export default function TimeAxis({
   const eventLabelFontSize = '9px';
   const eventIconSize = 10;
   const showAggregateLabels = hoursPerColumn > 1;
-  const shouldShowHourLabel = (hour: number): boolean =>
-    showAggregateLabels || hour % hourLabelInterval === 0;
-  const shouldShowGridLine = (hour: number): boolean =>
-    showAggregateLabels || hour % hourLabelInterval === 0;
+  const shouldShowHourLabel = (hour: number, index: number): boolean =>
+    showAggregateLabels || layout.isExpandedColumn(index) || hour % hourLabelInterval === 0;
+  const shouldShowGridLine = (hour: number, index: number): boolean =>
+    showAggregateLabels || layout.isExpandedColumn(index) || hour % hourLabelInterval === 0;
   // Group data items by city block
   const cityGroups: CityGroup[] = [];
   let currentGroup: CityGroup | null = null;
@@ -204,7 +204,7 @@ export default function TimeAxis({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {shouldShowHourLabel(item.hour) ? item.hour : ''}
+                      {shouldShowHourLabel(item.hour, index) ? item.hour : ''}
                     </div>
                     <div
                       style={{
@@ -213,7 +213,7 @@ export default function TimeAxis({
                         top: '40px',
                         bottom: 0,
                         width: '1px',
-                        backgroundColor: shouldShowGridLine(item.hour)
+                        backgroundColor: shouldShowGridLine(item.hour, index)
                           ? 'var(--lane-border)'
                           : 'transparent',
                       }}

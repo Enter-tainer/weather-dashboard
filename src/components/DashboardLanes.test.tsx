@@ -175,6 +175,91 @@ describe('DashboardLaneStack', () => {
     expect(onMinutelySelect).toHaveBeenCalledWith(1);
   });
 
+  it('shows every sampled label inside the expanded detail region', () => {
+    const data = makeTimeline(5);
+    data.forEach((item, index) => {
+      item.uvIndex = 3;
+      item.weatherCode = 1;
+      item.precipitationProb = 10 + index;
+    });
+    const selectedItem = data[1];
+    if (!selectedItem) throw new Error('Missing selected test hour');
+
+    const { container } = render(
+      <DashboardLaneStack
+        data={data}
+        compactMode={false}
+        scales={SCALES}
+        switchInfo={{}}
+        minutelySelection={{
+          index: 1,
+          item: selectedItem,
+          status: 'loading',
+          data: null,
+          error: null,
+        }}
+      />,
+    );
+
+    const timeCells = [...container.querySelectorAll<HTMLElement>('.time-axis .lane-cell')];
+    expect(timeCells.map((cell) => cell.textContent?.trim())).toEqual(['0', '1', '2', '3', '']);
+
+    const windCells = [...container.querySelectorAll<HTMLElement>('.wind-lane .lane-cell')];
+    expect(windCells.map((cell) => Boolean(cell.textContent?.trim()))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
+
+    const probabilityCells = [
+      ...container.querySelectorAll<HTMLElement>('.precip-prob-lane .lane-cell'),
+    ];
+    expect(probabilityCells.map((cell) => cell.textContent?.trim())).toEqual([
+      '10%',
+      '11%',
+      '12%',
+      '13%',
+      '',
+    ]);
+    expect(container.querySelectorAll('.uv-run-value')).toHaveLength(5);
+    expect(container.querySelectorAll('.weather-run-overlay')).toHaveLength(5);
+  });
+
+  it('shows each compact temperature label inside the expanded detail region', () => {
+    const data = makeTimeline(5);
+    const selectedItem = data[1];
+    if (!selectedItem) throw new Error('Missing selected test hour');
+
+    const { container } = render(
+      <DashboardLaneStack
+        data={data}
+        compactMode
+        scales={SCALES}
+        switchInfo={{}}
+        minutelySelection={{
+          index: 1,
+          item: selectedItem,
+          status: 'loading',
+          data: null,
+          error: null,
+        }}
+      />,
+    );
+
+    const temperatureCells = [
+      ...container.querySelectorAll<HTMLElement>('.temp-text-lane .lane-cell'),
+    ];
+    expect(temperatureCells.map((cell) => Boolean(cell.textContent?.trim()))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
+  });
+
   it('keeps hourly precipitation amounts visible while minutely precipitation is expanded', () => {
     const data = makeTimeline(4);
     const selectedItem = data[1];

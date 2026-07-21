@@ -197,7 +197,8 @@ export default function TemperatureEnsembleLane({
       ctx.textAlign = 'center';
       ctx.lineWidth = 2.5;
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      for (let i = 0; i < data.length; i += labelInterval) {
+      for (let i = 0; i < data.length; i++) {
+        if (!layout.isExpandedColumn(i) && i % labelInterval !== 0) continue;
         const item = data[i];
         if (!item || item.temperature == null) continue;
         const temp = item.temperature;

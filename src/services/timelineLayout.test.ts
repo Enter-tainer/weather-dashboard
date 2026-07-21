@@ -6,6 +6,7 @@ import {
   getHourLeft,
   getTimelineHourWidth,
   getTimelineWidth,
+  splitRunsAtExpandedColumns,
 } from './timelineLayout';
 
 describe('timeline layout helpers', () => {
@@ -21,6 +22,21 @@ describe('timeline layout helpers', () => {
   it('computes left and center positions from an explicit hour width', () => {
     expect(getHourLeft(5, 12)).toBe(60);
     expect(getHourCenter(5, 12)).toBe(66);
+  });
+});
+
+describe('splitRunsAtExpandedColumns', () => {
+  it('keeps normal cells merged and creates one run per expanded column', () => {
+    const layout = createTimelineLayout(6, 20, 2, 120, 3);
+    const runs = [{ code: 1, start: 0, length: 6 }];
+
+    expect(splitRunsAtExpandedColumns(runs, layout.isExpandedColumn)).toEqual([
+      { code: 1, start: 0, length: 2 },
+      { code: 1, start: 2, length: 1 },
+      { code: 1, start: 3, length: 1 },
+      { code: 1, start: 4, length: 1 },
+      { code: 1, start: 5, length: 1 },
+    ]);
   });
 });
 
@@ -54,6 +70,7 @@ describe('createTimelineLayout', () => {
 
     expect(layout.totalWidth).toBe(160);
     expect(layout.expandedSpan).toBe(2);
+    expect([0, 1, 2, 3].map(layout.isExpandedColumn)).toEqual([false, true, true, false]);
     expect([0, 1, 2, 3].map(layout.getColumnWidth)).toEqual([20, 60, 60, 20]);
     expect([0, 1, 2, 3].map(layout.getColumnLeft)).toEqual([0, 20, 80, 140]);
     expect(layout.getRangeWidth(1, 3)).toBe(120);

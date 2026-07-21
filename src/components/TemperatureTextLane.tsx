@@ -23,7 +23,7 @@ export default function TemperatureTextLane({ data }: TemperatureTextLaneProps) 
               justifyContent: 'center',
             }}
           >
-            {index % labelInterval === 0 && (
+            {(layout.isExpandedColumn(index) || index % labelInterval === 0) && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span
                   style={{ fontWeight: 'bold', color: 'var(--color-temp-line)', fontSize: '12px' }}

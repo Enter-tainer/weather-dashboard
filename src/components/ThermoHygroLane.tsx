@@ -432,7 +432,8 @@ export default function ThermoHygroLane({
 
       // ── Top labels: temperature + apparent temp (every 3h) ──
       ctx.textAlign = 'center';
-      for (let i = 0; i < data.length; i += labelInterval) {
+      for (let i = 0; i < data.length; i++) {
+        if (!layout.isExpandedColumn(i) && i % labelInterval !== 0) continue;
         const d = data[i];
         if (!d || d.temperature == null) continue;
         const cx = layout.getColumnCenter(i);
@@ -459,7 +460,8 @@ export default function ThermoHygroLane({
       // ── Bottom labels: humidity every 3h ──
       ctx.font = '8px system-ui';
       ctx.textAlign = 'center';
-      for (let i = 0; i < data.length; i += labelInterval) {
+      for (let i = 0; i < data.length; i++) {
+        if (!layout.isExpandedColumn(i) && i % labelInterval !== 0) continue;
         const d = data[i];
         if (!d || d.humidity == null) continue;
         const cx = layout.getColumnCenter(i);

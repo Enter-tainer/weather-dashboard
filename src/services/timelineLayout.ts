@@ -11,6 +11,7 @@ export interface TimelineLayout {
   expandedSpan: number;
   expandedWidth: number;
   totalWidth: number;
+  isExpandedColumn: (index: number) => boolean;
   getColumnWidth: (index: number) => number;
   getColumnLeft: (index: number) => number;
   getColumnCenter: (index: number) => number;
@@ -34,6 +35,33 @@ export function getHourLeft(index: number, hourWidth = DEFAULT_HOUR_WIDTH): numb
 
 export function getHourCenter(index: number, hourWidth = DEFAULT_HOUR_WIDTH): number {
   return getHourLeft(index, hourWidth) + hourWidth / 2;
+}
+
+/** Keeps merged runs compact outside the detail region and splits each expanded hour into a cell. */
+export function splitRunsAtExpandedColumns<T extends { start: number; length: number }>(
+  runs: T[],
+  isExpandedColumn: (index: number) => boolean,
+): T[] {
+  const splitRuns: T[] = [];
+
+  for (const run of runs) {
+    const end = run.start + run.length;
+    let index = run.start;
+
+    while (index < end) {
+      const start = index;
+      if (isExpandedColumn(index)) {
+        splitRuns.push({ ...run, start, length: 1 });
+        index++;
+        continue;
+      }
+
+      while (index < end && !isExpandedColumn(index)) index++;
+      splitRuns.push({ ...run, start, length: index - start });
+    }
+  }
+
+  return splitRuns;
 }
 
 export function createTimelineLayout(
@@ -61,13 +89,13 @@ export function createTimelineLayout(
     activeExpandedIndex == null ? 0 : safeExpandedWidth - hourWidth * safeExpandedSpan;
   const totalWidth = safeLength * hourWidth + extraWidth;
 
-  const getColumnWidth = (index: number): number =>
+  const isExpandedColumn = (index: number): boolean =>
     activeExpandedIndex != null &&
     expandedEndIndex != null &&
     index >= activeExpandedIndex &&
-    index < expandedEndIndex
-      ? expandedColumnWidth
-      : hourWidth;
+    index < expandedEndIndex;
+  const getColumnWidth = (index: number): number =>
+    isExpandedColumn(index) ? expandedColumnWidth : hourWidth;
   const getColumnLeft = (index: number): number => {
     const safeIndex = Math.max(0, index);
     if (
@@ -121,6 +149,7 @@ export function createTimelineLayout(
     expandedSpan: safeExpandedSpan,
     expandedWidth: safeExpandedWidth,
     totalWidth,
+    isExpandedColumn,
     getColumnWidth,
     getColumnLeft,
     getColumnCenter,
