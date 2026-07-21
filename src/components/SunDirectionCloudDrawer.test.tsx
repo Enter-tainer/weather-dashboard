@@ -5,6 +5,7 @@ import type { WeatherPoint } from '../types/weather';
 import type { SunDirectionInfo } from '../services/sunDirection';
 import type { SunCloudSectionState } from '../hooks/useSunCloudSection';
 import type { CanvasDraw } from '../hooks/useCanvas';
+import { bulgeKm } from '../services/sunRayGeometry';
 import SunDirectionCloudDrawer from './SunDirectionCloudDrawer';
 
 const { useCanvasMock } = vi.hoisted(() => ({
@@ -119,6 +120,15 @@ describe('SunDirectionCloudDrawer', () => {
     paint?.(ctx, 540, 410);
     expect(fillRect).toHaveBeenCalled();
     expect(arc).toHaveBeenCalled();
+    const skyBackground = fillRect.mock.calls.find(
+      ([x, y, width]) => x === 50 && y === 12 && width === 440,
+    );
+    const skyHeight = Number(skyBackground?.[3]);
+    expect(skyHeight).toBeGreaterThan(160);
+    const groundY = 12 + skyHeight;
+    const pxPerKm = skyHeight / 11;
+    const farGroundY = groundY + bulgeKm(300) * pxPerKm;
+    expect(386 - farGroundY).toBeCloseTo((386 - 12) * 0.25);
   });
 
   it('draws the civil-twilight scale beside the time axis without covering the cloud plot', () => {
@@ -134,13 +144,12 @@ describe('SunDirectionCloudDrawer', () => {
     const twilightCanvas = makeCanvasContext();
     twilightPaint(twilightCanvas.ctx, 540, 410);
     expect(twilightCanvas.createLinearGradient).toHaveBeenCalledTimes(1);
-    expect(twilightCanvas.addColorStop).toHaveBeenCalledTimes(4);
-    expect(twilightCanvas.fillRect.mock.calls).toContainEqual([
-      38,
-      expect.any(Number),
-      6,
-      expect.any(Number),
-    ]);
+    expect(twilightCanvas.addColorStop).toHaveBeenCalledTimes(5);
+    const twilightLane = twilightCanvas.fillRect.mock.calls.find(
+      ([x, , width]) => x === 38 && width === 6,
+    );
+    expect(twilightLane?.[1]).toBeLessThan(30);
+    expect(Number(twilightLane?.[1]) + Number(twilightLane?.[3])).toBeGreaterThan(650);
     expect(
       twilightCanvas.fillRect.mock.calls.some(
         ([x, , width]) =>
@@ -158,8 +167,6 @@ describe('SunDirectionCloudDrawer', () => {
         onClose={onClose}
       />,
     );
-    expect(screen.getByText('日落方向')).toBeTruthy();
-    expect(screen.getByText('本站位置')).toBeTruthy();
     const sunsetPaint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
     const sunsetCanvas = makeCanvasContext();
     sunsetPaint(sunsetCanvas.ctx, 540, 410);
@@ -182,8 +189,6 @@ describe('SunDirectionCloudDrawer', () => {
         onClose={onClose}
       />,
     );
-    expect(screen.getByText('本站位置')).toBeTruthy();
-    expect(screen.getByText('日出方向')).toBeTruthy();
     const sunrisePaint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
     const sunriseCanvas = makeCanvasContext();
     sunrisePaint(sunriseCanvas.ctx, 540, 410);
@@ -206,6 +211,7 @@ describe('SunDirectionCloudDrawer', () => {
     const { ctx, fillText } = makeCanvasContext();
     paint(ctx, 540, 410);
     expect(fillText.mock.calls.some((call) => call[0] === '19:43')).toBe(true);
+    expect(fillText.mock.calls.some((call) => call[0] === '300km')).toBe(false);
     expect(fillText.mock.calls.some((call) => call[0] === '地球')).toBe(true);
     expect(fillText.mock.calls.some((call) => call[0] === '本站')).toBe(true);
   });
@@ -223,6 +229,43 @@ describe('SunDirectionCloudDrawer', () => {
     expect(screen.getByText(/Beijing/)).toBeTruthy();
     expect(screen.getByText(/方位 300°/)).toBeTruthy();
     expect(screen.getByText(/太阳高度 -0.8°/)).toBeTruthy();
+  });
+
+  it('keeps the sun under the pointer and draggable below the cloud frame', () => {
+    const { container } = render(
+      <SunDirectionCloudDrawer
+        origin={makeOrigin()}
+        direction={DIRECTION}
+        sectionState={successState}
+        onClose={onClose}
+      />,
+    );
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('Missing sun cross-section canvas');
+    expect(canvas.height).toBeGreaterThan(680);
+    expect(canvas.height).toBeLessThan(740);
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 540,
+      bottom: canvas.height,
+      left: 0,
+      width: 540,
+      height: canvas.height,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.pointerDown(canvas, { clientY: 500, pointerId: 1 });
+    const draggedPaint = useCanvasMock.mock.calls.at(-1)?.[2] as CanvasDraw;
+    const draggedCanvas = makeCanvasContext();
+    draggedPaint(draggedCanvas.ctx, 540, canvas.height);
+    const draggedSun = draggedCanvas.arc.mock.calls.find((call) => call[2] === 7);
+    expect(draggedSun?.[1]).toBeCloseTo(500);
+
+    fireEvent.pointerMove(canvas, { clientY: canvas.height, pointerId: 1 });
+    expect(screen.getByText(/太阳高度 -6.0°/)).toBeTruthy();
+    fireEvent.pointerUp(canvas, { clientY: canvas.height, pointerId: 1 });
   });
 
   it('calls onClose on the X button', () => {

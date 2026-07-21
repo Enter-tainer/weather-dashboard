@@ -1425,14 +1425,6 @@
   height: auto;
 }
 
-.sun-cloud-axis-caption {
-  display: flex;
-  justify-content: space-between;
-  padding: 2px 50px 0;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
 .sun-cloud-hint {
   display: flex;
   align-items: center;

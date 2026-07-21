@@ -92,9 +92,9 @@ interface PlotLayout {
   pxPerKm: number;
 }
 
-const BASE_AXIS_MIN_ALT_KM = -8; // includes the ~7 km ground sag at 300 km
 const BASE_AXIS_MAX_ALT_KM = 10; // cloud data tops out at 10 km
-const SUN_HANDLE_ALT_MARGIN_KM = 1;
+const SUN_HANDLE_ALT_MARGIN_KM = 0.25;
+const FAR_EARTH_HEIGHT_FRACTION = 0.25;
 
 function makeLayout(w: number, h: number, eventType: SunEventType): PlotLayout {
   // Both sides need room: altitude is labelled at the observer, time at the sun.
@@ -111,27 +111,25 @@ function makeLayout(w: number, h: number, eventType: SunEventType): PlotLayout {
   const maxDist = SUN_SECTION_DISTANCES_KM[SUN_SECTION_DISTANCES_KM.length - 1] ?? 300;
   const originDist = eventType === 'sunset' ? maxDist : 0;
   const farDist = eventType === 'sunset' ? 0 : maxDist;
-  // Expand the actual tangent-plane altitude range far enough to contain the sun at both drag
-  // limits. Rounding outward leaves roughly 1 km around the outer rays instead of merely adding
-  // blank canvas padding or pinning the handle to an unrelated screen position.
-  const minSunTpaKm = maxDist * Math.tan((MIN_SUN_ALT_DEG * Math.PI) / 180);
+  // Keep enough headroom for the +2° sun, but do not expand the underground range to contain the
+  // −6° sun. Doing so would require ~33 km below the observer and squeeze the cloud section into
+  // a thin strip. A deep-twilight sun may therefore move below the frame while its time remains
+  // available on the independent UI rail.
   const maxSunTpaKm = maxDist * Math.tan((MAX_SUN_ALT_DEG * Math.PI) / 180);
-  const minAltKm = Math.min(
-    BASE_AXIS_MIN_ALT_KM,
-    Math.floor(minSunTpaKm - SUN_HANDLE_ALT_MARGIN_KM),
-  );
   const maxAltKm = Math.max(
     BASE_AXIS_MAX_ALT_KM,
     Math.ceil(maxSunTpaKm + SUN_HANDLE_ALT_MARGIN_KM),
   );
-  // Reserve a proportional share of the vertical span for the below-ground band so negative
-  // altitudes have real room (not zero). The 0 km line sits at plotTop + aboveSpan.
   const plotH = plotBottom - plotTop;
-  const aboveSpan = (plotH * maxAltKm) / (maxAltKm - minAltKm);
+  // Keep a quarter-height earth band even at 300 km. Besides making the section read more like a
+  // cutaway, the slightly smaller physical scale shortens the below-frame twilight track enough
+  // to fit comfortably in a phone drawer while preserving true sun/pointer coordinates.
+  const farGroundSagKm = bulgeKm(maxDist);
+  const farGroundY = plotBottom - plotH * FAR_EARTH_HEIGHT_FRACTION;
+  const pxPerKm = (farGroundY - plotTop) / (maxAltKm + farGroundSagKm);
+  const aboveSpan = maxAltKm * pxPerKm;
   const groundY = plotTop + aboveSpan;
-  // px-per-km for the above-ground axis (linear), used to draw rays as straight lines in
-  // altitude-vs-distance space despite the non-linear display axis.
-  const pxPerKm = aboveSpan / maxAltKm;
+  const minAltKm = (groundY - plotBottom) / pxPerKm;
   return {
     plotLeft,
     plotRight,
@@ -173,6 +171,11 @@ function groundYAt(layout: PlotLayout, distanceKm: number): number {
 function sunAltitudeToY(layout: PlotLayout, altitudeDeg: number): number {
   const tangentPlaneKm = layout.maxDist * Math.tan((altitudeDeg * Math.PI) / 180);
   return altKmToY(layout, tangentPlaneKm);
+}
+
+function canvasHeightForSunTrack(layout: PlotLayout): number {
+  const lowestSunY = sunAltitudeToY(layout, MIN_SUN_ALT_DEG);
+  return Math.ceil(lowestSunY + SUN_RAY_OUTER_RADIUS_PX + 24);
 }
 
 interface SunTimeTick {
@@ -420,17 +423,17 @@ function drawCrossSection(
     }
   }
 
-  // Distance axis: tick labels with "km" unit, drawn in the bottom padding (outside the plot)
-  // so they don't overlap the cloud plot. The last tick carries the unit.
+  // Distance labels live in the bottom padding. Leave the far 300 km endpoint unlabeled: the
+  // cross-section extent is already apparent, and omitting it keeps the sun-side corner clear.
   ctx.fillStyle = labelMuted;
   ctx.font = '9px system-ui, sans-serif';
   ctx.textBaseline = 'top';
   ctx.textAlign = 'center';
   const distTicks = [0, 50, 100, 150, 200, 250, 300].filter((d) => d <= layout.maxDist);
   const labelY = plotBottom + 4;
-  distTicks.forEach((d, i) => {
-    const isLast = i === distTicks.length - 1;
-    ctx.fillText(isLast ? `${d}km` : `${d}`, distToX(layout, d), labelY);
+  distTicks.forEach((d) => {
+    if (d === layout.maxDist) return;
+    ctx.fillText(`${d}`, distToX(layout, d), labelY);
   });
   // Short tick marks at the bottom edge.
   ctx.strokeStyle = gridLine;
@@ -443,8 +446,9 @@ function drawCrossSection(
     ctx.stroke();
   }
 
-  // Time is the natural vertical coordinate of the draggable sun. Draw a clock scale on the sun
-  // side and keep sparse labels when the local solar motion would otherwise make them overlap.
+  // Keep the time rail on the same physical Y scale as the sun. It intentionally continues below
+  // the cloud plot so the sun, the selected time, and civil-twilight colour remain visible after
+  // the sun leaves the cross-section frame.
   const sunOnLeft = isSunset;
   const timeAxisX = sunOnLeft ? plotLeft : plotRight;
   const timeTickDirection = sunOnLeft ? -1 : 1;
@@ -452,8 +456,8 @@ function drawCrossSection(
   const currentSunY = sunAltitudeToY(layout, sunAltDeg);
   const timeAxisTop = sunAltitudeToY(layout, MAX_SUN_ALT_DEG);
   const timeAxisBottom = sunAltitudeToY(layout, MIN_SUN_ALT_DEG);
-  const twilightTop = sunAltitudeToY(layout, 0);
-  const twilightBottom = sunAltitudeToY(layout, MIN_SUN_ALT_DEG);
+  const twilightTop = timeAxisTop;
+  const twilightBottom = timeAxisBottom;
   const twilightLaneWidth = 6;
   const twilightLaneGap = 6;
   const twilightLaneX = sunOnLeft
@@ -461,8 +465,8 @@ function drawCrossSection(
     : timeAxisX + twilightLaneGap;
   const twilightPalette = getTwilightPalette();
   const twilightGradient = ctx.createLinearGradient(0, twilightTop, 0, twilightBottom);
-  for (const altitudeDeg of [0, -2, -4, MIN_SUN_ALT_DEG]) {
-    const position = Math.abs(altitudeDeg) / Math.abs(MIN_SUN_ALT_DEG);
+  for (const altitudeDeg of [MAX_SUN_ALT_DEG, 0, -2, -4, MIN_SUN_ALT_DEG]) {
+    const position = (MAX_SUN_ALT_DEG - altitudeDeg) / (MAX_SUN_ALT_DEG - MIN_SUN_ALT_DEG);
     twilightGradient.addColorStop(
       position,
       colorWithAlpha(altitudeToTwilightColor(altitudeDeg, twilightPalette), 0.82),
@@ -489,8 +493,8 @@ function drawCrossSection(
     .sort((a, b) => a.y - b.y);
   for (const tick of sortedTimeTicks) {
     if (
-      tick.y < plotTop + 6 ||
-      tick.y > plotBottom - 6 ||
+      tick.y < timeAxisTop + 6 ||
+      tick.y > timeAxisBottom - 6 ||
       tick.y - previousLabelY < TIME_TICK_MIN_GAP_PX ||
       Math.abs(tick.y - currentSunY) < 14
     ) {
@@ -537,12 +541,12 @@ function drawCrossSection(
   strokeRayFan();
   ctx.restore();
 
-  // --- Draggable sun handle at the sun end of the axis ---
+  // --- Physical sun at the sun end of the cross-section ---
   // α is the angle between the observer's local horizon (tangent to earth at d=0) and the
   // sun→observer line. The sun is at infinity in direction α, so the ray through the observer's
   // eye (d=0, h=0) has slope tan(α) in the tangent plane. At the far end (d=maxDist) its tangent-
-  // plane altitude is maxDist·tan(α) — that is where the handle sits on the TPA axis, and dragging
-  // it vertically inverts to α. The expanded axis keeps this physical position visible.
+  // plane altitude is maxDist·tan(α). Deep below-horizon positions intentionally fall outside the
+  // frame instead of forcing the underground area to consume most of the chart.
   const sunX = layout.farDist === 0 ? plotLeft : plotRight;
   const sunY = currentSunY;
   ctx.fillStyle = sunFill;
@@ -565,17 +569,14 @@ function drawCrossSection(
     ctx.stroke();
   }
 
-  // Highlight the selected clock time beside the sun; this moves with the handle while dragging.
+  // Keep the selected time level with the sun along the extended physical rail.
   const activeTimeLabel = formatLocalTime(activeTimeMs, origin);
   const timeBadgeWidth = 34;
   const timeBadgeHeight = 16;
   const timeBadgeX = sunOnLeft
     ? timeAxisX - SUN_RAY_OUTER_RADIUS_PX - 3 - timeBadgeWidth
     : timeAxisX + SUN_RAY_OUTER_RADIUS_PX + 3;
-  const timeBadgeY = Math.min(
-    plotBottom - timeBadgeHeight,
-    Math.max(plotTop, sunY - timeBadgeHeight / 2),
-  );
+  const timeBadgeY = Math.min(h - timeBadgeHeight, Math.max(0, currentSunY - timeBadgeHeight / 2));
   ctx.fillStyle = cssVar('--sun-cloud-time-label-bg', '#b85c16');
   ctx.fillRect(timeBadgeX, timeBadgeY, timeBadgeWidth, timeBadgeHeight);
   ctx.fillStyle = cssVar('--sun-cloud-time-label-text', '#fff');
@@ -626,6 +627,8 @@ export default function SunDirectionCloudDrawer({
   const drawerRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const draggingRef = useRef(false);
+  const dragClientYRef = useRef<number | null>(null);
+  const autoScrollFrameRef = useRef<number | null>(null);
 
   // Sun altitude in degrees — the single dragged parameter. Start at the event altitude (≈0°).
   const [sunAltDeg, setSunAltDeg] = useState(direction.altitudeDeg);
@@ -634,10 +637,13 @@ export default function SunDirectionCloudDrawer({
 
   // Give useCanvas the real renderer so its resize / focus / theme redraws repaint the chart
   // after resetting the canvas bitmap dimensions.
+  const plotLayout = makeLayout(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
+  const canvasHeight = canvasHeightForSunTrack(plotLayout);
+
   const paintCanvas = useCallback(
     (ctx: CanvasRenderingContext2D, width: number, height: number) => {
       if (!sectionState.data) return;
-      const layout = makeLayout(width, height, direction.eventType);
+      const layout = makeLayout(width, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
       drawCrossSection(
         ctx,
         width,
@@ -653,7 +659,7 @@ export default function SunDirectionCloudDrawer({
     },
     [sectionState.data, sunAltDeg, direction, origin, activeTimeMs],
   );
-  const canvasRef = useCanvas(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, paintCanvas, [
+  const canvasRef = useCanvas(CANVAS_WIDTH, canvasHeight, paintCanvas, [
     sectionState.data,
     sunAltDeg,
     direction.eventType,
@@ -706,10 +712,9 @@ export default function SunDirectionCloudDrawer({
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const y = ((clientY - rect.top) / rect.height) * SUN_CLOUD_PLOT_HEIGHT;
+      if (rect.height <= 0) return;
+      const y = ((clientY - rect.top) / rect.height) * canvasHeight;
       const layout = makeLayout(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
-      // Invert the sun-handle mapping: the dragged Y is the sun's tangent-plane altitude at the
-      // far end; α = atan(TPA / maxDist).
       const sunTpaKm = (layout.groundY - y) / layout.pxPerKm;
       const alphaDeg = (Math.atan(sunTpaKm / layout.maxDist) * 180) / Math.PI;
       const clamped = Math.min(Math.max(alphaDeg, MIN_SUN_ALT_DEG), MAX_SUN_ALT_DEG);
@@ -718,20 +723,64 @@ export default function SunDirectionCloudDrawer({
       const ms = findTimeForAltitude(origin, clamped, direction.eventTrueMs);
       setDragTimeMs(ms != null ? clampToEventWindow(ms, direction.eventTrueMs) : null);
     },
-    [canvasRef, direction.eventType, direction.eventTrueMs, origin],
+    [canvasRef, canvasHeight, direction.eventType, direction.eventTrueMs, origin],
   );
+
+  const stopDragAutoScroll = useCallback(() => {
+    if (autoScrollFrameRef.current != null) {
+      window.cancelAnimationFrame(autoScrollFrameRef.current);
+      autoScrollFrameRef.current = null;
+    }
+  }, []);
+
+  const startDragAutoScroll = useCallback(() => {
+    if (autoScrollFrameRef.current != null) return;
+    const tick = () => {
+      const drawer = drawerRef.current;
+      const clientY = dragClientYRef.current;
+      if (!draggingRef.current || !drawer || clientY == null) {
+        autoScrollFrameRef.current = null;
+        return;
+      }
+
+      const rect = drawer.getBoundingClientRect();
+      const edgeSize = 52;
+      let scrollDelta = 0;
+      if (rect.height > 0 && clientY > rect.bottom - edgeSize) {
+        scrollDelta = Math.min(18, (clientY - (rect.bottom - edgeSize)) * 0.45);
+      } else if (rect.height > 0 && clientY < rect.top + edgeSize) {
+        scrollDelta = -Math.min(18, (rect.top + edgeSize - clientY) * 0.45);
+      }
+
+      if (scrollDelta !== 0) {
+        const previousScrollTop = drawer.scrollTop;
+        drawer.scrollTop += scrollDelta;
+        if (drawer.scrollTop !== previousScrollTop) updateSunFromPointer(clientY);
+      }
+      autoScrollFrameRef.current = window.requestAnimationFrame(tick);
+    };
+    autoScrollFrameRef.current = window.requestAnimationFrame(tick);
+  }, [updateSunFromPointer]);
+
+  useEffect(() => stopDragAutoScroll, [stopDragAutoScroll]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     draggingRef.current = true;
+    dragClientYRef.current = e.clientY;
     (e.target as HTMLCanvasElement).setPointerCapture?.(e.pointerId);
     updateSunFromPointer(e.clientY);
+    startDragAutoScroll();
   };
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!draggingRef.current) return;
+    dragClientYRef.current = e.clientY;
     updateSunFromPointer(e.clientY);
+    startDragAutoScroll();
   };
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     draggingRef.current = false;
+    dragClientYRef.current = null;
+    stopDragAutoScroll();
     (e.target as HTMLCanvasElement).releasePointerCapture?.(e.pointerId);
   };
 
@@ -742,7 +791,6 @@ export default function SunDirectionCloudDrawer({
     direction.bearingDeg,
   )}° ${bearingLabel(direction.bearingDeg)} · 太阳高度 ${sunAltDeg.toFixed(1)}°`;
 
-  const isSunset = direction.eventType === 'sunset';
   return (
     <div
       className="sounding-backdrop sun-cloud-backdrop"
@@ -792,38 +840,24 @@ export default function SunDirectionCloudDrawer({
             <div className="sounding-empty sun-cloud-status">缺少经纬度，无法生成剖面</div>
           )}
           {status === 'success' && data && (
-            <>
-              <div className="sun-cloud-canvas-wrap">
-                <canvas
-                  ref={canvasRef}
-                  width={CANVAS_WIDTH}
-                  height={SUN_CLOUD_PLOT_HEIGHT}
-                  onPointerDown={onPointerDown}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  style={{ touchAction: 'none', cursor: 'ns-resize' }}
-                />
-                <div className="sun-cloud-axis-caption">
-                  {isSunset ? (
-                    <>
-                      <span>日落方向</span>
-                      <span>本站位置</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>本站位置</span>
-                      <span>日出方向</span>
-                    </>
-                  )}
-                </div>
-                <div className="sun-cloud-hint">
-                  <MoveVertical size={14} aria-hidden="true" />
-                  <span>
-                    <strong>上下拖动太阳</strong>，查看不同时刻的光路与云层
-                  </span>
-                </div>
+            <div className="sun-cloud-canvas-wrap">
+              <div className="sun-cloud-hint">
+                <MoveVertical size={14} aria-hidden="true" />
+                <span>
+                  <strong>在图上上下拖动</strong>，调整时刻并查看光路与云层
+                </span>
               </div>
-            </>
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_WIDTH}
+                height={canvasHeight}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+                style={{ touchAction: 'none', cursor: 'ns-resize' }}
+              />
+            </div>
           )}
         </div>
       </aside>
