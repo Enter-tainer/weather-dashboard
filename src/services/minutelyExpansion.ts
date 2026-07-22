@@ -1,4 +1,5 @@
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
+import type { WeatherPoint } from '../types/weather';
 import { getWeatherPointTimeMs, HOUR_MS } from './timelineTime';
 
 export const MINUTELY_EXPANDED_MIN_SPAN = 2;
@@ -31,7 +32,41 @@ export function getMinutelyExpandedSpanForTimes(
   if (coverageEndMs == null) return MINUTELY_EXPANDED_MAX_SPAN;
 
   const requiredSpan = Math.ceil((coverageEndMs - originMs) / HOUR_MS);
-  return Math.max(MINUTELY_EXPANDED_MIN_SPAN, Math.min(MINUTELY_EXPANDED_MAX_SPAN, requiredSpan));
+  const minimumSpan = Number.isFinite(lastPointMs) ? 1 : MINUTELY_EXPANDED_MIN_SPAN;
+  return Math.max(minimumSpan, Math.min(MINUTELY_EXPANDED_MAX_SPAN, requiredSpan));
+}
+
+/**
+ * Move a loaded selection to the hour containing its first returned sample. Around
+ * an hour boundary QWeather can return its first sample in the following hour;
+ * keeping the clicked/current hour as the expansion origin would widen an empty
+ * column before the actual two-hour data range.
+ */
+export function alignMinutelySelectionToData(
+  selection: MinutelyPrecipitationSelection,
+  data: readonly WeatherPoint[],
+): MinutelyPrecipitationSelection {
+  const firstPointMs = (selection.data?.points ?? []).reduce((earliest, point) => {
+    const pointMs = Date.parse(point.fxTime);
+    return Number.isFinite(pointMs) ? Math.min(earliest, pointMs) : earliest;
+  }, Number.POSITIVE_INFINITY);
+  if (!Number.isFinite(firstPointMs)) return selection;
+
+  const selectedCity = selection.item.cityName;
+  const dataIndex = data.findIndex((item, index) => {
+    if (item.cityName !== selectedCity) return false;
+    const startMs = getWeatherPointTimeMs(item);
+    if (startMs == null) return false;
+
+    const next = data[index + 1];
+    const nextMs = next?.cityName === item.cityName ? getWeatherPointTimeMs(next) : null;
+    const endMs = nextMs != null && nextMs > startMs ? nextMs : startMs + HOUR_MS;
+    return firstPointMs >= startMs && firstPointMs < endMs;
+  });
+  const item = data[dataIndex];
+  return dataIndex >= 0 && item && dataIndex !== selection.index
+    ? { ...selection, index: dataIndex, item }
+    : selection;
 }
 
 export function getMinutelySelectionExpandedSpan(

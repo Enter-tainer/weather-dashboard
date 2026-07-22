@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMinutelyPrecipitation } from '../services/qweather';
 import type { MinutelyPrecipitation, WeatherPoint } from '../types/weather';
-import { getMinutelyExpandedSpanForTimes } from '../services/minutelyExpansion';
+import {
+  alignMinutelySelectionToData,
+  getMinutelyExpandedSpanForTimes,
+} from '../services/minutelyExpansion';
 import { getWeatherPointTimeMs, HOUR_MS } from '../services/timelineTime';
 
 export type MinutelyPrecipitationStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -126,14 +129,19 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
       fetchMinutelyPrecipitation(item.latitude, item.longitude, controller.signal)
         .then((result) => {
           if (controller.signal.aborted) return;
-          setSelection({
-            index,
-            item,
-            status: 'success',
-            data: result,
-            error: null,
-            referenceTimeMs,
-          });
+          setSelection(
+            alignMinutelySelectionToData(
+              {
+                index,
+                item,
+                status: 'success',
+                data: result,
+                error: null,
+                referenceTimeMs,
+              },
+              data,
+            ),
+          );
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;

@@ -56,7 +56,7 @@ describe('DashboardCaptureRender minutely precipitation', () => {
       />,
     );
 
-    expect(screen.getByLabelText('天气截图')).toHaveStyle({ width: '356px' });
+    expect(screen.getByLabelText('天气截图')).toHaveStyle({ width: '246px' });
     expect(container.querySelector('.minutely-rain-inline')).toBeInTheDocument();
     expect(screen.getByText('间歇性降雨还将持续，未来两小时请注意出行安全')).toBeInTheDocument();
     expect(screen.getByText('16:00').closest('.precip-prob-lane')).not.toBeNull();
