@@ -14,6 +14,40 @@ The focus is on **information density** — ensemble forecasts, CAPE, cloud laye
 
 重点在于**信息密度**——集合预报、CAPE、云层分层、气压场，全部堆在一条可以横向滚动的时间轴上。
 
+## Screenshots / 界面截图
+
+### Multi-city forecast timeline / 多城市预报时间轴
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./demo-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./demo-light.webp">
+  <img alt="A dense multi-city weather forecast timeline" src="./demo-light.webp">
+</picture>
+
+### Cloud layers and Skew-T sounding / 云层与 Skew-T 探空
+
+Click any hour in the cloud lane to inspect the vertical cloud profile and thermodynamic sounding.
+
+点击云层区域中的任一小时，可以查看垂直云层分布和热力学探空图。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./feature-sounding-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./feature-sounding-light.webp">
+  <img alt="Cloud-layer detail and Skew-T sounding drawer" src="./feature-sounding-light.webp">
+</picture>
+
+### Sunrise and sunset cloud cross-section / 日出日落方向云况剖面
+
+Click a sunrise or sunset marker to look along the solar bearing; drag vertically to move through twilight and inspect the light path through cloud layers.
+
+点击日出或日落标记，可以沿太阳方位查看云层剖面；在图上纵向拖动可调整时刻，观察曙暮光线穿过不同云层的路径。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./feature-sun-cloud-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./feature-sun-cloud-light.webp">
+  <img alt="Sunrise-direction cloud cross-section with an interactive twilight timeline" src="./feature-sun-cloud-light.webp">
+</picture>
+
 ## Features / 主要功能
 
 - **Multi-city itinerary** — chain "Beijing 3 days → London 4 days" in one unbroken scroll
@@ -31,6 +65,9 @@ The focus is on **information density** — ensemble forecasts, CAPE, cloud laye
 - **Cloud layers** — high / mid / low clouds rendered independently
 - **云层分层** — 高 / 中 / 低云独立渲染
 
+- **Skew-T sounding detail** — click any cloud-lane hour to inspect pressure-level clouds, temperature/dew-point profiles, wind, and inversions
+- **Skew-T 探空详情** — 点击云层区域中的任一小时，查看气压层云况、温度/露点廓线、风场和逆温层
+
 - **Precipitation** — probability (%) side-by-side with volume (mm)
 - **降水** — 概率 (%) 和降水量 (mm) 并排对照
 
@@ -42,6 +79,15 @@ The focus is on **information density** — ensemble forecasts, CAPE, cloud laye
 
 - **Sunrise / sunset shading** — uses real sunrise/sunset times, not a naive 18:00–06:00 cutoff
 - **日出日落着色** — 用真实 sunrise/sunset 时间画夜间阴影，不是 18:00–06:00 一刀切
+
+- **Sun-path cloud cross-section** — click sunrise/sunset markers to inspect cloud layers along the solar bearing, with a draggable twilight timeline
+- **太阳方向云况剖面** — 点击日出/日落标记，沿太阳方位查看云层，并通过可拖动的曙暮时间轴调整时刻
+
+- **Air quality and aerosols** — AQI, estimated visibility, and aerosol optical depth share the same trip timeline
+- **空气质量与气溶胶** — AQI、估算能见度和气溶胶光学厚度与行程天气显示在同一条时间轴上
+
+- **Screenshot export** — select and resize a timeline range, then export the complete chart as PNG
+- **截图导出** — 在时间轴上选择并调整范围，然后导出完整 PNG 图表
 
 - **Compact mode** — `?compact=1` collapses low-priority lanes (temperature, clouds, CAPE, pressure) into a dense single-scroll view; precipitation shows volume bars & wind shows Beaufort + arrow per cell
 - **紧凑模式** — `?compact=1` 折叠温度、云层、CAPE、气压等次要图表，降水显示量级条、风力显示蒲福级+风向箭头；适合快速扫视
@@ -141,6 +187,16 @@ pnpm dev
 Open the URL printed in the terminal (usually `localhost:5174`). Add `?route=...` to the address bar to switch cities.
 
 打开终端输出的地址（一般是 `localhost:5174`），在地址栏加 `?route=...` 就能切换城市。
+
+### Update README screenshots / 更新 README 截图
+
+```bash
+pnpm demo:update
+```
+
+This regenerates the overview, sounding, and sun-path screenshots in both light and dark themes from `fixtures/default.json`. The sun-path capture uses a deterministic response inside the screenshot script, so it does not depend on live forecast availability. Pass `--features 0` to `scripts/capture-screenshot.ts` when only the overview pair is needed.
+
+该命令会基于 `fixtures/default.json` 重新生成亮色、暗色两套总览图、探空图和太阳方向云况剖面。太阳剖面在截图脚本中使用固定响应，不依赖实时预报是否可用；如果只需生成总览图，可以给 `scripts/capture-screenshot.ts` 传入 `--features 0`。
 
 ### Test QWeather BYOK locally / 本地测试和风 BYOK
 
