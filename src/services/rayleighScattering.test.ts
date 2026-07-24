@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { earthShadowBoundaryKm } from './sunRayGeometry';
 import {
+  directSunlightStyleForRay,
   rayleighOpticalDepth,
   rayleighStyleForAirMass,
   rayleighStyleForRay,
   rayleighTransmissionRgb,
+  sphericalAerosolAirMass,
   sphericalRayAirMass,
 } from './rayleighScattering';
 
@@ -43,5 +45,33 @@ describe('rayleighScattering', () => {
     expect(channels[1]).toBeLessThan(80);
     expect(channels[2]).toBeLessThan(10);
     expect(channels[3]).toBeGreaterThanOrEqual(0.58);
+  });
+
+  it('suppresses a geometric tangent after aerosol slant extinction', () => {
+    const sunAltitudeDeg = -3;
+    const boundary = earthShadowBoundaryKm(sunAltitudeDeg);
+    const tangent = directSunlightStyleForRay(boundary, sunAltitudeDeg, 0.1);
+    const elevated = directSunlightStyleForRay(boundary + 10, sunAltitudeDeg, 0.1);
+
+    expect(sphericalAerosolAirMass(boundary, sunAltitudeDeg)).toBeGreaterThan(100);
+    expect(tangent.visible).toBe(false);
+    expect(elevated.visible).toBe(true);
+    expect(elevated.luminousTransmission).toBeGreaterThan(tangent.luminousTransmission);
+    expect(elevated.directNormalIlluminanceLux).toBeGreaterThan(tangent.directNormalIlluminanceLux);
+  });
+
+  it('dims marginal sunlight as AOD rises', () => {
+    const sunAltitudeDeg = -2;
+    const baseAltitudeKm = earthShadowBoundaryKm(sunAltitudeDeg) + 5;
+    const clear = directSunlightStyleForRay(baseAltitudeKm, sunAltitudeDeg, 0.03);
+    const hazy = directSunlightStyleForRay(baseAltitudeKm, sunAltitudeDeg, 0.5);
+
+    expect(clear.luminousTransmission).toBeGreaterThan(hazy.luminousTransmission);
+  });
+
+  it('anchors beam brightness to the extraterrestrial Sun instead of a transmission cutoff', () => {
+    const unattenuated = directSunlightStyleForRay(150, 90, 0);
+
+    expect(unattenuated.directNormalIlluminanceLux).toBeCloseTo(133_000, -2);
   });
 });

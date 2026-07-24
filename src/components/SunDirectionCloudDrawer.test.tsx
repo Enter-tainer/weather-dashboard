@@ -5,7 +5,6 @@ import type { WeatherPoint } from '../types/weather';
 import type { SunDirectionInfo } from '../services/sunDirection';
 import type { SunCloudSectionState } from '../hooks/useSunCloudSection';
 import type { CanvasDraw } from '../hooks/useCanvas';
-import { bulgeKm } from '../services/sunRayGeometry';
 import SunDirectionCloudDrawer from './SunDirectionCloudDrawer';
 
 const { useCanvasMock } = vi.hoisted(() => ({
@@ -120,15 +119,10 @@ describe('SunDirectionCloudDrawer', () => {
     paint?.(ctx, 540, 410);
     expect(fillRect).toHaveBeenCalled();
     expect(arc).toHaveBeenCalled();
-    const skyBackground = fillRect.mock.calls.find(
+    const aboveHorizonBackground = fillRect.mock.calls.find(
       ([x, y, width]) => x === 50 && y === 12 && width === 440,
     );
-    const skyHeight = Number(skyBackground?.[3]);
-    expect(skyHeight).toBeGreaterThan(160);
-    const groundY = 12 + skyHeight;
-    const pxPerKm = skyHeight / 11;
-    const farGroundY = groundY + bulgeKm(300) * pxPerKm;
-    expect(386 - farGroundY).toBeCloseTo((386 - 12) * 0.25);
+    expect(aboveHorizonBackground).toBeUndefined();
   });
 
   it('draws the civil-twilight scale beside the time axis without covering the cloud plot', () => {

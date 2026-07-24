@@ -30,7 +30,10 @@ import {
   colorWithAlpha,
   getTwilightPalette,
 } from '../services/twilightColor';
-import { rayleighStyleForRay } from '../services/rayleighScattering';
+import {
+  DEFAULT_AEROSOL_OPTICAL_DEPTH,
+  directSunlightStyleForRay,
+} from '../services/rayleighScattering';
 import './Dashboard.css';
 
 const CANVAS_WIDTH = 540;
@@ -39,6 +42,7 @@ const BOUNDARY_ALTS = new Set([2000, 6000]);
 const SUN_DISC_RADIUS_PX = 7;
 const SUN_RAY_INNER_RADIUS_PX = 8;
 const SUN_RAY_OUTER_RADIUS_PX = 11;
+const SUN_RAY_COUNT = 8;
 const TIME_TICK_INTERVAL_MS = 5 * 60_000;
 const TIME_TICK_MIN_GAP_PX = 26;
 
@@ -251,12 +255,8 @@ function drawCrossSection(
   const labelMuted = cssVar('--chart-label-muted', '#666');
   const sunFill = cssVar('--sun-cloud-sun-fill', '#f6b24a');
 
-  const { plotLeft, plotRight, plotTop, plotBottom, plotW, groundY } = layout;
+  const { plotLeft, plotRight, plotTop, plotBottom, plotW } = layout;
   const columns = section.columns;
-
-  // Plot background (same as the timeline cloud lane) for the above-ground region.
-  ctx.fillStyle = cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
-  ctx.fillRect(plotLeft, plotTop, plotW, groundY - plotTop);
 
   // Curved earth: the sea-level surface sags by bulge(d) = d²/(2R) in the tangent plane, so at
   // 140 km the ground is ~1.5 km below the observer's horizon.
@@ -510,12 +510,13 @@ function drawCrossSection(
   }
 
   // --- Sunlight: parallel rays only (no shadow/highlight fills) ---
-  // Parallel rays at slope tanα. The fan includes the grazing ray (lowest ray that clears the
-  // earth), so the earth-occlusion is visible: for α < 0 the near sky is dark and only far/high
-  // clouds are reached. Rays are straight lines; the curved ground carries the earth curvature.
+  // Parallel rays at slope tanα. Geometry supplies the grazing ray as the lower earth-shadow
+  // boundary; molecular + aerosol slant extinction decides whether each candidate is observable.
+  // A zero-clearance path therefore normally disappears instead of being shown as a bright
+  // tangent. Rays are straight lines; the curved ground carries the earth curvature.
   // Clip to the plot rectangle so rays that run above the axis top render as a straight clipped
   // line (entering/exiting at the edge) rather than a flat segment that reads as a kink.
-  const rays = parallelRays(layout.maxDist, sunAltDeg, layout.maxAltKm, 5);
+  const rays = parallelRays(layout.maxDist, sunAltDeg, layout.maxAltKm, SUN_RAY_COUNT);
   ctx.save();
   ctx.beginPath();
   ctx.rect(plotLeft, plotTop, plotW, plotBottom - plotTop);
@@ -523,7 +524,13 @@ function drawCrossSection(
   ctx.lineCap = 'round';
   const strokeRayFan = () => {
     for (const ray of rays) {
-      ctx.strokeStyle = rayleighStyleForRay(ray.baseAltKm, sunAltDeg).cssColor;
+      const style = directSunlightStyleForRay(
+        ray.baseAltKm,
+        sunAltDeg,
+        origin.aod ?? DEFAULT_AEROSOL_OPTICAL_DEPTH,
+      );
+      if (!style.visible) continue;
+      ctx.strokeStyle = style.cssColor;
       ctx.beginPath();
       for (let i = 0; i < ray.points.length; i++) {
         const p = ray.points[i]!;

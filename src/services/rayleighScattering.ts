@@ -1,15 +1,29 @@
 import { EARTH_RADIUS_KM } from './sunRayGeometry';
 
-// A compact clear-air model for colouring the direct solar beam. It deliberately models only
-// molecular (Rayleigh) extinction; aerosol, ozone, refraction, and multiple scattering are not
-// included. The spherical path integration remains valid across the drawer's +2°..−6° range,
-// where plane-parallel 1/sin(elevation) air-mass approximations break down.
+// A compact model for colouring the direct solar beam. The base helpers model molecular
+// (Rayleigh) extinction; the rendered-beam path also applies an AOD-driven aerosol layer. Ozone,
+// refraction, terrain and multiple scattering are not included. Spherical path integration remains
+// valid across the drawer's +2°..−6° range, where plane-parallel air-mass approximations fail.
 
 const ATMOSPHERE_SCALE_HEIGHT_KM = 8.4;
 const ATMOSPHERE_TOP_KM = 100;
 const INTEGRATION_STEP_KM = 2;
 const MAX_PATH_KM = 4000;
 const MAX_VISUAL_AIR_MASS = 120;
+const AEROSOL_SCALE_HEIGHT_KM = 1.5;
+const AEROSOL_TOP_KM = 30;
+const AEROSOL_INTEGRATION_STEP_KM = 0.5;
+const AEROSOL_MAX_PATH_KM = 2000;
+const MAX_AEROSOL_AIR_MASS = 1000;
+const AEROSOL_REFERENCE_WAVELENGTH_UM = 0.55;
+const DEFAULT_ANGSTROM_EXPONENT = 1.3;
+const EXTRATERRESTRIAL_SOLAR_ILLUMINANCE_LUX = 133_000;
+// Rendering floor only, not a physical cloud-visibility threshold. Actual visibility also depends
+// on cloud reflectance, illumination angle, observer path and contrast against the twilight sky.
+const MIN_RENDERED_DIRECT_ILLUMINANCE_LUX = 0.01;
+
+/** Climatological fallback used only when the selected forecast hour has no AOD value. */
+export const DEFAULT_AEROSOL_OPTICAL_DEPTH = 0.1;
 
 const RGB_WAVELENGTHS_UM = {
   red: 0.65,
@@ -29,14 +43,65 @@ export interface RayleighRayStyle {
   cssColor: string;
 }
 
-function atmosphericDensity(relativeAltitudeKm: number): number {
+export interface DirectSunlightRayStyle extends RayleighRayStyle {
+  aerosolAirMass: number;
+  luminousTransmission: number;
+  directNormalIlluminanceLux: number;
+  visible: boolean;
+}
+
+function atmosphericDensity(
+  relativeAltitudeKm: number,
+  scaleHeightKm: number,
+  atmosphereTopKm: number,
+): number {
   if (relativeAltitudeKm <= 0) return 1;
-  if (relativeAltitudeKm >= ATMOSPHERE_TOP_KM) return 0;
-  return Math.exp(-relativeAltitudeKm / ATMOSPHERE_SCALE_HEIGHT_KM);
+  if (relativeAltitudeKm >= atmosphereTopKm) return 0;
+  return Math.exp(-relativeAltitudeKm / scaleHeightKm);
 }
 
 function radialAltitudeKm(xKm: number, tangentPlaneAltitudeKm: number): number {
   return Math.hypot(xKm, EARTH_RADIUS_KM + tangentPlaneAltitudeKm) - EARTH_RADIUS_KM;
+}
+
+function sphericalAirMass(
+  baseAltitudeKm: number,
+  sunAltitudeDeg: number,
+  scaleHeightKm: number,
+  atmosphereTopKm: number,
+  integrationStepKm: number,
+  maxPathKm: number,
+): number {
+  if (!Number.isFinite(baseAltitudeKm) || !Number.isFinite(sunAltitudeDeg)) return 1;
+
+  const angleRad = (sunAltitudeDeg * Math.PI) / 180;
+  const directionX = Math.cos(angleRad);
+  const directionY = Math.sin(angleRad);
+  let previousAltitude = radialAltitudeKm(0, baseAltitudeKm);
+  if (previousAltitude < 0) return Infinity;
+  let previousDensity = atmosphericDensity(previousAltitude, scaleHeightKm, atmosphereTopKm);
+  let integratedDensityKm = 0;
+  let exitedAtmosphere = previousAltitude >= atmosphereTopKm && directionY >= 0;
+
+  for (
+    let sKm = integrationStepKm;
+    !exitedAtmosphere && sKm <= maxPathKm;
+    sKm += integrationStepKm
+  ) {
+    const xKm = sKm * directionX;
+    const yKm = baseAltitudeKm + sKm * directionY;
+    const altitudeKm = radialAltitudeKm(xKm, yKm);
+    if (altitudeKm < -1e-6) return Infinity;
+
+    const density = atmosphericDensity(altitudeKm, scaleHeightKm, atmosphereTopKm);
+    integratedDensityKm += ((previousDensity + density) * integrationStepKm) / 2;
+    exitedAtmosphere = altitudeKm >= atmosphereTopKm && altitudeKm > previousAltitude;
+    previousAltitude = altitudeKm;
+    previousDensity = density;
+  }
+
+  const verticalColumnKm = scaleHeightKm * (1 - Math.exp(-atmosphereTopKm / scaleHeightKm));
+  return integratedDensityKm / verticalColumnKm;
 }
 
 /**
@@ -48,37 +113,26 @@ function radialAltitudeKm(xKm: number, tangentPlaneAltitudeKm: number): number {
  * sea-level vertical atmospheric column, so a vertical ray from sea level is approximately 1.
  */
 export function sphericalRayAirMass(baseAltitudeKm: number, sunAltitudeDeg: number): number {
-  if (!Number.isFinite(baseAltitudeKm) || !Number.isFinite(sunAltitudeDeg)) return 1;
+  return sphericalAirMass(
+    baseAltitudeKm,
+    sunAltitudeDeg,
+    ATMOSPHERE_SCALE_HEIGHT_KM,
+    ATMOSPHERE_TOP_KM,
+    INTEGRATION_STEP_KM,
+    MAX_PATH_KM,
+  );
+}
 
-  const angleRad = (sunAltitudeDeg * Math.PI) / 180;
-  const directionX = Math.cos(angleRad);
-  const directionY = Math.sin(angleRad);
-  let previousAltitude = radialAltitudeKm(0, baseAltitudeKm);
-  if (previousAltitude < 0) return Infinity;
-  let previousDensity = atmosphericDensity(previousAltitude);
-  let integratedDensityKm = 0;
-  let exitedAtmosphere = previousAltitude >= ATMOSPHERE_TOP_KM && directionY >= 0;
-
-  for (
-    let sKm = INTEGRATION_STEP_KM;
-    !exitedAtmosphere && sKm <= MAX_PATH_KM;
-    sKm += INTEGRATION_STEP_KM
-  ) {
-    const xKm = sKm * directionX;
-    const yKm = baseAltitudeKm + sKm * directionY;
-    const altitudeKm = radialAltitudeKm(xKm, yKm);
-    if (altitudeKm < -1e-6) return Infinity;
-
-    const density = atmosphericDensity(altitudeKm);
-    integratedDensityKm += ((previousDensity + density) * INTEGRATION_STEP_KM) / 2;
-    exitedAtmosphere = altitudeKm >= ATMOSPHERE_TOP_KM && altitudeKm > previousAltitude;
-    previousAltitude = altitudeKm;
-    previousDensity = density;
-  }
-
-  const verticalColumnKm =
-    ATMOSPHERE_SCALE_HEIGHT_KM * (1 - Math.exp(-ATMOSPHERE_TOP_KM / ATMOSPHERE_SCALE_HEIGHT_KM));
-  return integratedDensityKm / verticalColumnKm;
+/** Relative slant air mass for a near-surface aerosol layer with a 1.5 km scale height. */
+export function sphericalAerosolAirMass(baseAltitudeKm: number, sunAltitudeDeg: number): number {
+  return sphericalAirMass(
+    baseAltitudeKm,
+    sunAltitudeDeg,
+    AEROSOL_SCALE_HEIGHT_KM,
+    AEROSOL_TOP_KM,
+    AEROSOL_INTEGRATION_STEP_KM,
+    AEROSOL_MAX_PATH_KM,
+  );
 }
 
 /** Standard-atmosphere Rayleigh vertical optical depth; wavelength is in micrometres. */
@@ -136,4 +190,81 @@ export function rayleighStyleForRay(
   sunAltitudeDeg: number,
 ): RayleighRayStyle {
   return rayleighStyleForAirMass(sphericalRayAirMass(baseAltitudeKm, sunAltitudeDeg));
+}
+
+function aerosolOpticalDepth(aerosolOpticalDepth550nm: number, wavelengthUm: number): number {
+  const aod = Math.max(0, aerosolOpticalDepth550nm);
+  return aod * (AEROSOL_REFERENCE_WAVELENGTH_UM / wavelengthUm) ** DEFAULT_ANGSTROM_EXPONENT;
+}
+
+function directTransmissionRgb(
+  rayleighAirMass: number,
+  aerosolAirMass: number,
+  aerosolOpticalDepth550nm: number,
+): LinearRgb {
+  const molecularMass = Number.isFinite(rayleighAirMass)
+    ? Math.max(0, rayleighAirMass)
+    : MAX_VISUAL_AIR_MASS;
+  const particleMass = Number.isFinite(aerosolAirMass)
+    ? Math.max(0, aerosolAirMass)
+    : MAX_AEROSOL_AIR_MASS;
+  const transmissionAt = (wavelengthUm: number) =>
+    Math.exp(
+      -molecularMass * rayleighOpticalDepth(wavelengthUm) -
+        particleMass * aerosolOpticalDepth(aerosolOpticalDepth550nm, wavelengthUm),
+    );
+
+  return {
+    red: transmissionAt(RGB_WAVELENGTHS_UM.red),
+    green: transmissionAt(RGB_WAVELENGTHS_UM.green),
+    blue: transmissionAt(RGB_WAVELENGTHS_UM.blue),
+  };
+}
+
+/**
+ * Style a direct solar beam using both molecular extinction and the selected hour's AOD.
+ *
+ * Geometry alone only says that a ray clears the Earth. A grazing ray can still have effectively
+ * zero transmission after crossing hundreds of kilometres of dense lower atmosphere. Opacity is
+ * based on absolute direct-normal illuminance from the 133 klx extraterrestrial Sun, on a
+ * logarithmic display scale. The low cutoff is only a rendering floor, not a claim that a cloud
+ * below it could never be observed.
+ */
+export function directSunlightStyleForRay(
+  baseAltitudeKm: number,
+  sunAltitudeDeg: number,
+  aerosolOpticalDepth550nm: number = DEFAULT_AEROSOL_OPTICAL_DEPTH,
+): DirectSunlightRayStyle {
+  const airMass = sphericalRayAirMass(baseAltitudeKm, sunAltitudeDeg);
+  const aerosolAirMass = sphericalAerosolAirMass(baseAltitudeKm, sunAltitudeDeg);
+  const transmission = directTransmissionRgb(airMass, aerosolAirMass, aerosolOpticalDepth550nm);
+  const luminousTransmission =
+    0.2126 * transmission.red + 0.7152 * transmission.green + 0.0722 * transmission.blue;
+  const directNormalIlluminanceLux = EXTRATERRESTRIAL_SOLAR_ILLUMINANCE_LUX * luminousTransmission;
+  const visible = directNormalIlluminanceLux >= MIN_RENDERED_DIRECT_ILLUMINANCE_LUX;
+  const peak = Math.max(transmission.red, transmission.green, transmission.blue, 1e-8);
+  const red = Math.round(linearToSrgb(transmission.red / peak) * 255);
+  const green = Math.round(linearToSrgb(transmission.green / peak) * 255);
+  const blue = Math.round(linearToSrgb(transmission.blue / peak) * 255);
+  const displayRange = Math.log10(
+    EXTRATERRESTRIAL_SOLAR_ILLUMINANCE_LUX / MIN_RENDERED_DIRECT_ILLUMINANCE_LUX,
+  );
+  const visibility =
+    Math.log10(
+      Math.max(directNormalIlluminanceLux, MIN_RENDERED_DIRECT_ILLUMINANCE_LUX) /
+        MIN_RENDERED_DIRECT_ILLUMINANCE_LUX,
+    ) / displayRange;
+  const alpha = visible ? Math.min(0.96, 0.06 + 0.9 * visibility ** 0.75) : 0;
+
+  return {
+    airMass: Number.isFinite(airMass) ? Math.max(0, airMass) : MAX_VISUAL_AIR_MASS,
+    aerosolAirMass: Number.isFinite(aerosolAirMass)
+      ? Math.max(0, aerosolAirMass)
+      : MAX_AEROSOL_AIR_MASS,
+    linearTransmission: transmission,
+    luminousTransmission,
+    directNormalIlluminanceLux,
+    visible,
+    cssColor: `rgba(${red}, ${green}, ${blue}, ${alpha.toFixed(3)})`,
+  };
 }
