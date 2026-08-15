@@ -18,6 +18,29 @@ export interface MinutelyPrecipitationSelection {
   referenceTimeMs?: number;
 }
 
+function findSelectionIndex(data: readonly WeatherPoint[], item: WeatherPoint): number {
+  const selectedTimeMs = getWeatherPointTimeMs(item);
+  if (selectedTimeMs == null) return -1;
+
+  return data.findIndex(
+    (candidate) =>
+      candidate.cityName === item.cityName &&
+      candidate.latitude === item.latitude &&
+      candidate.longitude === item.longitude &&
+      getWeatherPointTimeMs(candidate) === selectedTimeMs,
+  );
+}
+
+function rebaseSelectionToData(
+  selection: MinutelyPrecipitationSelection,
+  data: readonly WeatherPoint[],
+): MinutelyPrecipitationSelection | null {
+  const index = findSelectionIndex(data, selection.item);
+  const item = data[index];
+  if (index < 0 || !item) return null;
+  return index === selection.index ? selection : { ...selection, index, item };
+}
+
 export function getMinutelyEligibleIndices(data: WeatherPoint[], nowMs: number): Set<number> {
   const eligible = new Set<number>();
   const currentIndex = data.findIndex((item, index) => {
@@ -76,6 +99,8 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [selection, setSelection] = useState<MinutelyPrecipitationSelection | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
   const availableIndices = useMemo(
     () => (enabled ? getMinutelyEligibleIndices(data, nowMs) : new Set<number>()),
     [data, enabled, nowMs],
@@ -87,8 +112,24 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
   }, []);
 
   useEffect(() => {
-    if (selection && !availableIndices.has(selection.index)) setSelection(null);
-  }, [availableIndices, selection]);
+    if (!enabled) {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      setSelection(null);
+      return;
+    }
+
+    setSelection((currentSelection) =>
+      currentSelection ? rebaseSelectionToData(currentSelection, data) : currentSelection,
+    );
+  }, [data, enabled]);
+
+  useEffect(() => {
+    if (!selection && controllerRef.current) {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+    }
+  }, [selection]);
 
   useEffect(
     () => () => {
@@ -129,8 +170,11 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
       fetchMinutelyPrecipitation(item.latitude, item.longitude, controller.signal)
         .then((result) => {
           if (controller.signal.aborted) return;
-          setSelection(
-            alignMinutelySelectionToData(
+          setSelection((currentSelection) => {
+            if (!currentSelection || controller.signal.aborted) return currentSelection;
+
+            const currentData = dataRef.current;
+            const rebasedSelection = rebaseSelectionToData(
               {
                 index,
                 item,
@@ -139,19 +183,28 @@ export function useMinutelyPrecipitation(data: WeatherPoint[], enabled = true) {
                 error: null,
                 referenceTimeMs,
               },
-              data,
-            ),
-          );
+              currentData,
+            );
+            return rebasedSelection
+              ? alignMinutelySelectionToData(rebasedSelection, currentData)
+              : null;
+          });
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
-          setSelection({
-            index,
-            item,
-            status: 'error',
-            data: null,
-            error: error instanceof Error ? error.message : '分钟级降水加载失败',
-            referenceTimeMs,
+          setSelection((currentSelection) => {
+            if (!currentSelection || controller.signal.aborted) return currentSelection;
+            return rebaseSelectionToData(
+              {
+                index,
+                item,
+                status: 'error',
+                data: null,
+                error: error instanceof Error ? error.message : '分钟级降水加载失败',
+                referenceTimeMs,
+              },
+              dataRef.current,
+            );
           });
         });
     },
