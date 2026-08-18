@@ -2,7 +2,7 @@ import { parseRoute } from './urlParser';
 import { cachedFetch, TTL_WEATHER } from './cache';
 import { getCityDetails, reverseGeocode } from './geocoding';
 import { SOUNDING_PRESSURE_LEVELS, dewPointFromRh } from './sounding';
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import type {
   MoonEvent,
   MoonEventList,
@@ -476,7 +476,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
   // Compute sun altitude for each hour (for twilight gradient lane)
   for (const item of combined) {
     const pos = SunCalc.getPosition(toUtc(item.time), latitude, longitude);
-    item.sunAltitude = pos.altitude * (180 / Math.PI); // radians to degrees
+    item.sunAltitude = pos.altitude; // v2: apparent altitude in degrees (refraction-corrected)
   }
 
   const moonEvents: MoonEventList = [];

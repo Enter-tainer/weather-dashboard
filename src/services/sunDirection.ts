@@ -1,4 +1,4 @@
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import type { SunEventType, WeatherPoint } from '../types/weather';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -59,10 +59,9 @@ export function computeSunDirection(
   if (!instant || !Number.isFinite(instant.getTime())) return null;
 
   const pos = SunCalc.getPosition(instant, lat, lon);
-  // SunCalc azimuth: radians, 0 = south, clockwise (westward positive).
-  // Convert to compass bearing from north: (azimuth + π) mod 2π, then to degrees.
-  const bearingDeg = (((pos.azimuth + Math.PI) % (2 * Math.PI)) * 180) / Math.PI;
-  const altitudeDeg = (pos.altitude * 180) / Math.PI;
+  // SunCalc v2 azimuth: degrees clockwise from north (0 = N, 90 = E, 180 = S).
+  const bearingDeg = pos.azimuth;
+  const altitudeDeg = pos.altitude; // v2: apparent altitude in degrees
 
   return {
     eventType,
@@ -84,7 +83,7 @@ export function computeSunAltitudeAt(origin: WeatherPoint, trueMs: number): numb
   }
   if (!Number.isFinite(trueMs)) return null;
   const pos = SunCalc.getPosition(new Date(trueMs), lat, lon);
-  return (pos.altitude * 180) / Math.PI;
+  return pos.altitude; // v2: apparent altitude in degrees
 }
 
 /**
