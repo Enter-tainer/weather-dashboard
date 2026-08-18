@@ -24,8 +24,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
       suncalc:
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^2.0.1
+        version: 2.0.1
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.9.1
@@ -42,9 +42,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
-      '@types/suncalc':
-        specifier: ^1.9.2
-        version: 1.9.2
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.2(@types/node@25.9.1)(tsx@4.22.4))
@@ -725,9 +722,6 @@ packages:
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
 
-  '@types/suncalc@1.9.2':
-    resolution: {integrity: sha512-ATAGBHHfA1TlE2tjfidLyTcysjoT2JHHEAmWRULh73SU9UTn++j5fqHEW16X6Y/2Li87jEQXzgu4R/OOdlDqzw==}
-
   '@vitejs/plugin-react@6.0.1':
     resolution: {integrity: sha512-l9X/E3cDb+xY3SWzlG1MOGt2usfEHGMNIaegaUGFsLkb3RCn/k8/TOXBcab+OndDI4TBtktT8/9BwwW8Vi9KUQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1161,8 +1155,8 @@ packages:
     resolution: {integrity: sha512-laJTa3Jb+VQpaC6DseHhF7dXVqHTfJPCRDaEbid/drOhgitgYku/letMUqOXFoWV0zIIUbjpdH2t+tYj4bQMRQ==}
     engines: {node: '>=8'}
 
-  suncalc@1.9.0:
-    resolution: {integrity: sha512-vMJ8Byp1uIPoj+wb9c1AdK4jpkSKVAywgHX0lqY7zt6+EWRRC3Z+0Ucfjy/0yxTVO1hwwchZe4uoFNqrIC24+A==}
+  suncalc@2.0.1:
+    resolution: {integrity: sha512-wjujU+HpsP1TUvN3/9dFkVQQCsMZbk7PkdZsASRJR4jVPHCm9Qy0FVkFTqXfs70Ag2yheN7ZUavzCyOjhJDGxQ==}
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
@@ -1727,8 +1721,6 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
-  '@types/suncalc@1.9.2': {}
-
   '@vitejs/plugin-react@6.0.1(vite@8.0.2(@types/node@25.9.1)(tsx@4.22.4))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-rc.7
@@ -2161,7 +2153,7 @@ snapshots:
     dependencies:
       min-indent: 1.0.1
 
-  suncalc@1.9.0: {}
+  suncalc@2.0.1: {}
 
   symbol-tree@3.2.4: {}
 
