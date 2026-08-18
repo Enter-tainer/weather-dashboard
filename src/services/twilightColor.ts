@@ -56,11 +56,19 @@ export function colorWithAlpha(color: string, alpha: number): string {
 }
 
 function lerpColor(a: string, b: string, t: number): string {
-  const parse = (color: string): [number, number, number] => [
-    Number.parseInt(color.slice(1, 3), 16),
-    Number.parseInt(color.slice(3, 5), 16),
-    Number.parseInt(color.slice(5, 7), 16),
-  ];
+  // Normalize 3-digit hex shorthand (e.g. minified #fff) to 6-digit before parsing.
+  const expandHex = (color: string): string =>
+    /^#[0-9a-f]{3}$/i.test(color)
+      ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+      : color;
+  const parse = (color: string): [number, number, number] => {
+    const hex = expandHex(color);
+    return [
+      Number.parseInt(hex.slice(1, 3), 16),
+      Number.parseInt(hex.slice(3, 5), 16),
+      Number.parseInt(hex.slice(5, 7), 16),
+    ];
+  };
   const [r1, g1, b1] = parse(a);
   const [r2, g2, b2] = parse(b);
   const r = Math.round(r1 + (r2 - r1) * t);

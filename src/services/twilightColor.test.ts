@@ -21,4 +21,14 @@ describe('twilight colors', () => {
     expect(colorWithAlpha('#3949ab', 0.25)).toBe('rgba(57, 73, 171, 0.25)');
     expect(colorWithAlpha('rgb(255,152,0)', 2)).toBe('rgba(255, 152, 0, 1)');
   });
+
+  it('interpolates 3-digit hex palette entries (build-minified #fff) without NaN', () => {
+    // CSS minifiers shorten #ffffff -> #fff; lerpColor must not emit rgb(x,y,NaN).
+    const minified: TwilightPalette = { ...PALETTE, day: '#fff' };
+    const c = altitudeToTwilightColor(8, minified); // 6-10° band lerps warmDay -> day
+    expect(c).toMatch(/^rgb\(\d+,\d+,\d+\)$/);
+    expect(c).not.toContain('NaN');
+    // And a fully-overlap interpolation stays finite.
+    expect(altitudeToTwilightColor(10, minified)).toBe('#fff');
+  });
 });
