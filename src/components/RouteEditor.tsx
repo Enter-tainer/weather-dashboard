@@ -24,6 +24,10 @@ export interface RouteEditorHandle {
 
 interface RouteEditorProps {
   ref?: Ref<RouteEditorHandle>;
+  einkMode?: boolean;
+  onEinkModeChange?: (enabled: boolean) => void;
+  immersiveMode?: boolean;
+  onImmersiveModeChange?: (enabled: boolean) => void;
 }
 
 function createEntryId(): string {
@@ -57,7 +61,13 @@ function groupEntriesByDate(entries: EditorRouteEntry[]): Array<[string, EditorR
   return [...groups.entries()].sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
 }
 
-export default function RouteEditor({ ref }: RouteEditorProps) {
+export default function RouteEditor({
+  ref,
+  einkMode = false,
+  onEinkModeChange,
+  immersiveMode = false,
+  onImmersiveModeChange,
+}: RouteEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [entries, setEntries] = useState<EditorRouteEntry[]>([]);
   const [quickCity, setQuickCity] = useState('');
@@ -261,6 +271,32 @@ export default function RouteEditor({ ref }: RouteEditorProps) {
                   一键应用
                 </button>
               </div>
+            </div>
+
+            <div className="route-editor-section display-settings">
+              <h4>显示设置</h4>
+              <label className="display-setting-row">
+                <input
+                  type="checkbox"
+                  checked={einkMode}
+                  onChange={(event) => onEinkModeChange?.(event.target.checked)}
+                />
+                <span>
+                  墨水屏模式
+                  <small>使用纯黑白显示；同步 URL 参数 display=eink</small>
+                </span>
+              </label>
+              <label className="display-setting-row">
+                <input
+                  type="checkbox"
+                  checked={immersiveMode}
+                  onChange={(event) => onImmersiveModeChange?.(event.target.checked)}
+                />
+                <span>
+                  沉浸显示
+                  <small>隐藏浮动工具；也可使用 URL 参数 immersive=true</small>
+                </span>
+              </label>
             </div>
 
             <div className="route-editor-section qweather-settings">

@@ -77,6 +77,28 @@ describe('RouteEditor', () => {
     expect(screen.queryByText('设置城市与路线')).not.toBeInTheDocument();
   });
 
+  it('exposes the E-ink and immersive display settings', async () => {
+    const onEinkModeChange = vi.fn();
+    const onImmersiveModeChange = vi.fn();
+    render(
+      <RouteEditor
+        einkMode={false}
+        onEinkModeChange={onEinkModeChange}
+        immersiveMode={false}
+        onImmersiveModeChange={onImmersiveModeChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle('Settings & Route Editor'));
+    const einkToggle = await screen.findByRole('checkbox', { name: /墨水屏模式/ });
+    const immersiveToggle = screen.getByRole('checkbox', { name: /沉浸显示/ });
+    fireEvent.click(einkToggle);
+    fireEvent.click(immersiveToggle);
+
+    expect(onEinkModeChange).toHaveBeenCalledWith(true);
+    expect(onImmersiveModeChange).toHaveBeenCalledWith(true);
+  });
+
   it('adds a same-date comparison city using the last city as default', async () => {
     render(<RouteEditor />);
 

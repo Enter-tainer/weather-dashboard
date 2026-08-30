@@ -22,6 +22,8 @@ import {
 } from '../services/cloudAndRainScale';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { useIsEink } from '../hooks/useRenderProfile';
+import { getMonoPattern, monoPatternForUnit } from '../services/monoPatterns';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
 import { getPrecipitationPointForCell } from '../services/timelineTime';
@@ -106,6 +108,7 @@ export default function CloudAndRainLane({
   minutelyAvailableIndices = EMPTY_MINUTELY_INDICES,
   onMinutelySelect,
 }: CloudAndRainLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
   const precipBarWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
@@ -155,19 +158,21 @@ export default function CloudAndRainLane({
       const cloudFillAlphaScale =
         Number.parseFloat(cssVar('--cloud-fill-alpha-scale', '0.85')) || 0.85;
 
-      ctx.fillStyle = cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
+      ctx.fillStyle = isEink ? '#ffffff' : cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
       ctx.fillRect(0, 0, w, CLOUD_PLOT_HEIGHT);
-      ctx.fillStyle = cssVar('--precip-strip-bg', 'rgba(13, 71, 161, 0.035)');
+      ctx.fillStyle = isEink ? '#ffffff' : cssVar('--precip-strip-bg', 'rgba(13, 71, 161, 0.035)');
       ctx.fillRect(0, PRECIPITATION_PLOT_TOP, w, PRECIPITATION_PLOT_HEIGHT);
 
       // Altitude grid lines (cloud boundaries thicker)
       for (const alt of GRID_ALTS) {
         const isBoundary = BOUNDARY_ALTS.has(alt);
-        ctx.setLineDash(isBoundary ? [6, 4] : [4, 6]);
-        ctx.strokeStyle = isBoundary
-          ? cssVar('--cloud-grid-boundary', 'rgba(0,0,0,0.25)')
-          : cssVar('--cloud-grid-line', 'rgba(0,0,0,0.12)');
-        ctx.lineWidth = isBoundary ? 1.2 : 0.5;
+        ctx.setLineDash(isEink ? [] : isBoundary ? [6, 4] : [4, 6]);
+        ctx.strokeStyle = isEink
+          ? '#000000'
+          : isBoundary
+            ? cssVar('--cloud-grid-boundary', 'rgba(0,0,0,0.25)')
+            : cssVar('--cloud-grid-line', 'rgba(0,0,0,0.12)');
+        ctx.lineWidth = isEink ? (isBoundary ? 1.2 : 0.75) : isBoundary ? 1.2 : 0.5;
         const y = cloudAltitudeToY(alt);
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -201,7 +206,9 @@ export default function CloudAndRainLane({
             const yBot = cloudAltitudeToY(altLow);
             if (yBot - yTop <= 0) continue;
 
-            ctx.fillStyle = cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
+            ctx.fillStyle = isEink
+              ? getMonoPattern(ctx, monoPatternForUnit(cover / 100))
+              : cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
             ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
           }
         } else {
@@ -216,7 +223,9 @@ export default function CloudAndRainLane({
             const yTop = cloudAltitudeToY(layer.altHigh);
             const yBot = cloudAltitudeToY(layer.altLow);
 
-            ctx.fillStyle = cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
+            ctx.fillStyle = isEink
+              ? getMonoPattern(ctx, monoPatternForUnit(layer.cover / 100))
+              : cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
             ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
           }
         }
@@ -244,7 +253,7 @@ export default function CloudAndRainLane({
 
           ctx.save();
           ctx.lineWidth = 1;
-          ctx.strokeStyle = cssVar('--lane-border', 'rgba(0,0,0,0.12)');
+          ctx.strokeStyle = isEink ? '#000000' : cssVar('--lane-border', 'rgba(0,0,0,0.12)');
           ctx.beginPath();
           ctx.moveTo(chartX.plotLeft, chartBottom);
           ctx.lineTo(chartX.plotRight, chartBottom);
@@ -273,17 +282,12 @@ export default function CloudAndRainLane({
               const barWidth = Math.max(2, Math.min(8, chartX.slotWidth - 2));
               const barHeight = getMinutelyPrecipBarHeight(point.precip, minutelyAxisMaxMmHour);
 
-              ctx.fillStyle = precipColor(
-                point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
-                0.18,
-              );
+              const minutelyCode = point.type === 'snow' ? 71 : minutelySelection.item.weatherCode;
+              ctx.fillStyle = isEink ? '#000000' : precipColor(minutelyCode, 0.18);
               ctx.fillRect(centerX - barWidth / 2, chartBottom - 1, barWidth, 1);
 
               if (barHeight > 0) {
-                ctx.fillStyle = precipColor(
-                  point.type === 'snow' ? 71 : minutelySelection.item.weatherCode,
-                  0.82,
-                );
+                ctx.fillStyle = isEink ? '#000000' : precipColor(minutelyCode, 0.82);
                 ctx.fillRect(centerX - barWidth / 2, chartBottom - barHeight, barWidth, barHeight);
               }
             }
@@ -294,7 +298,9 @@ export default function CloudAndRainLane({
 
         // Ensemble precipitation (background)
         if (precipitationPoint?.precipMembers && precipitationPoint.precipMembers.length > 0) {
-          ctx.fillStyle = `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, 0.08)`;
+          ctx.fillStyle = isEink
+            ? getMonoPattern(ctx, 'dots-1')
+            : `rgba(${cssVar('--precip-rain-rgb', '13, 71, 161')}, 0.08)`;
           precipitationPoint.precipMembers.forEach((precip) => {
             if (precip > 0.1) {
               const barHeight = getHourlyPrecipBarHeight(precip);
@@ -306,7 +312,7 @@ export default function CloudAndRainLane({
         // Main precipitation bar — colored by type
         if (precipitationPoint?.precipitation != null && precipitationPoint.precipitation > 0) {
           const barHeight = getHourlyPrecipBarHeight(precipitationPoint.precipitation);
-          ctx.fillStyle = precipColor(precipitationPoint.weatherCode, 0.5);
+          ctx.fillStyle = isEink ? '#000000' : precipColor(precipitationPoint.weatherCode, 0.5);
           ctx.fillRect(
             x + columnWidth / 2 - precipBarWidth / 2,
             h - barHeight,
@@ -320,8 +326,8 @@ export default function CloudAndRainLane({
       ctx.save();
       ctx.setLineDash([3, 5]);
       ctx.lineWidth = 0.75;
-      ctx.globalAlpha = 0.28;
-      ctx.strokeStyle = cssVar('--precip-prob-60', '#0277bd');
+      ctx.globalAlpha = isEink ? 1 : 0.28;
+      ctx.strokeStyle = isEink ? '#000000' : cssVar('--precip-prob-60', '#0277bd');
       const expandedLeft = selectedIndex == null ? null : layout.getColumnLeft(selectedIndex);
       const expandedRight =
         selectedIndex == null || selectedEndIndex == null
@@ -351,7 +357,7 @@ export default function CloudAndRainLane({
       // Boundary layer height — dashed line across all hours
       ctx.setLineDash([3, 3]);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = cssVar('--blh-line', 'rgba(180, 120, 60, 0.6)');
+      ctx.strokeStyle = isEink ? '#000000' : cssVar('--blh-line', 'rgba(180, 120, 60, 0.6)');
       ctx.beginPath();
       let started = false;
       for (let i = 0; i < data.length; i++) {
@@ -390,6 +396,7 @@ export default function CloudAndRainLane({
       precipBarWidth,
       selectedIndex,
       selectedEndIndex,
+      isEink,
     ],
   );
 

@@ -6,6 +6,8 @@ import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import { captureFileName, type CaptureSelection } from './timelineCapture';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
+import RenderProfileProvider from '../hooks/RenderProfileProvider';
+import type { DisplayMode } from '../hooks/useDisplayMode';
 
 interface ExportDashboardCaptureOptions {
   data: WeatherTimeline;
@@ -72,20 +74,24 @@ export async function exportDashboardCapture({
   let lastCanvasStatusChange = Date.now();
 
   const root = createRoot(host);
+  const displayMode: DisplayMode =
+    document.documentElement.dataset.display === 'eink' ? 'eink' : 'color';
   root.render(
-    <DashboardCaptureRender
-      data={data}
-      selection={selection}
-      compactMode={compactMode}
-      hoursPerColumn={hoursPerColumn}
-      scales={scales}
-      switchInfo={switchInfo}
-      minutelySelection={minutelySelection}
-      onCanvasStatusChange={(status) => {
-        canvasStatus = status;
-        lastCanvasStatusChange = Date.now();
-      }}
-    />,
+    <RenderProfileProvider displayMode={displayMode}>
+      <DashboardCaptureRender
+        data={data}
+        selection={selection}
+        compactMode={compactMode}
+        hoursPerColumn={hoursPerColumn}
+        scales={scales}
+        switchInfo={switchInfo}
+        minutelySelection={minutelySelection}
+        onCanvasStatusChange={(status) => {
+          canvasStatus = status;
+          lastCanvasStatusChange = Date.now();
+        }}
+      />
+    </RenderProfileProvider>,
   );
 
   try {

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { WeatherPoint } from '../types/weather';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { useIsEink } from '../hooks/useRenderProfile';
 import { splitRunsAtExpandedColumns } from '../services/timelineLayout';
 
 const WEATHER_NAMES: Record<number, string> = {
@@ -182,6 +183,7 @@ function WeatherTooltip({
   onClose,
   forecastCode,
 }: WeatherTooltipProps) {
+  const isEink = useIsEink();
   const ref = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const midIndex = run.start + Math.floor(run.length / 2);
@@ -210,6 +212,7 @@ function WeatherTooltip({
   return createPortal(
     <div
       ref={ref}
+      className="weather-tooltip"
       style={{
         position: 'fixed',
         left: pos.x,
@@ -250,7 +253,7 @@ function WeatherTooltip({
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            opacity: 0.4 + 0.6 * entry.probability,
+            opacity: isEink ? 1 : 0.4 + 0.6 * entry.probability,
           }}
         >
           {getWeatherIcon(entry.code, isNight, 14)}

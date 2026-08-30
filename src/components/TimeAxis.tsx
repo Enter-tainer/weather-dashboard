@@ -194,6 +194,7 @@ export default function TimeAxis({
                     }}
                   >
                     <div
+                      className="time-hour-label"
                       style={{
                         position: 'absolute',
                         bottom: '4px',
@@ -242,6 +243,7 @@ export default function TimeAxis({
             const labelEl = (
               <>
                 <div
+                  className="astro-event-label"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -257,6 +259,7 @@ export default function TimeAxis({
                   <IconComp size={eventIconSize} color={color} /> {hh}:{mm}
                 </div>
                 <div
+                  className="astro-event-stem"
                   style={{
                     height: '6px',
                     width: '1px',
@@ -340,6 +343,7 @@ export default function TimeAxis({
                 }}
               >
                 <div
+                  className="moon-event-label"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -357,6 +361,7 @@ export default function TimeAxis({
                   {hh}:{mm}
                 </div>
                 <div
+                  className="moon-event-stem"
                   style={{
                     height: '18px',
                     width: '1px',

@@ -65,7 +65,17 @@ const mockParseRoute = vi.mocked(parseRoute);
 const mockParseSwitchableRoute = vi.mocked(parseSwitchableRoute);
 
 function DashboardDataProbe({ testData }: DashboardDataProbeProps) {
-  const { data, loadingDone, switching, switchInfo, handleCityClick } = useDashboardData(testData);
+  const {
+    data,
+    loadingDone,
+    switching,
+    switchInfo,
+    handleCityClick,
+    lastUpdatedAt,
+    refreshing,
+    refreshError,
+    refresh,
+  } = useDashboardData(testData);
 
   return (
     <div>
@@ -73,8 +83,14 @@ function DashboardDataProbe({ testData }: DashboardDataProbeProps) {
       <output aria-label="loading-done">{String(loadingDone)}</output>
       <output aria-label="switching">{String(switching)}</output>
       <output aria-label="switch-info">{Object.keys(switchInfo).join(',')}</output>
+      <output aria-label="last-updated">{lastUpdatedAt ?? ''}</output>
+      <output aria-label="refreshing">{String(refreshing)}</output>
+      <output aria-label="refresh-error">{refreshError ?? ''}</output>
       <button type="button" onClick={() => handleCityClick('City A')}>
         switch city
+      </button>
+      <button type="button" onClick={refresh}>
+        refresh
       </button>
     </div>
   );
@@ -158,6 +174,72 @@ describe('useDashboardData', () => {
       expect(screen.getByLabelText('data')).toHaveTextContent('first-hour,second-hour');
       expect(screen.getByLabelText('loading-done')).toHaveTextContent('true');
     });
+  });
+
+  it('commits a background refresh only after every route segment succeeds', async () => {
+    const firstRefresh = deferred<WeatherTimeline>();
+    const secondRefresh = deferred<WeatherTimeline>();
+    mockParseRoute.mockResolvedValue([
+      { city: 'first', date: '2026-05-23' },
+      { city: 'second', date: '2026-05-24' },
+    ]);
+    mockFetchCityDataForDate
+      .mockResolvedValueOnce(makeWeatherTimeline([makeWeatherPoint({ cityName: 'old-first' })]))
+      .mockResolvedValueOnce(makeWeatherTimeline([makeWeatherPoint({ cityName: 'old-second' })]))
+      .mockImplementation((entry) =>
+        entry.city === 'first' ? firstRefresh.promise : secondRefresh.promise,
+      );
+
+    render(<DashboardDataProbe />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('data')).toHaveTextContent('old-first,old-second');
+      expect(screen.getByLabelText('loading-done')).toHaveTextContent('true');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'refresh' }));
+    await waitFor(() => expect(screen.getByLabelText('refreshing')).toHaveTextContent('true'));
+
+    firstRefresh.resolve(makeWeatherTimeline([makeWeatherPoint({ cityName: 'new-first' })]));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('data')).toHaveTextContent('old-first,old-second');
+      expect(screen.getByLabelText('refreshing')).toHaveTextContent('true');
+    });
+
+    secondRefresh.resolve(makeWeatherTimeline([makeWeatherPoint({ cityName: 'new-second' })]));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('data')).toHaveTextContent('new-first,new-second');
+      expect(screen.getByLabelText('refreshing')).toHaveTextContent('false');
+      expect(screen.getByLabelText('refresh-error')).toBeEmptyDOMElement();
+    });
+  });
+
+  it('keeps stale data and its timestamp when a background refresh fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockParseRoute.mockResolvedValue([{ city: 'only', date: '2026-05-23' }]);
+    mockFetchCityDataForDate
+      .mockResolvedValueOnce(makeWeatherTimeline([makeWeatherPoint({ cityName: 'stale-hour' })]))
+      .mockRejectedValueOnce(new Error('network unavailable'));
+
+    render(<DashboardDataProbe />);
+
+    await waitFor(() => expect(screen.getByLabelText('data')).toHaveTextContent('stale-hour'));
+    const previousTimestamp = screen.getByLabelText('last-updated').textContent;
+
+    fireEvent.click(screen.getByRole('button', { name: 'refresh' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('data')).toHaveTextContent('stale-hour');
+      expect(screen.getByLabelText('refreshing')).toHaveTextContent('false');
+      expect(screen.getByLabelText('refresh-error')).toHaveTextContent(
+        '自动更新失败，继续显示上次数据',
+      );
+    });
+    expect(screen.getByLabelText('last-updated')).toHaveTextContent(previousTimestamp ?? '');
+
+    consoleError.mockRestore();
   });
 
   it('builds switch info for switchable routes and preloads inactive entries', async () => {

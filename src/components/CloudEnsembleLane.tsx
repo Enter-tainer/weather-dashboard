@@ -2,6 +2,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { useIsEink } from '../hooks/useRenderProfile';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -16,6 +17,7 @@ export default function CloudEnsembleLane({
   data,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: CloudEnsembleLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
 
@@ -31,8 +33,11 @@ export default function CloudEnsembleLane({
 
       if (data[0]?.cloudMembers && data[0].cloudMembers.length > 0) {
         ctx.lineJoin = 'round';
-        ctx.lineWidth = 15;
-        ctx.strokeStyle = cssVar('--cloud-ensemble-member-line', 'rgba(100, 100, 100, 0.05)');
+        ctx.lineWidth = isEink ? 1 : 15;
+        ctx.setLineDash(isEink ? [1, 3] : []);
+        ctx.strokeStyle = isEink
+          ? '#000000'
+          : cssVar('--cloud-ensemble-member-line', 'rgba(100, 100, 100, 0.05)');
 
         const numMembers = data[0].cloudMembers.length;
         for (let m = 0; m < numMembers; m++) {
@@ -47,12 +52,15 @@ export default function CloudEnsembleLane({
           }
           ctx.stroke();
         }
+        ctx.setLineDash([]);
       }
 
       // Main Line
       ctx.beginPath();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = cssVar('--cloud-ensemble-main-line', 'rgba(80, 80, 80, 0.8)');
+      ctx.strokeStyle = isEink
+        ? '#000000'
+        : cssVar('--cloud-ensemble-main-line', 'rgba(80, 80, 80, 0.8)');
       for (let i = 0; i < data.length; i++) {
         const x = getX(i);
         const item = data[i];
@@ -63,7 +71,7 @@ export default function CloudEnsembleLane({
       }
       ctx.stroke();
     },
-    [data, layout],
+    [data, layout, isEink],
   );
 
   return (

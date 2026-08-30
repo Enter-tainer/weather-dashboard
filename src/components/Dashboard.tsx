@@ -27,6 +27,9 @@ import {
 import { calculateDashboardScales } from '../services/weatherMetrics';
 import { aggregateTimelineByHours } from '../services/timeAggregation';
 import type { WeatherTimeline } from '../types/weather';
+import { useIsEink } from '../hooks/useRenderProfile';
+import { useImmersiveMode } from '../hooks/useImmersiveMode';
+import { setDisplayMode } from '../hooks/useDisplayMode';
 
 import './Dashboard.css';
 
@@ -43,7 +46,43 @@ export default function Dashboard({ testData }: DashboardProps) {
   const { compactMode, toggleCompactMode } = useCompactMode();
   const { timeStepHours, toggleTimeCompactMode } = useTimeCompactMode();
   const { mode, effectiveTheme, cycleThemeMode } = useThemeMode();
-  const { data, loadingDone, switching, switchInfo, handleCityClick } = useDashboardData(testData);
+  const isEink = useIsEink();
+  const { immersiveMode, setImmersiveMode } = useImmersiveMode();
+  const setEinkMode = useCallback((enabled: boolean) => {
+    setDisplayMode(enabled ? 'eink' : 'color');
+  }, []);
+  const {
+    data,
+    loadingDone,
+    switching,
+    switchInfo,
+    handleCityClick,
+    lastUpdatedAt,
+    refreshing,
+    refreshError,
+    refresh,
+  } = useDashboardData(testData);
+
+  useEffect(() => {
+    if (!isEink || testData) return undefined;
+
+    const refreshIntervalMs = 30 * 60 * 1000;
+    const maybeRefresh = () => {
+      if (document.hidden || refreshing || switching) return;
+      if (lastUpdatedAt == null || Date.now() - lastUpdatedAt >= refreshIntervalMs) refresh();
+    };
+    const timer = window.setInterval(maybeRefresh, refreshIntervalMs);
+    window.addEventListener('focus', maybeRefresh);
+    window.addEventListener('pageshow', maybeRefresh);
+    document.addEventListener('visibilitychange', maybeRefresh);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', maybeRefresh);
+      window.removeEventListener('pageshow', maybeRefresh);
+      document.removeEventListener('visibilitychange', maybeRefresh);
+    };
+  }, [isEink, lastUpdatedAt, refresh, refreshing, switching, testData]);
   const displayData = useMemo(() => {
     if (!data || data.length === 0) return data;
     return aggregateTimelineByHours(data, timeStepHours);
@@ -180,13 +219,30 @@ export default function Dashboard({ testData }: DashboardProps) {
   ]);
 
   return (
-    <div className="dashboard-wrapper">
+    <div
+      className="dashboard-wrapper"
+      data-display-mode={isEink ? 'eink' : 'color'}
+      data-immersive={immersiveMode ? 'true' : 'false'}
+      data-last-updated={lastUpdatedAt ?? undefined}
+      data-refreshing={refreshing || undefined}
+    >
+      {isEink && (refreshing || refreshError) && (
+        <div className="dashboard-refresh-status" role="status">
+          {refreshing ? '正在更新天气数据…' : refreshError}
+        </div>
+      )}
       {!captureMode && (
         <>
           <ThemeToggle mode={mode} effectiveTheme={effectiveTheme} onToggle={cycleThemeMode} />
           <CompactToggle compactMode={compactMode} onToggle={toggleCompactMode} />
           <TimeCompactToggle timeStepHours={timeStepHours} onToggle={toggleTimeCompactMode} />
-          <RouteEditor ref={routeEditorRef} />
+          <RouteEditor
+            ref={routeEditorRef}
+            einkMode={isEink}
+            onEinkModeChange={setEinkMode}
+            immersiveMode={immersiveMode}
+            onImmersiveModeChange={setImmersiveMode}
+          />
           <button
             type="button"
             className="capture-mode-btn"

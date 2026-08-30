@@ -104,7 +104,7 @@ export default function PrecipitationProbLane({
           return (
             <div
               key={index}
-              className="lane-cell"
+              className="lane-cell precip-cell"
               style={{
                 width: `${layout.getColumnWidth(index)}px`,
                 flexDirection: 'column',
@@ -114,6 +114,7 @@ export default function PrecipitationProbLane({
             >
               {compact && barHeight > 0 && (
                 <div
+                  className="eink-precip-bar"
                   style={{
                     position: 'absolute',
                     left: '5px',

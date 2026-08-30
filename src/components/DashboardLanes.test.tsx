@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { makeWeatherPoint, makeWeatherTimeline } from '../test-utils/weather';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 import DashboardLanes, { DashboardLaneStack } from './DashboardLanes';
+import RenderProfileProvider from '../hooks/RenderProfileProvider';
 
 vi.mock('../hooks/useCanvas', () => ({
   useCanvas: () => ({ current: null }),
@@ -119,6 +120,27 @@ describe('DashboardLanes', () => {
 });
 
 describe('DashboardLaneStack', () => {
+  it('keeps the full lane stack while omitting the color-only ambient layer in eink mode', () => {
+    const { container } = render(
+      <RenderProfileProvider displayMode="eink">
+        <DashboardLaneStack
+          data={makeTimeline(6)}
+          compactMode={false}
+          scales={SCALES}
+          switchInfo={{}}
+        />
+      </RenderProfileProvider>,
+    );
+
+    expect(container.querySelector('.thermo-hygro-lane')).toBeInTheDocument();
+    expect(container.querySelector('.cloud-ensemble-lane')).toBeInTheDocument();
+    expect(container.querySelector('.cloud-rain-lane')).toBeInTheDocument();
+    expect(container.querySelector('.cape-lane')).toBeInTheDocument();
+    expect(container.querySelector('.pressure-lane')).toBeInTheDocument();
+    expect(container.querySelector('canvas')).toBeInTheDocument();
+    expect(container.querySelector('.weather-ambient-background')).toBeNull();
+  });
+
   it('uses the three precipitation cells around now as the minutely click target', () => {
     const onMinutelySelect = vi.fn();
     render(

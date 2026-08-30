@@ -5,7 +5,7 @@ import AirQualityLane from './AirQualityLane';
 
 describe('AirQualityLane', () => {
   it('renders AQI and visibility labels for available values', () => {
-    render(
+    const { container } = render(
       <AirQualityLane
         data={[
           makeWeatherPoint({ aqiUS: 42, visibility: 10_000 }),
@@ -18,6 +18,12 @@ describe('AirQualityLane', () => {
     expect(screen.getByText('101')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
     expect(screen.getByText('3.5')).toBeInTheDocument();
+    expect(container.querySelectorAll('.aqi-cell')[0]).toHaveClass('eink-pattern-empty');
+    expect(container.querySelectorAll('.aqi-cell')[1]).toHaveClass('eink-pattern-dots-2');
+    expect(container.querySelectorAll('.visibility-cell')[0]).toHaveClass('eink-pattern-empty');
+    expect(container.querySelectorAll('.visibility-cell')[1]).toHaveClass(
+      'eink-pattern-horizontal',
+    );
   });
 
   it('leaves missing AQI and visibility cells blank', () => {

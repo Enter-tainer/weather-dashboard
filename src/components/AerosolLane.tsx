@@ -3,6 +3,9 @@ import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
+import { useIsEink } from '../hooks/useRenderProfile';
+import { getMonoPattern } from '../services/monoPatterns';
+import { patternForAod } from '../services/monoScales';
 import './Dashboard.css';
 
 const LANE_HEIGHT = 30;
@@ -84,6 +87,7 @@ function getAodTextStyle(): { fill: string; stroke: string } {
 }
 
 export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: AerosolLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const totalWidth = layout.totalWidth;
   const barInset = hourWidth >= 12 ? 2 : 1;
@@ -102,29 +106,29 @@ export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: Ae
         const columnWidth = layout.getColumnWidth(i);
 
         // Background color band
-        ctx.fillStyle = aodColor(d.aod);
+        ctx.fillStyle = isEink ? '#ffffff' : aodColor(d.aod);
         ctx.fillRect(x, 0, columnWidth, h);
 
         // Bar height proportional to AOD
         if (d.aod != null && d.aod > 0) {
           const barH = Math.min(d.aod / MAX_AOD, 1) * (h - 4);
-          ctx.fillStyle = aodBarColor(d.aod);
+          ctx.fillStyle = isEink ? getMonoPattern(ctx, patternForAod(d.aod)) : aodBarColor(d.aod);
           ctx.fillRect(x + barInset, h - 2 - barH, Math.max(1, columnWidth - barInset * 2), barH);
         }
 
         // Text label for notable values
         if (d.aod != null && d.aod >= 0.1) {
-          ctx.font = '9px system-ui';
+          ctx.font = isEink ? '8px system-ui' : '9px system-ui';
           ctx.textAlign = 'center';
           ctx.lineWidth = 2;
-          ctx.strokeStyle = textStyle.stroke;
+          ctx.strokeStyle = isEink ? '#ffffff' : textStyle.stroke;
           ctx.strokeText(d.aod.toFixed(2), cx, 11);
-          ctx.fillStyle = textStyle.fill;
+          ctx.fillStyle = isEink ? '#000000' : textStyle.fill;
           ctx.fillText(d.aod.toFixed(2), cx, 11);
         }
       }
     },
-    [data, layout, barInset],
+    [data, layout, barInset, isEink],
   );
 
   return (

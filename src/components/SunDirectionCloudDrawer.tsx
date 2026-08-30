@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MoveVertical, X } from 'lucide-react';
 import { useCanvas } from '../hooks/useCanvas';
+import { useIsEink } from '../hooks/useRenderProfile';
+import { getMonoPattern } from '../services/monoPatterns';
+import { monoPatternForUnit } from '../services/monoPatterns';
 import { cssVar } from '../services/themeColors';
 import {
   SUN_CLOUD_PLOT_HEIGHT,
@@ -214,7 +217,7 @@ function fillSaggingBand(
   seaLevelBaseKm: number,
   leftDist: number,
   rightDist: number,
-  fillStyle: string,
+  fillStyle: string | CanvasPattern,
 ): void {
   const steps = 10;
   ctx.fillStyle = fillStyle;
@@ -247,6 +250,7 @@ function drawCrossSection(
   origin: WeatherPoint,
   direction: SunDirectionInfo,
   activeTimeMs: number,
+  isEink: boolean,
 ): void {
   const cloudFillRgb = cssVar('--cloud-fill-rgb', '90, 90, 100');
   const cloudFillAlphaScale = Number.parseFloat(cssVar('--cloud-fill-alpha-scale', '0.85')) || 0.85;
@@ -280,7 +284,7 @@ function drawCrossSection(
   ctx.lineTo(plotRight, plotBottom);
   ctx.lineTo(plotLeft, plotBottom);
   ctx.closePath();
-  ctx.fillStyle = cssVar('--sun-cloud-earth-fill', 'rgba(80, 80, 80, 0.04)');
+  ctx.fillStyle = isEink ? '#ffffff' : cssVar('--sun-cloud-earth-fill', 'rgba(80, 80, 80, 0.04)');
   ctx.fill();
 
   // Clip a classic section-view hatch to the curved earth polygon. The single-direction diagonal
@@ -296,7 +300,9 @@ function drawCrossSection(
   ctx.lineTo(plotLeft, plotBottom);
   ctx.closePath();
   ctx.clip();
-  ctx.strokeStyle = cssVar('--sun-cloud-earth-hatch', 'rgba(55, 65, 60, 0.23)');
+  ctx.strokeStyle = isEink
+    ? '#000000'
+    : cssVar('--sun-cloud-earth-hatch', 'rgba(55, 65, 60, 0.23)');
   ctx.lineWidth = 0.7;
   const hatchRise = plotBottom - plotTop;
   ctx.beginPath();
@@ -308,7 +314,7 @@ function drawCrossSection(
   ctx.restore();
 
   // Ground line (the curved horizon).
-  ctx.strokeStyle = cssVar('--sun-cloud-ground-line', 'rgba(0,0,0,0.28)');
+  ctx.strokeStyle = isEink ? '#000000' : cssVar('--sun-cloud-ground-line', 'rgba(0,0,0,0.28)');
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   for (let i = 0; i < groundSamples.length; i++) {
@@ -321,7 +327,9 @@ function drawCrossSection(
   // Keep a simple printed-diagram label over the hatch.
   const earthLabelX = distToX(layout, layout.maxDist / 2);
   const earthLabelY = Math.min(plotBottom - 16, groundYAt(layout, layout.maxDist / 2) + 48);
-  ctx.fillStyle = cssVar('--sun-cloud-earth-label-bg', 'rgba(250, 250, 250, 0.82)');
+  ctx.fillStyle = isEink
+    ? '#ffffff'
+    : cssVar('--sun-cloud-earth-label-bg', 'rgba(250, 250, 250, 0.82)');
   ctx.fillRect(earthLabelX - 18, earthLabelY - 9, 36, 18);
   const earthLabelColor = cssVar('--sun-cloud-earth-label', 'rgba(55, 62, 58, 0.76)');
   ctx.fillStyle = earthLabelColor;
@@ -337,8 +345,8 @@ function drawCrossSection(
   for (const alt of GRID_ALTS) {
     const isBoundary = BOUNDARY_ALTS.has(alt);
     ctx.setLineDash(isBoundary ? [6, 4] : [4, 6]);
-    ctx.strokeStyle = isBoundary ? gridBoundary : gridLine;
-    ctx.lineWidth = isBoundary ? 1.2 : 0.5;
+    ctx.strokeStyle = isEink ? '#000000' : isBoundary ? gridBoundary : gridLine;
+    ctx.lineWidth = isEink ? (isBoundary ? 1.2 : 0.75) : isBoundary ? 1.2 : 0.5;
     ctx.beginPath();
     for (let i = 0; i < groundSamples.length; i++) {
       const p = groundSamples[i]!;
@@ -411,7 +419,9 @@ function drawCrossSection(
     }
     for (const band of bands) {
       if (band.seaLevelTopKm <= band.seaLevelBaseKm) continue;
-      const fill = cloudColor(band.cover, cloudFillRgb, cloudFillAlphaScale);
+      const fill = isEink
+        ? getMonoPattern(ctx, monoPatternForUnit(band.cover / 100))
+        : cloudColor(band.cover, cloudFillRgb, cloudFillAlphaScale);
       fillSaggingBand(
         ctx,
         layout,
@@ -465,20 +475,28 @@ function drawCrossSection(
     ? timeAxisX - twilightLaneGap - twilightLaneWidth
     : timeAxisX + twilightLaneGap;
   const twilightPalette = getTwilightPalette();
-  const twilightGradient = ctx.createLinearGradient(0, twilightTop, 0, twilightBottom);
-  for (const altitudeDeg of [MAX_SUN_ALT_DEG, 0, -2, -4, MIN_SUN_ALT_DEG]) {
-    const position = (MAX_SUN_ALT_DEG - altitudeDeg) / (MAX_SUN_ALT_DEG - MIN_SUN_ALT_DEG);
-    twilightGradient.addColorStop(
-      position,
-      colorWithAlpha(altitudeToTwilightColor(altitudeDeg, twilightPalette), 0.82),
-    );
+  if (isEink) {
+    ctx.fillStyle = '#ffffff';
+  } else {
+    const twilightGradient = ctx.createLinearGradient(0, twilightTop, 0, twilightBottom);
+    for (const altitudeDeg of [MAX_SUN_ALT_DEG, 0, -2, -4, MIN_SUN_ALT_DEG]) {
+      const position = (MAX_SUN_ALT_DEG - altitudeDeg) / (MAX_SUN_ALT_DEG - MIN_SUN_ALT_DEG);
+      twilightGradient.addColorStop(
+        position,
+        colorWithAlpha(altitudeToTwilightColor(altitudeDeg, twilightPalette), 0.82),
+      );
+    }
+    ctx.fillStyle = twilightGradient;
   }
-  ctx.fillStyle = twilightGradient;
   ctx.fillRect(twilightLaneX, twilightTop, twilightLaneWidth, twilightBottom - twilightTop);
-  ctx.strokeStyle = cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
+  ctx.strokeStyle = isEink
+    ? '#000000'
+    : cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
   ctx.lineWidth = 0.5;
   ctx.strokeRect(twilightLaneX, twilightTop, twilightLaneWidth, twilightBottom - twilightTop);
-  ctx.strokeStyle = cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
+  ctx.strokeStyle = isEink
+    ? '#000000'
+    : cssVar('--sun-cloud-axis-line', 'rgba(120, 120, 120, 0.55)');
   ctx.lineWidth = 0.7;
   ctx.beginPath();
   ctx.moveTo(timeAxisX, timeAxisTop);
@@ -530,7 +548,8 @@ function drawCrossSection(
         origin.aod ?? DEFAULT_AEROSOL_OPTICAL_DEPTH,
       );
       if (!style.visible) continue;
-      ctx.strokeStyle = style.cssColor;
+      ctx.strokeStyle = isEink ? '#000000' : style.cssColor;
+      ctx.setLineDash(isEink ? [3, 3] : []);
       ctx.beginPath();
       for (let i = 0; i < ray.points.length; i++) {
         const p = ray.points[i]!;
@@ -547,6 +566,7 @@ function drawCrossSection(
   };
   ctx.lineWidth = 1.8;
   strokeRayFan();
+  ctx.setLineDash([]);
   ctx.restore();
 
   // --- Physical sun at the sun end of the cross-section ---
@@ -557,11 +577,11 @@ function drawCrossSection(
   // frame instead of forcing the underground area to consume most of the chart.
   const sunX = layout.farDist === 0 ? plotLeft : plotRight;
   const sunY = currentSunY;
-  ctx.fillStyle = sunFill;
+  ctx.fillStyle = isEink ? '#000000' : sunFill;
   ctx.beginPath();
   ctx.arc(sunX, sunY, SUN_DISC_RADIUS_PX, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = sunFill;
+  ctx.strokeStyle = isEink ? '#000000' : sunFill;
   ctx.lineWidth = 1;
   for (let r = 0; r < 8; r++) {
     const ang = (r / 8) * Math.PI * 2;
@@ -585,9 +605,9 @@ function drawCrossSection(
     ? timeAxisX - SUN_RAY_OUTER_RADIUS_PX - 3 - timeBadgeWidth
     : timeAxisX + SUN_RAY_OUTER_RADIUS_PX + 3;
   const timeBadgeY = Math.min(h - timeBadgeHeight, Math.max(0, currentSunY - timeBadgeHeight / 2));
-  ctx.fillStyle = cssVar('--sun-cloud-time-label-bg', '#b85c16');
+  ctx.fillStyle = isEink ? '#000000' : cssVar('--sun-cloud-time-label-bg', '#b85c16');
   ctx.fillRect(timeBadgeX, timeBadgeY, timeBadgeWidth, timeBadgeHeight);
-  ctx.fillStyle = cssVar('--sun-cloud-time-label-text', '#fff');
+  ctx.fillStyle = '#ffffff';
   ctx.font = '600 10px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -598,7 +618,7 @@ function drawCrossSection(
   const observerOnLeft = !isSunset;
   const observerX = distToX(layout, 0);
   const observerY = groundYAt(layout, 0);
-  const observerColor = cssVar('--sun-cloud-observer', '#277a65');
+  const observerColor = isEink ? '#000000' : cssVar('--sun-cloud-observer', '#277a65');
   ctx.strokeStyle = observerColor;
   ctx.fillStyle = observerColor;
   ctx.lineWidth = 1.5;
@@ -613,9 +633,11 @@ function drawCrossSection(
   const observerBadgeHeight = 17;
   const observerBadgeX = observerOnLeft ? observerX - 7 - observerBadgeWidth : observerX + 7;
   const observerBadgeY = observerY - observerBadgeHeight / 2;
-  ctx.fillStyle = cssVar('--sun-cloud-observer-label-bg', 'rgba(39, 122, 101, 0.92)');
+  ctx.fillStyle = isEink
+    ? '#000000'
+    : cssVar('--sun-cloud-observer-label-bg', 'rgba(39, 122, 101, 0.92)');
   ctx.fillRect(observerBadgeX, observerBadgeY, observerBadgeWidth, observerBadgeHeight);
-  ctx.fillStyle = cssVar('--sun-cloud-observer-label-text', '#fff');
+  ctx.fillStyle = '#ffffff';
   ctx.font = '600 10px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -632,6 +654,7 @@ export default function SunDirectionCloudDrawer({
   sectionState,
   onClose,
 }: SunDirectionCloudDrawerProps) {
+  const isEink = useIsEink();
   const drawerRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const draggingRef = useRef(false);
@@ -663,15 +686,17 @@ export default function SunDirectionCloudDrawer({
         origin,
         direction,
         activeTimeMs,
+        isEink,
       );
     },
-    [sectionState.data, sunAltDeg, direction, origin, activeTimeMs],
+    [sectionState.data, sunAltDeg, direction, origin, activeTimeMs, isEink],
   );
   const canvasRef = useCanvas(CANVAS_WIDTH, canvasHeight, paintCanvas, [
     sectionState.data,
     sunAltDeg,
     direction.eventType,
     activeTimeMs,
+    isEink,
   ]);
 
   // Reset to the event altitude when the origin/event changes.

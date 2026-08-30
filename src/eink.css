@@ -1,0 +1,426 @@
+:root[data-display='eink'] {
+  color-scheme: light;
+
+  --bg-dark: #ffffff;
+  --bg-main: #ffffff;
+  --bg-clouds: #ffffff;
+  --timeline-bg: #ffffff;
+  --legend-bg: #ffffff;
+  --legend-border: #000000;
+  --lane-border: #000000;
+  --grid-line: #000000;
+  --cell-day: #ffffff;
+  --cell-night: transparent;
+  --cell-hover: #ffffff;
+  --weather-stripe: #ffffff;
+  --weather-run-border: #000000;
+
+  --text-main: #000000;
+  --text-light: #000000;
+  --text-muted: #000000;
+  --text-subtle: #000000;
+  --text-faint: #000000;
+  --text-inverse: #ffffff;
+  --metric-text: #000000;
+  --metric-text-strong: #000000;
+
+  --control-bg: #ffffff;
+  --control-bg-hover: #ffffff;
+  --control-fg: #000000;
+  --control-fg-hover: #000000;
+  --control-border: #000000;
+  --control-shadow: none;
+  --control-shadow-hover: none;
+  --modal-backdrop: transparent;
+  --modal-surface: #ffffff;
+  --modal-surface-muted: #ffffff;
+  --modal-section-bg: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #000000;
+  --primary: #000000;
+  --primary-hover: #000000;
+  --primary-button-bg: #000000;
+  --primary-button-hover: #000000;
+  --primary-button-text: #ffffff;
+  --danger: #000000;
+  --danger-bg: #ffffff;
+
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #000000;
+  --tooltip-text: #000000;
+  --tooltip-muted: #000000;
+  --tooltip-subtle: #000000;
+  --label-stroke: #ffffff;
+  --now-line: #000000;
+  --now-label-bg: #ffffff;
+  --now-label-border: #000000;
+  --now-label-text: #000000;
+
+  --sunrise-color: #000000;
+  --sunset-color: #000000;
+  --moonrise-color: #000000;
+  --moonset-color: #000000;
+  --astro-label-stroke: #ffffff;
+  --twilight-day: #ffffff;
+  --twilight-warm-day: #ffffff;
+  --twilight-golden: #ffffff;
+  --twilight-blue: #ffffff;
+  --twilight-nautical: #ffffff;
+  --twilight-night: #ffffff;
+
+  --cloud-layer-bg: #ffffff;
+  --precip-strip-bg: #ffffff;
+  --cloud-grid-line: #000000;
+  --cloud-grid-boundary: #000000;
+  --cloud-fill-rgb: 0, 0, 0;
+  --cloud-fill-alpha-scale: 1;
+  --sun-cloud-axis-line: #000000;
+  --sun-cloud-horizon: #000000;
+  --sun-cloud-sun-fill: #000000;
+  --sun-cloud-sunlit: #ffffff;
+  --sun-cloud-sight: #000000;
+  --sun-cloud-shadow: #ffffff;
+  --sun-cloud-underground: #ffffff;
+  --sun-cloud-earth-fill: #ffffff;
+  --sun-cloud-earth-hatch: #000000;
+  --sun-cloud-earth-label: #000000;
+  --sun-cloud-earth-label-bg: #ffffff;
+  --sun-cloud-ground-line: #000000;
+  --sun-cloud-observer: #000000;
+  --sun-cloud-observer-label-bg: #000000;
+  --sun-cloud-observer-label-text: #ffffff;
+  --sun-cloud-time-label-bg: #000000;
+  --sun-cloud-time-label-text: #ffffff;
+  --sun-event-trigger-hover: #ffffff;
+  --cloud-ensemble-member-line: #000000;
+  --cloud-ensemble-main-line: #000000;
+  --chart-line-rgb: 0, 0, 0;
+  --chart-line-main: #000000;
+  --chart-label-muted: #000000;
+  --temperature-ensemble-line: #000000;
+  --blh-line: #000000;
+  --wind-member-fill: #ffffff;
+  --wind-main-fill: #000000;
+  --precip-prob-low: #000000;
+  --precip-prob-20: #000000;
+  --precip-prob-40: #000000;
+  --precip-prob-60: #000000;
+  --precip-prob-80: #000000;
+  --precip-rain-rgb: 0, 0, 0;
+  --precip-drizzle-rgb: 0, 0, 0;
+  --precip-snow-rgb: 0, 0, 0;
+  --precip-freezing-rgb: 0, 0, 0;
+  --precip-thunder-rgb: 0, 0, 0;
+  --cape-low-bg: #ffffff;
+  --cape-mid-bg: #ffffff;
+  --cape-high-bg: #ffffff;
+  --cape-severe-bg: #ffffff;
+  --visibility-good-bg: #ffffff;
+  --visibility-moderate-bg: #ffffff;
+  --visibility-poor-bg: #ffffff;
+  --visibility-severe-bg: #ffffff;
+  --aod-text: #000000;
+  --aod-text-stroke: #ffffff;
+  --thermo-label-text: #000000;
+  --thermo-apparent-neutral: #000000;
+  --spinner-track: #000000;
+  --spinner-head: #000000;
+  --color-temp-line: #000000;
+  --aqi-good: #ffffff;
+  --aqi-moderate: #ffffff;
+  --aqi-sg: #ffffff;
+  --aqi-unhealthy: #ffffff;
+  --aqi-vu: #ffffff;
+  --aqi-hazardous: #ffffff;
+}
+
+:root[data-display='eink'] *,
+:root[data-display='eink'] *::before,
+:root[data-display='eink'] *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+:root[data-display='eink'] .capture-mode-btn:disabled,
+:root[data-display='eink'] .mobile-tool-action:disabled,
+:root[data-display='eink'] .capture-toolbar-btn:disabled {
+  opacity: 1 !important;
+}
+
+:root[data-display='eink'] .cell-night {
+  background-color: #ffffff;
+  background-image: repeating-linear-gradient(135deg, #000000 0 1px, transparent 1px 8px);
+}
+
+:root[data-display='eink'] .weather-run-overlay svg,
+:root[data-display='eink'] .weather-icon-lane svg,
+:root[data-display='eink'] .time-axis svg,
+:root[data-display='eink'] .location-lane svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+:root[data-display='eink'] .weather-icon-lane .weather-run-overlay {
+  color: #000000 !important;
+}
+
+:root[data-display='eink'] .weather-icon-lane .weather-run-overlay,
+:root[data-display='eink'] .uv-run-value,
+:root[data-display='eink'] .aqi-lane,
+:root[data-display='eink'] .cape-lane,
+:root[data-display='eink'] .precip-prob-lane {
+  background-image: none;
+}
+
+:root[data-display='eink'] .wind-lane svg,
+:root[data-display='eink'] .legend-sidebar a {
+  opacity: 1 !important;
+}
+
+:root[data-display='eink'] .eink-pattern-empty {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+:root[data-display='eink'] .eink-pattern-dots-1 {
+  background-color: #ffffff !important;
+  background-image: radial-gradient(#000000 0.65px, transparent 0.75px) !important;
+  background-size: 6px 6px !important;
+}
+
+:root[data-display='eink'] .eink-pattern-dots-2 {
+  background-color: #ffffff !important;
+  background-image: radial-gradient(#000000 0.8px, transparent 0.95px) !important;
+  background-size: 4px 4px !important;
+}
+
+:root[data-display='eink'] .eink-pattern-dots-3 {
+  background-color: #ffffff !important;
+  background-image: radial-gradient(#000000 0.9px, transparent 1px) !important;
+  background-size: 4px 4px !important;
+}
+
+:root[data-display='eink'] .eink-pattern-diagonal-1 {
+  background-color: #ffffff !important;
+  background-image: repeating-linear-gradient(
+    135deg,
+    #000000 0 1px,
+    transparent 1px 8px
+  ) !important;
+}
+
+:root[data-display='eink'] .eink-pattern-diagonal-2 {
+  background-color: #ffffff !important;
+  background-image: repeating-linear-gradient(
+    135deg,
+    #000000 0 1px,
+    transparent 1px 5px
+  ) !important;
+}
+
+:root[data-display='eink'] .eink-pattern-horizontal {
+  background-color: #ffffff !important;
+  background-image: repeating-linear-gradient(0deg, #000000 0 1px, transparent 1px 6px) !important;
+}
+
+:root[data-display='eink'] .eink-pattern-crosshatch {
+  background-color: #ffffff !important;
+  background-image:
+    repeating-linear-gradient(135deg, #000000 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(45deg, #000000 0 1px, transparent 1px 8px) !important;
+}
+
+:root[data-display='eink'] .eink-pattern-solid {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+:root[data-display='eink'] .uv-run-value,
+:root[data-display='eink'] .precip-cell {
+  border-radius: 0 !important;
+  color: #000000 !important;
+}
+
+:root[data-display='eink'] .uv-run-value {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid #000000;
+  border-radius: 3px !important;
+  color: #000000 !important;
+}
+
+:root[data-display='eink'] .aqi-cell,
+:root[data-display='eink'] .visibility-cell,
+:root[data-display='eink'] .cape-cell {
+  box-sizing: border-box;
+  border: 0;
+  background-color: transparent !important;
+  background-image: none !important;
+  font-size: 11px !important;
+}
+
+:root[data-display='eink'] .visibility-cell {
+  font-size: 9px !important;
+}
+
+:root[data-display='eink'] .aqi-cell.eink-pattern-dots-1,
+:root[data-display='eink'] .visibility-cell.eink-pattern-dots-1 {
+  border-bottom: 1px dotted #000000 !important;
+}
+
+:root[data-display='eink'] .aqi-cell.eink-pattern-dots-2,
+:root[data-display='eink'] .visibility-cell.eink-pattern-horizontal {
+  border-bottom: 1px dashed #000000 !important;
+}
+
+:root[data-display='eink'] .aqi-cell.eink-pattern-diagonal-1,
+:root[data-display='eink'] .visibility-cell.eink-pattern-crosshatch {
+  border-bottom: 2px solid #000000 !important;
+}
+
+:root[data-display='eink'] .aqi-cell.eink-pattern-diagonal-2 {
+  border: 1px solid #000000 !important;
+}
+
+:root[data-display='eink'] .aqi-cell.eink-pattern-crosshatch {
+  border: 2px solid #000000 !important;
+}
+
+:root[data-display='eink'] .time-hour-label {
+  z-index: 6 !important;
+  padding: 0;
+  background: transparent !important;
+  -webkit-text-stroke: 2px #ffffff;
+  paint-order: stroke fill;
+}
+
+:root[data-display='eink'] .eink-precip-bar {
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0 !important;
+  background: #000000 !important;
+  background-image: none !important;
+}
+
+:root[data-display='eink'] .cloud-rain-lane .hourly-precip-label,
+:root[data-display='eink'] .cloud-rain-lane .minutely-rain-value-label,
+:root[data-display='eink'] .cloud-rain-lane .minutely-rain-inline-summary,
+:root[data-display='eink'] .cloud-rain-lane .minutely-time-axis-tick {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+:root[data-display='eink'] .cloud-rain-lane .minutely-rain-inline-summary {
+  border: 1px solid #000000;
+  border-radius: 0;
+  background: #ffffff !important;
+}
+
+:root[data-display='eink'] .cloud-rain-lane .minutely-rain-hint {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+:root[data-display='eink'] .weather-tooltip,
+:root[data-display='eink'] .thermo-tooltip {
+  border: 2px solid #000000;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+:root[data-display='eink'] .weather-tooltip svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+:root[data-display='eink'] .lanes-container.is-switching {
+  opacity: 1 !important;
+}
+
+:root[data-display='eink'] .sounding-drawer,
+:root[data-display='eink'] .sun-cloud-drawer,
+:root[data-display='eink'] .sounding-chart,
+:root[data-display='eink'] .cloud-profile-chart,
+:root[data-display='eink'] .cloud-profile-level-row,
+:root[data-display='eink'] .cloud-profile-level-row:nth-child(even) {
+  background: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+:root[data-display='eink'] .cloud-profile-fill,
+:root[data-display='eink'] .sounding-swatch.temp,
+:root[data-display='eink'] .sounding-swatch.inversion {
+  background: #000000 !important;
+}
+
+:root[data-display='eink'] .sounding-swatch.dew {
+  background: repeating-linear-gradient(90deg, #000000 0 5px, transparent 5px 8px) !important;
+}
+
+:root[data-display='eink'] .sounding-chart .skewt-container {
+  --skewt-temp-color: #000000;
+  --skewt-dwpt-color: #000000;
+  --skewt-grid-color: #000000;
+  --skewt-zero-color: #000000;
+  --skewt-axis-color: #000000;
+  --skewt-barb-color: #000000;
+}
+
+/* Immersive mode is opt-in so normal E-ink pages retain their floating tools. */
+.dashboard-wrapper[data-immersive='true'] .theme-toggle-btn,
+.dashboard-wrapper[data-immersive='true'] .compact-toggle-btn,
+.dashboard-wrapper[data-immersive='true'] .time-compact-toggle-btn,
+.dashboard-wrapper[data-immersive='true'] .capture-mode-btn,
+.dashboard-wrapper[data-immersive='true'] .route-editor-btn,
+.dashboard-wrapper[data-immersive='true'] .mobile-tool-menu {
+  display: none !important;
+}
+
+:root[data-display='eink'] .sun-cloud-hint {
+  border: 1px solid #000000 !important;
+  background: #ffffff !important;
+}
+
+:root[data-display='eink'] .current-time-indicator-line {
+  background: repeating-linear-gradient(to bottom, #000000 0 5px, transparent 5px 9px);
+  width: 1px;
+  top: 74px;
+}
+
+:root[data-display='eink'] .current-time-indicator-label {
+  border: 2px solid #000000;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-display='eink'] .time-axis .astro-event-label,
+:root[data-display='eink'] .time-axis .moon-event-label {
+  padding: 0 2px;
+  border: 1px solid #000000;
+  border-radius: 3px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  -webkit-text-stroke: 0 !important;
+  paint-order: normal !important;
+}
+
+:root[data-display='eink'] .time-axis .astro-event-stem,
+:root[data-display='eink'] .time-axis .moon-event-stem {
+  background-color: #000000 !important;
+  opacity: 1 !important;
+}
+
+:root[data-display='eink'] .timeline-capture-mask {
+  background: repeating-linear-gradient(135deg, #000000 0 1px, transparent 1px 7px);
+}
+
+:root[data-display='eink'] .timeline-capture-selection,
+:root[data-display='eink'] .timeline-capture-handle,
+:root[data-display='eink'] .timeline-capture-move span {
+  border-radius: 0;
+}

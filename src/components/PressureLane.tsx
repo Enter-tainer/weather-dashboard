@@ -2,6 +2,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { useIsEink } from '../hooks/useRenderProfile';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -18,6 +19,7 @@ export default function PressureLane({
   maxP,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: PressureLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
   const height = 45; // --lane-height-pressure
@@ -39,7 +41,10 @@ export default function PressureLane({
       const mCount = data[0]?.pressureMembers?.length || 0;
       if (mCount > 0) {
         ctx.lineWidth = 1;
-        ctx.strokeStyle = `rgba(${cssVar('--chart-line-rgb', '100, 100, 100')}, ${Math.max(0.04, 2.5 / mCount)})`;
+        ctx.strokeStyle = isEink
+          ? '#000000'
+          : `rgba(${cssVar('--chart-line-rgb', '100, 100, 100')}, ${Math.max(0.04, 2.5 / mCount)})`;
+        ctx.setLineDash(isEink ? [1, 3] : []);
 
         for (let mIdx = 0; mIdx < mCount; mIdx++) {
           ctx.beginPath();
@@ -53,12 +58,13 @@ export default function PressureLane({
           }
           ctx.stroke();
         }
+        ctx.setLineDash([]);
       }
 
       // Draw main forecast line
       ctx.beginPath();
       ctx.lineWidth = 1.8;
-      ctx.strokeStyle = cssVar('--chart-line-main', 'rgba(50, 50, 50, 0.9)');
+      ctx.strokeStyle = isEink ? '#000000' : cssVar('--chart-line-main', 'rgba(50, 50, 50, 0.9)');
 
       let started = false;
       for (let i = 0; i < data.length; i++) {
@@ -75,7 +81,7 @@ export default function PressureLane({
       }
       ctx.stroke();
     },
-    [data, minP, maxP, layout],
+    [data, minP, maxP, layout, isEink],
   );
 
   return (

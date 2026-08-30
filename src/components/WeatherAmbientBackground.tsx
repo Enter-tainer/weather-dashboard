@@ -132,6 +132,7 @@ export default function WeatherAmbientBackground({
 
   return (
     <div
+      className="weather-ambient-background"
       style={{
         position: 'absolute',
         top: 'calc(24px + var(--lane-height-basic) + 12px)',

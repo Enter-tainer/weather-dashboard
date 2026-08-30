@@ -337,6 +337,20 @@
   white-space: nowrap;
 }
 
+.dashboard-refresh-status {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  z-index: 120;
+  padding: 3px 6px;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: var(--control-fg);
+  font-size: 10px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
 .lanes-container {
   display: flex;
   flex-direction: column;

@@ -2,6 +2,8 @@ import { useCanvas } from '../hooks/useCanvas';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
+import { useIsEink } from '../hooks/useRenderProfile';
+import { getMonoPattern } from '../services/monoPatterns';
 import './Dashboard.css';
 
 const LANE_HEIGHT = 110;
@@ -19,6 +21,7 @@ export default function TemperatureLane({
   maxTemp,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: TemperatureLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const minTempVal = Math.floor(minTemp / 5) * 5;
   const maxTempVal = Math.ceil(maxTemp / 5) * 5;
@@ -44,7 +47,7 @@ export default function TemperatureLane({
       // Draw gridlines
       ctx.beginPath();
       ctx.setLineDash([2, 4]);
-      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.strokeStyle = isEink ? '#000000' : 'rgba(0,0,0,0.1)';
       tempSteps.forEach((t) => {
         const y = getY(t);
         if (y >= 10 && y <= h - 10) {
@@ -60,8 +63,9 @@ export default function TemperatureLane({
 
       // Draw Ensemble shadow bands (density effect)
       ctx.lineJoin = 'round';
-      ctx.lineWidth = 15;
-      ctx.strokeStyle = 'rgba(211, 47, 47, 0.05)';
+      ctx.lineWidth = isEink ? 3 : 15;
+      ctx.strokeStyle = isEink ? '#000000' : 'rgba(211, 47, 47, 0.05)';
+      ctx.setLineDash(isEink ? [1, 4] : []);
 
       const firstTempMembers = data[0]?.tempMembers;
       if (firstTempMembers && firstTempMembers.length > 0) {
@@ -80,14 +84,20 @@ export default function TemperatureLane({
         }
       }
 
+      ctx.setLineDash([]);
+
       // Draw Main Temperature Line — gradient fill per segment
       ctx.lineWidth = 3;
-      ctx.strokeStyle = '#c62828';
+      ctx.strokeStyle = isEink ? '#000000' : '#c62828';
 
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, 'rgba(211, 47, 47, 0.3)');
-      grad.addColorStop(1, 'rgba(211, 47, 47, 0.0)');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = isEink
+        ? getMonoPattern(ctx, 'dots-1')
+        : (() => {
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgba(211, 47, 47, 0.3)');
+            grad.addColorStop(1, 'rgba(211, 47, 47, 0.0)');
+            return grad;
+          })();
 
       // Fill and stroke each contiguous segment separately
       let segStart: number | null = null;
@@ -133,7 +143,7 @@ export default function TemperatureLane({
         }
       }
     },
-    [data, minTemp, maxTemp, tempSteps, layout],
+    [data, minTemp, maxTemp, tempSteps, layout, isEink],
   );
 
   return (

@@ -123,6 +123,7 @@ export function useCanvas(
     window.addEventListener('resize', scheduleRedraw);
     window.addEventListener('orientationchange', scheduleResumeRedraw);
     window.addEventListener('weather-theme-change', scheduleResumeRedraw);
+    window.addEventListener('weather-render-profile-change', scheduleResumeRedraw);
     canvas?.addEventListener('contextlost', handleContextLost);
     canvas?.addEventListener('contextrestored', scheduleResumeRedraw);
 
@@ -133,6 +134,7 @@ export function useCanvas(
       window.removeEventListener('resize', scheduleRedraw);
       window.removeEventListener('orientationchange', scheduleResumeRedraw);
       window.removeEventListener('weather-theme-change', scheduleResumeRedraw);
+      window.removeEventListener('weather-render-profile-change', scheduleResumeRedraw);
       canvas?.removeEventListener('contextlost', handleContextLost);
       canvas?.removeEventListener('contextrestored', scheduleResumeRedraw);
 

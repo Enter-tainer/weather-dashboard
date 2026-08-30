@@ -43,6 +43,7 @@ import type { DashboardScales, SunEvent, WeatherTimeline } from '../types/weathe
 import { CLOUD_AND_RAIN_LANE_HEIGHT, CLOUD_PLOT_HEIGHT } from '../services/cloudAndRainScale';
 import { useMemo } from 'react';
 import type { CSSProperties, RefObject } from 'react';
+import { useIsEink } from '../hooks/useRenderProfile';
 
 interface EmptyTimelineStateProps {
   loadingDone: boolean;
@@ -134,6 +135,7 @@ export function DashboardLaneStack({
   onMinutelySelect,
   minutelySelection,
 }: DashboardLaneStackProps) {
+  const isEink = useIsEink();
   const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
   const interactive = renderMode === 'interactive';
   const hourWidth = getTimelineHourWidth();
@@ -168,7 +170,9 @@ export function DashboardLaneStack({
           </div>
         )}
         <DashboardBackground data={data} hourWidth={hourWidth} />
-        <WeatherAmbientBackground data={data} compact={compactMode} hourWidth={hourWidth} />
+        {!isEink && (
+          <WeatherAmbientBackground data={data} compact={compactMode} hourWidth={hourWidth} />
+        )}
         <LocationLane
           data={data}
           switchInfo={switchInfo}

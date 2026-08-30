@@ -1,5 +1,7 @@
 import type { WeatherPoint } from '../types/weather';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { monoPatternClass } from '../services/monoPatterns';
+import { patternForAqi, patternForVisibility } from '../services/monoScales';
 import './Dashboard.css';
 
 interface AirQualityLaneProps {
@@ -40,7 +42,7 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
             return (
               <div
                 key={index}
-                className="lane-cell"
+                className={`lane-cell aqi-cell ${monoPatternClass(patternForAqi(item.aqiUS))}`}
                 style={{
                   width: `${layout.getColumnWidth(index)}px`,
                   backgroundColor: bgColor,
@@ -59,20 +61,23 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
       <div className="lane" style={{ height: '20px', fontSize: '9px' }}>
         <div className="lane-data">
           {data.map((item, index) => {
-            const visKm = item.visibility != null ? (item.visibility / 1000).toFixed(1) : '-';
-            const bgColor = getVisibilityColor(visKm !== '-' ? parseFloat(visKm) : null);
+            const visKm =
+              item.visibility != null ? Number((item.visibility / 1000).toFixed(1)) : null;
+            const bgColor = getVisibilityColor(visKm);
 
             return (
               <div
                 key={index}
-                className="lane-cell"
+                className={`lane-cell visibility-cell ${monoPatternClass(
+                  patternForVisibility(visKm),
+                )}`}
                 style={{
                   width: `${layout.getColumnWidth(index)}px`,
                   backgroundColor: bgColor,
                   color: 'var(--metric-text)',
                 }}
               >
-                {index % labelInterval === 0 && visKm !== '-' ? parseFloat(visKm) : ''}
+                {index % labelInterval === 0 && visKm != null ? visKm : ''}
               </div>
             );
           })}

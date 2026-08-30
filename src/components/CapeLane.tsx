@@ -34,7 +34,7 @@ export default function CapeLane({ data }: CapeLaneProps) {
           return (
             <div
               key={index}
-              className="lane-cell"
+              className="lane-cell cape-cell"
               style={{
                 width: `${layout.getColumnWidth(index)}px`,
                 backgroundColor: bgColor,

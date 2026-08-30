@@ -23,7 +23,7 @@ describe('PrecipitationProbLane', () => {
   });
 
   it('renders compact precipitation amount and probability summaries', () => {
-    render(
+    const { container } = render(
       <PrecipitationProbLane
         compact
         data={[
@@ -39,5 +39,6 @@ describe('PrecipitationProbLane', () => {
     expect(screen.getByText('1.6')).toBeInTheDocument();
     expect(screen.queryByText('70%')).not.toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
+    expect(container.querySelectorAll('.eink-precip-bar')).toHaveLength(3);
   });
 });

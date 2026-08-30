@@ -4,6 +4,7 @@ import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import { altitudeToTwilightColor, getTwilightPalette } from '../services/twilightColor';
+import { useIsEink } from '../hooks/useRenderProfile';
 
 interface TwilightLaneProps {
   data: WeatherPoint[];
@@ -12,6 +13,7 @@ interface TwilightLaneProps {
 
 export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: TwilightLaneProps) {
   const [, setThemeRevision] = useState(0);
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
 
   useEffect(() => {
@@ -59,6 +61,75 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
   const gradient = `linear-gradient(to right, ${stops.join(', ')})`;
 
   const totalWidth = layout.totalWidth;
+
+  if (isEink) {
+    const segments: Array<{ left: number; width: number; pattern: string }> = [];
+    const resolution = 4;
+    const patternForAltitude = (altitude: number): string =>
+      altitude < 0 ? 'eink-pattern-dots-1' : 'eink-pattern-empty';
+
+    for (let i = 0; i < data.length - 1; i++) {
+      const alt1 = data[i]?.sunAltitude ?? 10;
+      const alt2 = data[i + 1]?.sunAltitude ?? 10;
+      for (let s = 0; s < resolution; s++) {
+        const t = s / resolution;
+        const left = layout.getTimePosition(i + t);
+        const right = layout.getTimePosition(i + (s + 1) / resolution);
+        segments.push({
+          left,
+          width: Math.max(0, right - left),
+          pattern: patternForAltitude(alt1 + (alt2 - alt1) * t),
+        });
+      }
+    }
+    if (data.length > 0) {
+      const lastLeft = layout.getTimePosition(data.length - 1);
+      segments.push({
+        left: lastLeft,
+        width: Math.max(0, totalWidth - lastLeft),
+        pattern: patternForAltitude(data[data.length - 1]?.sunAltitude ?? 10),
+      });
+    }
+
+    const mergedSegments: Array<{ left: number; width: number; pattern: string }> = [];
+    for (const segment of segments) {
+      const previous = mergedSegments[mergedSegments.length - 1];
+      if (
+        previous &&
+        previous.pattern === segment.pattern &&
+        Math.abs(previous.left + previous.width - segment.left) < 0.01
+      ) {
+        previous.width += segment.width;
+      } else {
+        mergedSegments.push({ ...segment });
+      }
+    }
+
+    return (
+      <div className="lane twilight-lane" style={{ height: '12px', minHeight: '12px' }}>
+        <div
+          className="lane-data"
+          style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
+        >
+          {mergedSegments
+            .filter((segment) => segment.pattern !== 'eink-pattern-empty')
+            .map((segment, index) => (
+              <div
+                key={`eink-twilight-${index}`}
+                className={segment.pattern}
+                style={{
+                  width: `${segment.width}px`,
+                  height: '100%',
+                  flexShrink: 0,
+                  position: 'absolute',
+                  left: `${segment.left}px`,
+                }}
+              />
+            ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="lane" style={{ height: '12px', minHeight: '12px' }}>

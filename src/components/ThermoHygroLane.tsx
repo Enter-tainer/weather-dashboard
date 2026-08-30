@@ -6,6 +6,7 @@ import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
+import { useIsEink } from '../hooks/useRenderProfile';
 
 const LANE_HEIGHT = 80;
 const TOP_LABEL_H = 13;
@@ -199,6 +200,7 @@ function ThermoTooltip({ anchorRef, d, ens, onClose }: ThermoTooltipProps) {
   return createPortal(
     <div
       ref={ref}
+      className="thermo-tooltip"
       style={{
         position: 'fixed',
         left: pos.x,
@@ -327,6 +329,7 @@ export default function ThermoHygroLane({
   maxTemp,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: ThermoHygroLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const totalWidth = layout.totalWidth;
   const ensembles = useMemo(() => data.map((d) => getEnsemble(d)), [data]);
@@ -349,7 +352,9 @@ export default function ThermoHygroLane({
       if (!hasTempScale) return;
 
       const cellHover = cssVar('--cell-hover', 'rgba(255,255,255,0.12)');
-      const ensembleLine = cssVar('--temperature-ensemble-line', 'rgba(0,0,0,0.25)');
+      const ensembleLine = isEink
+        ? '#000000'
+        : cssVar('--temperature-ensemble-line', 'rgba(0,0,0,0.25)');
       const mutedLabel = cssVar('--chart-label-muted', '#666');
       const warmFeels = cssVar('--sunrise-color', '#e65100');
       const coolFeels = cssVar('--precip-prob-40', '#0277bd');
@@ -373,21 +378,27 @@ export default function ThermoHygroLane({
         if (d.temperature != null) {
           const yTemp = tempToY(d.temperature);
           const barH = Math.max(2, BAR_BOT - yTemp);
-          ctx.fillStyle = tempColor(d.temperature);
+          ctx.fillStyle = isEink ? '#000000' : tempColor(d.temperature);
           ctx.fillRect(bx, yTemp, barWidth, barH);
         }
 
         // ── Dew point (tiny dot) ──
         if (d.dewPoint != null) {
           const yDew = Math.min(BAR_BOT - 2, Math.max(BAR_TOP + 2, tempToY(d.dewPoint)));
-          ctx.fillStyle = '#fff';
+          ctx.fillStyle = isEink ? '#000000' : '#fff';
           ctx.beginPath();
           ctx.arc(cx, yDew, 2.5, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = '#1565c0';
+          ctx.fillStyle = isEink ? '#ffffff' : '#1565c0';
           ctx.beginPath();
           ctx.arc(cx, yDew, 1.8, 0, Math.PI * 2);
           ctx.fill();
+          if (isEink) {
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(cx, yDew, 0.9, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
 
         // ── Feels-like side notch at apparent temp ──
@@ -402,7 +413,7 @@ export default function ThermoHygroLane({
           yApp <= BAR_BOT
         ) {
           const isWarmer = feelsDiff > 0;
-          ctx.fillStyle = isWarmer ? warmFeels : coolFeels;
+          ctx.fillStyle = isEink ? '#000000' : isWarmer ? warmFeels : coolFeels;
           ctx.beginPath();
           ctx.moveTo(bx - 1, yApp - 2);
           ctx.lineTo(bx - 1, yApp + 2);
@@ -469,7 +480,18 @@ export default function ThermoHygroLane({
         ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
       }
     },
-    [data, minTemp, maxTemp, hasTempScale, ensembles, activeIndex, layout, barWidth, labelInterval],
+    [
+      data,
+      minTemp,
+      maxTemp,
+      hasTempScale,
+      ensembles,
+      activeIndex,
+      layout,
+      barWidth,
+      labelInterval,
+      isEink,
+    ],
   );
 
   const activeRef = activeIndex != null ? cellRefs[activeIndex] : undefined;

@@ -4,6 +4,8 @@ import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { getBeaufort } from '../services/weatherMetrics';
 import type { WeatherPoint } from '../types/weather';
+import { useIsEink } from '../hooks/useRenderProfile';
+import { getMonoPattern } from '../services/monoPatterns';
 import './Dashboard.css';
 
 const LANE_HEIGHT = 80;
@@ -22,6 +24,7 @@ export default function WindLane({
   compact = false,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: WindLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
   const barWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
@@ -32,9 +35,13 @@ export default function WindLane({
     width,
     LANE_HEIGHT,
     (ctx) => {
-      const windMemberFill = cssVar('--wind-member-fill', 'rgba(0, 150, 136, 0.04)');
-      const windMainFill = cssVar('--wind-main-fill', 'rgba(0, 137, 123, 0.5)');
-      const gustColor = cssVar('--danger', '#d32f2f');
+      const windMemberFill = isEink
+        ? getMonoPattern(ctx, 'dots-1')
+        : cssVar('--wind-member-fill', 'rgba(0, 150, 136, 0.04)');
+      const windMainFill = isEink
+        ? '#000000'
+        : cssVar('--wind-main-fill', 'rgba(0, 137, 123, 0.5)');
+      const gustColor = isEink ? '#000000' : cssVar('--danger', '#d32f2f');
 
       data.forEach((d, i) => {
         const x = layout.getColumnLeft(i);
@@ -70,7 +77,7 @@ export default function WindLane({
         }
       });
     },
-    [data, maxBft, layout, barWidth],
+    [data, maxBft, layout, barWidth, isEink],
   );
 
   if (compact) {

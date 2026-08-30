@@ -3,6 +3,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
+import { useIsEink } from '../hooks/useRenderProfile';
 
 const LANE_HEIGHT = 56;
 
@@ -116,6 +117,7 @@ export default function TemperatureEnsembleLane({
   maxTemp,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: TemperatureEnsembleLaneProps) {
+  const isEink = useIsEink();
   const layout = useTimelineLayout(data.length, hourWidth);
   const totalWidth = layout.totalWidth;
   const barWidth = Math.max(2, Math.min(12, hourWidth * 0.7));
@@ -150,7 +152,7 @@ export default function TemperatureEnsembleLane({
         const bh = Math.max(2, barHeight(temp));
 
         // Draw temperature bar
-        ctx.fillStyle = tempColor(temp);
+        ctx.fillStyle = isEink ? '#000000' : tempColor(temp);
         ctx.fillRect(x, h - bh, barWidth, bh);
 
         // Error bar (I-beam) only if ensemble data is available
@@ -159,7 +161,7 @@ export default function TemperatureEnsembleLane({
           const y90 = Math.min(h - 1, yFromTemp(ens.p90));
 
           // Vertical line P10 → P90
-          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+          ctx.strokeStyle = isEink ? '#000000' : 'rgba(0,0,0,0.4)';
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(cx, y10);
@@ -180,7 +182,7 @@ export default function TemperatureEnsembleLane({
             const y25 = Math.max(labelH, yFromTemp(ens.p25));
             const y75 = Math.min(h - 1, yFromTemp(ens.p75));
             if (y25 !== y75) {
-              ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+              ctx.strokeStyle = isEink ? '#000000' : 'rgba(0,0,0,0.6)';
               ctx.lineWidth = 2.5;
               ctx.beginPath();
               ctx.moveTo(cx, y25);
@@ -196,7 +198,7 @@ export default function TemperatureEnsembleLane({
       ctx.font = 'bold 9px system-ui';
       ctx.textAlign = 'center';
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.strokeStyle = isEink ? '#ffffff' : 'rgba(255,255,255,0.85)';
       for (let i = 0; i < data.length; i++) {
         if (!layout.isExpandedColumn(i) && i % labelInterval !== 0) continue;
         const item = data[i];
@@ -206,11 +208,11 @@ export default function TemperatureEnsembleLane({
         const tx = layout.getColumnCenter(i);
         const ty = h - 3;
         ctx.strokeText(text, tx, ty);
-        ctx.fillStyle = tempTextColor(temp);
+        ctx.fillStyle = isEink ? '#000000' : tempTextColor(temp);
         ctx.fillText(text, tx, ty);
       }
     },
-    [data, minTemp, maxTemp, hasTempScale, ensembles, layout, barWidth, labelInterval],
+    [data, minTemp, maxTemp, hasTempScale, ensembles, layout, barWidth, labelInterval, isEink],
   );
 
   return (
