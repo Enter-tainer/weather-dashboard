@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  patternForAod,
-  patternForAqi,
-  patternForVisibility,
-} from './monoScales';
+import { patternForAod, patternForAqi, patternForVisibility } from './monoScales';
 
 describe('monochrome scale mappings', () => {
   it.each([
