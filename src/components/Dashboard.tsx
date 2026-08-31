@@ -32,6 +32,17 @@ import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { setDisplayMode } from '../hooks/useDisplayMode';
 import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import { setLayoutMode } from '../hooks/useLayoutMode';
+import { useRollingTimeline } from '../hooks/useRollingTimeline';
+import { getWeatherPointTimeMs } from '../services/timelineTime';
+import { updateSearchParams } from '../services/urlState';
+import {
+  getReaderLocationFromUrl,
+  loadSavedReaderLocation,
+  normalizeReaderLocation,
+  saveReaderLocation,
+  stringifyReaderLocation,
+  type ReaderLocationConfig,
+} from '../services/readerLocation';
 
 import './Dashboard.css';
 
@@ -54,13 +65,6 @@ export default function Dashboard({ testData }: DashboardProps) {
   const setEinkMode = useCallback((enabled: boolean) => {
     setDisplayMode(enabled ? 'eink' : 'color');
   }, []);
-  const setReaderLayout = useCallback(
-    (enabled: boolean) => {
-      if (enabled && compactMode) toggleCompactMode();
-      setLayoutMode(enabled ? 'reader' : 'standard');
-    },
-    [compactMode, toggleCompactMode],
-  );
   const toggleCompactLayout = useCallback(() => {
     if (!compactMode && dashboardLayout.mode === 'reader') setLayoutMode('standard');
     toggleCompactMode();
@@ -76,9 +80,57 @@ export default function Dashboard({ testData }: DashboardProps) {
     refreshError,
     refresh,
   } = useDashboardData(testData);
+  const readerLocation = useMemo<ReaderLocationConfig | null>(() => {
+    const configured = getReaderLocationFromUrl() ?? loadSavedReaderLocation();
+    if (configured) return configured;
+    const first = data?.[0];
+    if (!first) return null;
+    return first.latitude != null && first.longitude != null
+      ? {
+          location: `${first.latitude},${first.longitude}`,
+          displayName: first.cityName,
+        }
+      : { location: first.cityName, displayName: first.cityName };
+  }, [data]);
+  const applyReaderLocation = useCallback((config: ReaderLocationConfig) => {
+    const normalized = normalizeReaderLocation(config);
+    if (!normalized) return;
+    saveReaderLocation(normalized);
+    updateSearchParams(
+      (params) => {
+        params.set('layout', 'reader');
+        params.set('location', stringifyReaderLocation(normalized));
+        params.delete('route');
+        params.delete('test');
+        params.delete('compact');
+      },
+      { history: 'push' },
+    );
+    window.location.reload();
+  }, []);
+  const setReaderLayout = useCallback(
+    (enabled: boolean) => {
+      if (enabled) {
+        if (readerLocation) applyReaderLocation(readerLocation);
+        else setLayoutMode('reader');
+        return;
+      }
+      updateSearchParams(
+        (params) => {
+          params.delete('layout');
+          params.delete('location');
+        },
+        { history: 'push' },
+      );
+      window.location.reload();
+    },
+    [applyReaderLocation, readerLocation],
+  );
+  const readerWeatherScreen = dashboardLayout.mode === 'reader';
+  const rollingData = useRollingTimeline(data, readerWeatherScreen && !testData);
 
   useEffect(() => {
-    if (!isEink || testData) return undefined;
+    if ((!isEink && !readerWeatherScreen) || testData) return undefined;
 
     const refreshIntervalMs = 30 * 60 * 1000;
     const maybeRefresh = () => {
@@ -96,11 +148,18 @@ export default function Dashboard({ testData }: DashboardProps) {
       window.removeEventListener('pageshow', maybeRefresh);
       document.removeEventListener('visibilitychange', maybeRefresh);
     };
-  }, [isEink, lastUpdatedAt, refresh, refreshing, switching, testData]);
+  }, [isEink, lastUpdatedAt, readerWeatherScreen, refresh, refreshing, switching, testData]);
   const displayData = useMemo(() => {
-    if (!data || data.length === 0) return data;
-    return aggregateTimelineByHours(data, timeStepHours);
-  }, [data, timeStepHours]);
+    if (!rollingData || rollingData.length === 0) return rollingData;
+    return aggregateTimelineByHours(rollingData, timeStepHours);
+  }, [rollingData, timeStepHours]);
+  const rollingAnchorMs = displayData?.[0] ? getWeatherPointTimeMs(displayData[0]) : null;
+  const readerLocationRequired =
+    readerWeatherScreen && !readerLocation && loadingDone && !displayData?.length;
+  useEffect(() => {
+    if (!readerWeatherScreen || rollingAnchorMs == null) return;
+    scrollerRef.current?.scrollTo({ left: 0, behavior: 'auto' });
+  }, [readerWeatherScreen, rollingAnchorMs]);
   const scales = useMemo(() => calculateDashboardScales(displayData), [displayData]);
   const minutely = useMinutelyPrecipitation(displayData ?? [], timeStepHours === 1 && !compactMode);
   const minutelyExpandedSpan = getMinutelySelectionExpandedSpan(
@@ -248,6 +307,11 @@ export default function Dashboard({ testData }: DashboardProps) {
           {refreshing ? '正在更新天气数据…' : refreshError}
         </div>
       )}
+      {readerLocationRequired && (
+        <button className="reader-location-required" type="button" onClick={openRouteEditor}>
+          请设置常驻地点
+        </button>
+      )}
       {!captureMode && (
         <>
           <ThemeToggle mode={mode} effectiveTheme={effectiveTheme} onToggle={cycleThemeMode} />
@@ -259,6 +323,8 @@ export default function Dashboard({ testData }: DashboardProps) {
             onEinkModeChange={setEinkMode}
             readerLayout={dashboardLayout.mode === 'reader'}
             onReaderLayoutChange={setReaderLayout}
+            readerLocation={readerLocation}
+            onReaderLocationApply={applyReaderLocation}
             immersiveMode={immersiveMode}
             onImmersiveModeChange={setImmersiveMode}
           />

@@ -105,6 +105,30 @@ describe('RouteEditor', () => {
     expect(onImmersiveModeChange).toHaveBeenCalledWith(true);
   });
 
+  it('edits and applies a reader location using route-compatible syntax', async () => {
+    const onReaderLocationApply = vi.fn();
+    render(
+      <RouteEditor
+        readerLayout
+        readerLocation={{ location: 'Shanghai', displayName: '上海' }}
+        onReaderLocationApply={onReaderLocationApply}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle('Settings & Route Editor'));
+    const locationInput = await screen.findByLabelText(/常驻地点/);
+    const displayNameInput = screen.getByLabelText(/显示名称（可选）/);
+    fireEvent.change(locationInput, { target: { value: '31.23,121.47' } });
+    fireEvent.change(displayNameInput, { target: { value: '家' } });
+    fireEvent.click(screen.getByRole('button', { name: '应用常驻地点' }));
+
+    expect(onReaderLocationApply).toHaveBeenCalledWith({
+      location: '31.23,121.47',
+      displayName: '家',
+    });
+    expect(screen.queryByText('高级模式 (多段行程拼接)')).not.toBeInTheDocument();
+  });
+
   it('adds a same-date comparison city using the last city as default', async () => {
     render(<RouteEditor />);
 

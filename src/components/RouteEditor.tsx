@@ -9,6 +9,7 @@ import {
   saveQWeatherCredentials,
 } from '../services/qweatherCredentials';
 import type { RouteEntry } from '../types/weather';
+import type { ReaderLocationConfig } from '../services/readerLocation';
 import './RouteEditor.css';
 
 const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
@@ -28,6 +29,8 @@ interface RouteEditorProps {
   onEinkModeChange?: (enabled: boolean) => void;
   readerLayout?: boolean;
   onReaderLayoutChange?: (enabled: boolean) => void;
+  readerLocation?: ReaderLocationConfig | null;
+  onReaderLocationApply?: (config: ReaderLocationConfig) => void;
   immersiveMode?: boolean;
   onImmersiveModeChange?: (enabled: boolean) => void;
 }
@@ -69,6 +72,8 @@ export default function RouteEditor({
   onEinkModeChange,
   readerLayout = false,
   onReaderLayoutChange,
+  readerLocation = null,
+  onReaderLocationApply,
   immersiveMode = false,
   onImmersiveModeChange,
 }: RouteEditorProps) {
@@ -79,6 +84,8 @@ export default function RouteEditor({
   const [qweatherApiHost, setQweatherApiHost] = useState('');
   const [rememberQWeather, setRememberQWeather] = useState(false);
   const [showQWeatherKey, setShowQWeatherKey] = useState(false);
+  const [readerLocationInput, setReaderLocationInput] = useState('');
+  const [readerDisplayName, setReaderDisplayName] = useState('');
   const [qweatherStatus, setQweatherStatus] = useState<
     { kind: 'idle' | 'success' | 'error'; message: string } | undefined
   >();
@@ -100,6 +107,8 @@ export default function RouteEditor({
     setQweatherApiHost(credentials?.apiHost ?? '');
     setRememberQWeather(credentials?.persistent ?? false);
     setShowQWeatherKey(false);
+    setReaderLocationInput(readerLocation?.location ?? '');
+    setReaderDisplayName(readerLocation?.displayName ?? '');
     setQweatherStatus(
       credentials
         ? { kind: 'success', message: '已配置，可点击当前两小时的降水图标测试' }
@@ -119,7 +128,15 @@ export default function RouteEditor({
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, readerLocation]);
+
+  const applyReaderLocation = useCallback(() => {
+    if (!readerLocationInput.trim()) return;
+    onReaderLocationApply?.({
+      location: readerLocationInput,
+      ...(readerDisplayName.trim() ? { displayName: readerDisplayName } : {}),
+    });
+  }, [onReaderLocationApply, readerDisplayName, readerLocationInput]);
 
   const saveQWeather = useCallback(() => {
     try {
@@ -255,27 +272,29 @@ export default function RouteEditor({
         <div className="route-editor-overlay">
           <div className="route-editor-modal">
             <div className="route-editor-header">
-              <h3>设置城市与路线</h3>
+              <h3>{readerLayout ? '设置常驻天气屏' : '设置城市与路线'}</h3>
               <button className="icon-btn" onClick={() => setIsOpen(false)}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="route-editor-section">
-              <h4>快速设置 (未来7天)</h4>
-              <div className="quick-set-row">
-                <input
-                  type="text"
-                  placeholder="输入城市名，如 Shanghai"
-                  value={quickCity}
-                  onChange={(e) => setQuickCity(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && applyQuickMode()}
-                />
-                <button className="primary-btn" onClick={applyQuickMode}>
-                  一键应用
-                </button>
+            {!readerLayout && (
+              <div className="route-editor-section">
+                <h4>快速设置 (未来7天)</h4>
+                <div className="quick-set-row">
+                  <input
+                    type="text"
+                    placeholder="输入城市名，如 Shanghai"
+                    value={quickCity}
+                    onChange={(e) => setQuickCity(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && applyQuickMode()}
+                  />
+                  <button className="primary-btn" onClick={applyQuickMode}>
+                    一键应用
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="route-editor-section display-settings">
               <h4>显示设置</h4>
@@ -298,9 +317,32 @@ export default function RouteEditor({
                 />
                 <span>
                   阅读布局
-                  <small>加大字号和图表，横竖屏自动适配；同步 URL 参数 layout=reader</small>
+                  <small>常驻天气屏：自动日期、回收已过小时；同步 layout=reader</small>
                 </span>
               </label>
+              {readerLayout && (
+                <div className="reader-location-settings">
+                  <label>
+                    <span>常驻地点</span>
+                    <input
+                      type="text"
+                      value={readerLocationInput}
+                      placeholder="城市名或纬度,经度"
+                      onChange={(event) => setReaderLocationInput(event.target.value)}
+                    />
+                    <small>格式与 route 地点一致，例如 Shanghai 或 31.23,121.47</small>
+                  </label>
+                  <label>
+                    <span>显示名称（可选）</span>
+                    <input
+                      type="text"
+                      value={readerDisplayName}
+                      placeholder="例如 家"
+                      onChange={(event) => setReaderDisplayName(event.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
               <label className="display-setting-row">
                 <input
                   type="checkbox"
@@ -388,69 +430,75 @@ export default function RouteEditor({
               )}
             </div>
 
-            <div className="route-editor-section">
-              <h4>高级模式 (多段行程拼接)</h4>
-              <div className="entries-list">
-                {dateGroups.map(([date, group]) => (
-                  <div key={date} className="date-group">
-                    <div className="date-header">
-                      <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => updateDateGroup(date, e.target.value)}
-                        className="date-input-bold"
-                      />
-                    </div>
-                    {group.map((entry) => (
-                      <div key={entry._id} className="entry-row">
-                        <div className="entry-inputs">
-                          <input
-                            type="text"
-                            className="location-input"
-                            placeholder="城市 或 纬度,经度"
-                            value={
-                              entry.lat != null && entry.lon != null
-                                ? `${entry.lat},${entry.lon}`
-                                : entry.city || ''
-                            }
-                            onChange={(e) => updateLocation(entry._id, e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            className="alias-input"
-                            placeholder="显示别名(可选)"
-                            value={entry.originalName || ''}
-                            onChange={(e) =>
-                              updateEntry(entry._id, { originalName: e.target.value })
-                            }
-                          />
-                        </div>
-                        <button
-                          className="icon-btn remove-btn"
-                          title="移除此项"
-                          onClick={() => removeEntry(entry._id)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+            {!readerLayout && (
+              <div className="route-editor-section">
+                <h4>高级模式 (多段行程拼接)</h4>
+                <div className="entries-list">
+                  {dateGroups.map(([date, group]) => (
+                    <div key={date} className="date-group">
+                      <div className="date-header">
+                        <input
+                          type="date"
+                          value={date}
+                          onChange={(e) => updateDateGroup(date, e.target.value)}
+                          className="date-input-bold"
+                        />
                       </div>
-                    ))}
-                    <button className="add-small-btn" onClick={() => addEntryForDate(date)}>
-                      <Plus size={14} /> 添加同日对比城市
-                    </button>
-                  </div>
-                ))}
+                      {group.map((entry) => (
+                        <div key={entry._id} className="entry-row">
+                          <div className="entry-inputs">
+                            <input
+                              type="text"
+                              className="location-input"
+                              placeholder="城市 或 纬度,经度"
+                              value={
+                                entry.lat != null && entry.lon != null
+                                  ? `${entry.lat},${entry.lon}`
+                                  : entry.city || ''
+                              }
+                              onChange={(e) => updateLocation(entry._id, e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              className="alias-input"
+                              placeholder="显示别名(可选)"
+                              value={entry.originalName || ''}
+                              onChange={(e) =>
+                                updateEntry(entry._id, { originalName: e.target.value })
+                              }
+                            />
+                          </div>
+                          <button
+                            className="icon-btn remove-btn"
+                            title="移除此项"
+                            onClick={() => removeEntry(entry._id)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <button className="add-small-btn" onClick={() => addEntryForDate(date)}>
+                        <Plus size={14} /> 添加同日对比城市
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button className="add-btn" onClick={addNewDate}>
+                  <Plus size={16} /> 添加新的一天
+                </button>
               </div>
-              <button className="add-btn" onClick={addNewDate}>
-                <Plus size={16} /> 添加新的一天
-              </button>
-            </div>
+            )}
 
             <div className="route-editor-footer">
               <button className="secondary-btn" onClick={() => setIsOpen(false)}>
                 取消
               </button>
-              <button className="primary-btn" onClick={() => handleApply(entries)}>
-                保存并刷新
+              <button
+                className="primary-btn"
+                onClick={readerLayout ? applyReaderLocation : () => handleApply(entries)}
+                disabled={readerLayout && !readerLocationInput.trim()}
+              >
+                {readerLayout ? '应用常驻地点' : '保存并刷新'}
               </button>
             </div>
           </div>

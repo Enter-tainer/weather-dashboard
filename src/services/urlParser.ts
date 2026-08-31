@@ -4,21 +4,18 @@
 // ; separates entries
 import { reverseGeocode } from './geocoding';
 import type { DateSlot, RouteEntry, SwitchableRoute } from '../types/weather';
-
-const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
+import { parseLocationSpec, stringifyLocationSpec } from './locationSpec';
+import {
+  getActiveReaderLocation,
+  parseReaderLocation,
+  saveReaderLocation,
+  stringifyReaderLocation,
+  type ReaderLocationConfig,
+} from './readerLocation';
 
 function parseEntry(part: string): RouteEntry {
   const [locationSpec = '', date = ''] = part.split(':');
-  const [location, displayName] = locationSpec.split('~');
-
-  if (location && COORD_RE.test(location)) {
-    const [lat, lon] = location.split(',').map(Number);
-    if (lat == null || lon == null)
-      return { city: location, date, originalName: displayName || location };
-    return { lat, lon, date, originalName: displayName || undefined };
-  }
-
-  return { city: location, date, originalName: displayName || location };
+  return { ...parseLocationSpec(locationSpec), date };
 }
 
 function coordinateFallbackName(lat: number, lon: number): string {
@@ -44,6 +41,34 @@ export async function parseRoute(): Promise<RouteEntry[]> {
   const params = new URLSearchParams(window.location.search);
   const routeStr = params.get('route');
 
+  if (params.get('layout')?.toLowerCase() === 'reader') {
+    let readerLocation = getActiveReaderLocation();
+    if (!readerLocation && routeStr) {
+      const [firstPart = ''] = routeStr.split(';');
+      const [locationSpec = ''] = firstPart.split(':');
+      readerLocation = parseReaderLocation(locationSpec);
+    }
+
+    if (readerLocation) {
+      saveReaderLocation(readerLocation);
+      return resolveCoordinateNames(generateReaderDays(readerLocation));
+    }
+
+    try {
+      const coords = await getUserCoords();
+      const cityName = await reverseGeocode(coords.latitude, coords.longitude);
+      const detectedLocation = {
+        location: `${coords.latitude},${coords.longitude}`,
+        displayName: cityName,
+      };
+      saveReaderLocation(detectedLocation);
+      return generateReaderDays(detectedLocation);
+    } catch (error: unknown) {
+      console.warn('Reader location is not configured and geolocation failed:', error);
+      return [];
+    }
+  }
+
   if (!routeStr) {
     try {
       const coords = await getUserCoords();
@@ -63,6 +88,7 @@ export async function parseRoute(): Promise<RouteEntry[]> {
 // where dateSlots with multiple entries support switching.
 export async function parseSwitchableRoute(): Promise<SwitchableRoute | null> {
   const params = new URLSearchParams(window.location.search);
+  if (params.get('layout')?.toLowerCase() === 'reader') return null;
   const routeStr = params.get('route');
   if (!routeStr) return null;
 
@@ -106,12 +132,7 @@ export function stringifyRoute(entries: RouteEntry[]): string {
   if (!entries || entries.length === 0) return '';
   return entries
     .map((entry) => {
-      let loc =
-        entry.lat != null && entry.lon != null ? `${entry.lat},${entry.lon}` : entry.city || '';
-      if (entry.originalName && entry.originalName !== loc && entry.originalName !== entry.city) {
-        loc += `~${entry.originalName}`;
-      }
-      return `${loc}:${entry.date}`;
+      return `${stringifyLocationSpec(entry)}:${entry.date}`;
     })
     .join(';');
 }
@@ -130,6 +151,15 @@ export function generate7Days(
     return lat != null && lon != null
       ? { lat, lon, originalName, date }
       : { city: city ?? originalName, originalName, date };
+  });
+}
+
+export function generateReaderDays(config: ReaderLocationConfig, days = 3): RouteEntry[] {
+  const location = parseLocationSpec(stringifyReaderLocation(config));
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    return { ...location, date: date.toLocaleDateString('en-CA') };
   });
 }
 

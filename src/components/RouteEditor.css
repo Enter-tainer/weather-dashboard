@@ -96,6 +96,29 @@
   line-height: 1.35;
 }
 
+.reader-location-settings {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 2px 23px;
+  padding: 12px;
+  border: 1px solid var(--lane-border);
+  border-radius: 7px;
+  background: var(--modal-section-bg);
+}
+
+.reader-location-settings label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+.reader-location-settings small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 .qweather-settings-description {
   margin: -3px 0 13px;
   color: var(--text-muted);

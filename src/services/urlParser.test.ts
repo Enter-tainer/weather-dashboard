@@ -3,6 +3,7 @@ import { reverseGeocode } from './geocoding';
 import {
   buildRouteForSelections,
   generate7Days,
+  generateReaderDays,
   parseRoute,
   parseSwitchableRoute,
   stringifyRoute,
@@ -30,6 +31,7 @@ describe('urlParser', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-23T12:00:00Z'));
     vi.clearAllMocks();
+    window.localStorage.clear();
     setUrl('');
     setGeolocation(undefined);
   });
@@ -126,6 +128,35 @@ describe('urlParser', () => {
     expect(entries[6]?.date).toBe('2026-05-29');
   });
 
+  it('uses a reader location without requiring fixed dates', async () => {
+    setUrl('?layout=reader&location=31.23%2C121.47%7E%E5%AE%B6');
+
+    const entries = await parseRoute();
+
+    expect(entries).toHaveLength(3);
+    expect(entries[0]).toEqual({
+      lat: 31.23,
+      lon: 121.47,
+      originalName: '家',
+      date: '2026-05-23',
+    });
+    expect(entries[2]?.date).toBe('2026-05-25');
+    await expect(parseSwitchableRoute()).resolves.toBeNull();
+  });
+
+  it('migrates the first dated route location into reader mode', async () => {
+    setUrl('?layout=reader&route=Shanghai~%E4%B8%8A%E6%B5%B7:2025-01-01');
+
+    const entries = await parseRoute();
+
+    expect(entries[0]).toEqual({
+      city: 'Shanghai',
+      originalName: '上海',
+      date: '2026-05-23',
+    });
+    expect(entries).toHaveLength(3);
+  });
+
   it('builds selected entries and stringifies routes consistently', () => {
     const entries = buildRouteForSelections([
       {
@@ -147,5 +178,6 @@ describe('urlParser', () => {
       originalName: 'Paris',
       date: '2026-05-23',
     });
+    expect(generateReaderDays({ location: 'Paris' }, 2)).toHaveLength(2);
   });
 });
