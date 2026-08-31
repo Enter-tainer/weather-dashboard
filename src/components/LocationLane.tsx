@@ -3,6 +3,7 @@ import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { WeatherPoint } from '../types/weather';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import './Dashboard.css';
 
 interface CityGroup {
@@ -26,6 +27,7 @@ export default function LocationLane({
   interactive = true,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: LocationLaneProps) {
+  const dashboardLayout = useDashboardLayout();
   const layout = useTimelineLayout(data.length, hourWidth);
   const cityGroups: CityGroup[] = [];
   let currentGroup: CityGroup | null = null;
@@ -43,7 +45,11 @@ export default function LocationLane({
   return (
     <div
       className="lane location-lane"
-      style={{ height: '24px', borderBottom: 'none', backgroundColor: 'var(--legend-bg)' }}
+      style={{
+        height: `${dashboardLayout.locationHeight}px`,
+        borderBottom: 'none',
+        backgroundColor: 'var(--legend-bg)',
+      }}
     >
       <div className="lane-data" style={{ position: 'relative', width: `${layout.totalWidth}px` }}>
         {cityGroups.map((group) => {
@@ -67,6 +73,7 @@ export default function LocationLane({
               <div style={{ position: 'sticky', left: 0, width: 'max-content', zIndex: 100 }}>
                 <div
                   onClick={isSwitchable ? () => onCityClick(group.cityName) : undefined}
+                  className="location-name"
                   style={{
                     padding: '2px 8px',
                     backgroundColor: 'var(--legend-bg)',
@@ -85,6 +92,7 @@ export default function LocationLane({
                   {group.cityName}
                   {isSwitchable && (
                     <span
+                      className="location-switch-count"
                       style={{ fontSize: '9px', color: 'var(--text-subtle)', marginLeft: '4px' }}
                     >
                       {slot.activeIndex + 1}/{slot.entries.length}

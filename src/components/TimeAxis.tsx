@@ -2,6 +2,7 @@ import { Sunrise, Sunset, Moon } from 'lucide-react';
 import type { SunEvent, WeatherPoint, WeatherTimeline } from '../types/weather';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import './Dashboard.css';
 
 interface IndexedWeatherPoint {
@@ -58,9 +59,13 @@ export default function TimeAxis({
   onSelectSunEvent,
 }: TimeAxisProps) {
   const layout = useTimelineLayout(data.length, hourWidth);
+  const dashboardLayout = useDashboardLayout();
   const hourLabelInterval = 3;
-  const eventLabelFontSize = '9px';
-  const eventIconSize = 10;
+  const eventLabelFontSize = dashboardLayout.mode === 'reader' ? '13px' : '9px';
+  const eventIconSize = dashboardLayout.mode === 'reader' ? 14 : 10;
+  const hourGridTop = Math.max(40, dashboardLayout.timeAxisHeight - 10);
+  const sunEventTop = dashboardLayout.mode === 'reader' ? dashboardLayout.timeAxisHeight - 28 : 34;
+  const moonEventTop = dashboardLayout.mode === 'reader' ? 18 : 16;
   const showAggregateLabels = hoursPerColumn > 1;
   const shouldShowHourLabel = (hour: number, index: number): boolean =>
     showAggregateLabels || layout.isExpandedColumn(index) || hour % hourLabelInterval === 0;
@@ -151,6 +156,7 @@ export default function TimeAxis({
                 >
                   <div style={{ position: 'sticky', left: 0, width: 'max-content' }}>
                     <div
+                      className="time-day-label"
                       style={{
                         padding: '2px 4px',
                         fontSize: '11px',
@@ -164,6 +170,7 @@ export default function TimeAxis({
                   </div>
                   {day.moonPhase != null && day.moonFraction != null && (
                     <div
+                      className="time-moon-phase"
                       style={{
                         position: 'absolute',
                         bottom: '4px',
@@ -211,7 +218,7 @@ export default function TimeAxis({
                       style={{
                         position: 'absolute',
                         left: 0,
-                        top: '40px',
+                        top: `${hourGridTop}px`,
                         bottom: 0,
                         width: '1px',
                         backgroundColor: shouldShowGridLine(item.hour, index)
@@ -282,7 +289,7 @@ export default function TimeAxis({
                   style={{
                     position: 'absolute',
                     left: `${exactX}px`,
-                    top: '34px',
+                    top: `${sunEventTop}px`,
                     transform: 'translateX(-50%)',
                     pointerEvents: 'auto',
                     zIndex: 21,
@@ -300,7 +307,7 @@ export default function TimeAxis({
                 style={{
                   position: 'absolute',
                   left: `${exactX}px`,
-                  top: '34px',
+                  top: `${sunEventTop}px`,
                   transform: 'translateX(-50%)',
                   display: 'flex',
                   flexDirection: 'column',
@@ -333,7 +340,7 @@ export default function TimeAxis({
                 style={{
                   position: 'absolute',
                   left: `${exactX}px`,
-                  top: '16px',
+                  top: `${moonEventTop}px`,
                   transform: 'translateX(-50%)',
                   display: 'flex',
                   flexDirection: 'column',

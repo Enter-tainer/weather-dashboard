@@ -3,6 +3,7 @@ import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { useIsEink } from '../hooks/useRenderProfile';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
 
@@ -20,9 +21,10 @@ export default function PressureLane({
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: PressureLaneProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
-  const height = 45; // --lane-height-pressure
+  const height = dashboardLayout.pressureHeight;
 
   const canvasRef = useCanvas(
     width,

@@ -5,6 +5,7 @@ import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
 import { altitudeToTwilightColor, getTwilightPalette } from '../services/twilightColor';
 import { useIsEink } from '../hooks/useRenderProfile';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 interface TwilightLaneProps {
   data: WeatherPoint[];
@@ -14,6 +15,7 @@ interface TwilightLaneProps {
 export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: TwilightLaneProps) {
   const [, setThemeRevision] = useState(0);
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
   const layout = useTimelineLayout(data.length, hourWidth);
 
   useEffect(() => {
@@ -106,7 +108,13 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
     }
 
     return (
-      <div className="lane twilight-lane" style={{ height: '12px', minHeight: '12px' }}>
+      <div
+        className="lane twilight-lane"
+        style={{
+          height: `${dashboardLayout.twilightHeight}px`,
+          minHeight: `${dashboardLayout.twilightHeight}px`,
+        }}
+      >
         <div
           className="lane-data"
           style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
@@ -132,7 +140,13 @@ export default function TwilightLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: T
   }
 
   return (
-    <div className="lane" style={{ height: '12px', minHeight: '12px' }}>
+    <div
+      className="lane twilight-lane"
+      style={{
+        height: `${dashboardLayout.twilightHeight}px`,
+        minHeight: `${dashboardLayout.twilightHeight}px`,
+      }}
+    >
       <div
         className="lane-data"
         style={{

@@ -171,6 +171,17 @@ It can be combined with vertical compact mode, for example `&compact=1&timeCompa
 
 它可以和纵向紧凑模式组合，例如 `&compact=1&timeCompact=3`。
 
+### `layout=reader` — Physical-size reader layout / 实体屏阅读布局
+
+Use `&layout=reader` for high-DPI tablets and E-ink readers. It uses wider hourly columns,
+larger labels, and orientation-specific chart heights: roughly 24 visible hours in portrait and 32
+in landscape on a 1404×1872 display at DPR 1.5. Combine it with `&display=eink` for monochrome
+rendering and `&immersive=true` to hide floating controls.
+
+在高 DPI 平板或墨水屏上使用 `&layout=reader`。它会增大时间列、字号和图例，并根据横竖屏
+切换图表高度；在 1404×1872、DPR 1.5 的屏幕上，竖屏一屏约 24 小时，横屏约 32 小时。
+可以配合 `&display=eink` 使用黑白渲染，并通过 `&immersive=true` 隐藏悬浮按钮。
+
 ### Without parameters / 不传参数的话
 
 The app tries browser geolocation first (reverse-geocoded via Nominatim). If that fails, defaults to Beijing, showing the next 7 days.

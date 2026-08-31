@@ -77,13 +77,16 @@ describe('RouteEditor', () => {
     expect(screen.queryByText('设置城市与路线')).not.toBeInTheDocument();
   });
 
-  it('exposes the E-ink and immersive display settings', async () => {
+  it('exposes the E-ink, reader and immersive display settings', async () => {
     const onEinkModeChange = vi.fn();
+    const onReaderLayoutChange = vi.fn();
     const onImmersiveModeChange = vi.fn();
     render(
       <RouteEditor
         einkMode={false}
         onEinkModeChange={onEinkModeChange}
+        readerLayout={false}
+        onReaderLayoutChange={onReaderLayoutChange}
         immersiveMode={false}
         onImmersiveModeChange={onImmersiveModeChange}
       />,
@@ -91,11 +94,14 @@ describe('RouteEditor', () => {
 
     fireEvent.click(screen.getByTitle('Settings & Route Editor'));
     const einkToggle = await screen.findByRole('checkbox', { name: /墨水屏模式/ });
+    const readerToggle = screen.getByRole('checkbox', { name: /阅读布局/ });
     const immersiveToggle = screen.getByRole('checkbox', { name: /沉浸显示/ });
     fireEvent.click(einkToggle);
+    fireEvent.click(readerToggle);
     fireEvent.click(immersiveToggle);
 
     expect(onEinkModeChange).toHaveBeenCalledWith(true);
+    expect(onReaderLayoutChange).toHaveBeenCalledWith(true);
     expect(onImmersiveModeChange).toHaveBeenCalledWith(true);
   });
 

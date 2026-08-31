@@ -19,7 +19,7 @@ import {
   normalizeCaptureSelection,
   type CaptureSelection,
 } from '../services/timelineCapture';
-import { createTimelineLayout, getTimelineHourWidth } from '../services/timelineLayout';
+import { createTimelineLayout } from '../services/timelineLayout';
 import {
   getExpandedMinutelyWidth,
   getMinutelySelectionExpandedSpan,
@@ -30,6 +30,8 @@ import type { WeatherTimeline } from '../types/weather';
 import { useIsEink } from '../hooks/useRenderProfile';
 import { useImmersiveMode } from '../hooks/useImmersiveMode';
 import { setDisplayMode } from '../hooks/useDisplayMode';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
+import { setLayoutMode } from '../hooks/useLayoutMode';
 
 import './Dashboard.css';
 
@@ -47,10 +49,22 @@ export default function Dashboard({ testData }: DashboardProps) {
   const { timeStepHours, toggleTimeCompactMode } = useTimeCompactMode();
   const { mode, effectiveTheme, cycleThemeMode } = useThemeMode();
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
   const { immersiveMode, setImmersiveMode } = useImmersiveMode();
   const setEinkMode = useCallback((enabled: boolean) => {
     setDisplayMode(enabled ? 'eink' : 'color');
   }, []);
+  const setReaderLayout = useCallback(
+    (enabled: boolean) => {
+      if (enabled && compactMode) toggleCompactMode();
+      setLayoutMode(enabled ? 'reader' : 'standard');
+    },
+    [compactMode, toggleCompactMode],
+  );
+  const toggleCompactLayout = useCallback(() => {
+    if (!compactMode && dashboardLayout.mode === 'reader') setLayoutMode('standard');
+    toggleCompactMode();
+  }, [compactMode, dashboardLayout.mode, toggleCompactMode]);
   const {
     data,
     loadingDone,
@@ -124,7 +138,7 @@ export default function Dashboard({ testData }: DashboardProps) {
     const scroller = scrollerRef.current;
     const timelineLayout = createTimelineLayout(
       displayData.length,
-      getTimelineHourWidth(),
+      dashboardLayout.hourWidth,
       minutely.selection?.index ?? null,
       getExpandedMinutelyWidth(minutelyExpandedSpan),
       minutelyExpandedSpan,
@@ -132,9 +146,9 @@ export default function Dashboard({ testData }: DashboardProps) {
     const anchorIndex = scroller ? timelineLayout.getColumnIndexAt(scroller.scrollLeft) : 0;
     const selection = scroller
       ? captureSelectionFromCurrentDay(
-          anchorIndex * getTimelineHourWidth(),
+          anchorIndex * dashboardLayout.hourWidth,
           displayData,
-          getTimelineHourWidth(),
+          dashboardLayout.hourWidth,
         )
       : normalizeCaptureSelection(
           {
@@ -149,6 +163,7 @@ export default function Dashboard({ testData }: DashboardProps) {
     setCaptureStatus('idle');
   }, [
     displayData,
+    dashboardLayout.hourWidth,
     minutely.selection?.index,
     minutelyExpandedSpan,
     normalizeCaptureForMinutely,
@@ -222,6 +237,8 @@ export default function Dashboard({ testData }: DashboardProps) {
     <div
       className="dashboard-wrapper"
       data-display-mode={isEink ? 'eink' : 'color'}
+      data-layout-mode={dashboardLayout.mode}
+      data-layout-orientation={dashboardLayout.orientation}
       data-immersive={immersiveMode ? 'true' : 'false'}
       data-last-updated={lastUpdatedAt ?? undefined}
       data-refreshing={refreshing || undefined}
@@ -234,12 +251,14 @@ export default function Dashboard({ testData }: DashboardProps) {
       {!captureMode && (
         <>
           <ThemeToggle mode={mode} effectiveTheme={effectiveTheme} onToggle={cycleThemeMode} />
-          <CompactToggle compactMode={compactMode} onToggle={toggleCompactMode} />
+          <CompactToggle compactMode={compactMode} onToggle={toggleCompactLayout} />
           <TimeCompactToggle timeStepHours={timeStepHours} onToggle={toggleTimeCompactMode} />
           <RouteEditor
             ref={routeEditorRef}
             einkMode={isEink}
             onEinkModeChange={setEinkMode}
+            readerLayout={dashboardLayout.mode === 'reader'}
+            onReaderLayoutChange={setReaderLayout}
             immersiveMode={immersiveMode}
             onImmersiveModeChange={setImmersiveMode}
           />
@@ -258,7 +277,7 @@ export default function Dashboard({ testData }: DashboardProps) {
             effectiveTheme={effectiveTheme}
             onThemeToggle={cycleThemeMode}
             compactMode={compactMode}
-            onCompactToggle={toggleCompactMode}
+            onCompactToggle={toggleCompactLayout}
             timeStepHours={timeStepHours}
             onTimeCompactToggle={toggleTimeCompactMode}
             onOpenRouteEditor={openRouteEditor}

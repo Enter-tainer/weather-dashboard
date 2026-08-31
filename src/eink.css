@@ -388,7 +388,7 @@
 :root[data-display='eink'] .current-time-indicator-line {
   background: repeating-linear-gradient(to bottom, #000000 0 5px, transparent 5px 9px);
   width: 1px;
-  top: 74px;
+  top: calc(var(--lane-height-location, 24px) + var(--lane-height-basic));
 }
 
 :root[data-display='eink'] .current-time-indicator-label {
@@ -423,4 +423,14 @@
 :root[data-display='eink'] .timeline-capture-handle,
 :root[data-display='eink'] .timeline-capture-move span {
   border-radius: 0;
+}
+
+:root[data-display='eink'][data-layout='reader'] .aqi-cell {
+  font-size: 15px !important;
+  font-weight: 600;
+}
+
+:root[data-display='eink'][data-layout='reader'] .visibility-cell,
+:root[data-display='eink'][data-layout='reader'] .cape-cell {
+  font-size: 13px !important;
 }

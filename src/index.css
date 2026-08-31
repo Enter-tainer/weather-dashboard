@@ -1,17 +1,23 @@
 :root {
   /* Layout variables */
+  --lane-height-location: 24px;
   --lane-height-basic: 50px;
+  --lane-height-twilight: 12px;
+  --lane-height-weather-icon: 28px;
   --lane-height-icon: 56px;
   --lane-height-humidity: 35px;
   --lane-height-temp: 56px;
   --lane-height-thermal: 80px;
   --lane-height-clouds: 150px;
+  --lane-height-cloud-ensemble: 50px;
   --lane-height-precip-prob: 25px;
   --lane-height-wind: 80px;
   --lane-height-uv: 25px;
   --lane-height-pressure: 45px;
   --lane-height-cape: 30px;
   --lane-height-aqi: 60px;
+  --lane-height-visibility: 20px;
+  --lane-height-aerosol: 30px;
 
   --col-width-hour: 22px;
   --legend-width: 48px;

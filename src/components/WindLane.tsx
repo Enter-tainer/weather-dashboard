@@ -6,9 +6,9 @@ import { getBeaufort } from '../services/weatherMetrics';
 import type { WeatherPoint } from '../types/weather';
 import { useIsEink } from '../hooks/useRenderProfile';
 import { getMonoPattern } from '../services/monoPatterns';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import './Dashboard.css';
 
-const LANE_HEIGHT = 80;
 const COMPACT_LANE_HEIGHT = 36;
 
 interface WindLaneProps {
@@ -25,6 +25,10 @@ export default function WindLane({
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: WindLaneProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
+  const laneHeight = dashboardLayout.windHeight;
+  const bottomAreaHeight = dashboardLayout.windBottomAreaHeight;
+  const drawHeight = Math.max(1, laneHeight - bottomAreaHeight - 5);
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
   const barWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
@@ -33,7 +37,7 @@ export default function WindLane({
 
   const canvasRef = useCanvas(
     width,
-    LANE_HEIGHT,
+    laneHeight,
     (ctx) => {
       const windMemberFill = isEink
         ? getMonoPattern(ctx, 'dots-1')
@@ -47,16 +51,13 @@ export default function WindLane({
         const x = layout.getColumnLeft(i);
         const cx = layout.getColumnCenter(i);
         const columnWidth = layout.getColumnWidth(i);
-        // Chart available height: 45px (bottom 30px max reserved for arrow area, 5px top padding)
-        const drawHeight = 45;
-
         // Draw ensemble wind bars (faint)
         if (d.windMembers && d.windMembers.length > 0) {
           ctx.fillStyle = windMemberFill;
           d.windMembers.forEach((w) => {
             const bw = getBeaufort(w);
             const h = (bw / maxBft) * drawHeight;
-            if (h > 0) ctx.fillRect(x, LANE_HEIGHT - 30 - h, columnWidth, h);
+            if (h > 0) ctx.fillRect(x, laneHeight - bottomAreaHeight - h, columnWidth, h);
           });
         }
 
@@ -64,7 +65,8 @@ export default function WindLane({
         const bSpeed = getBeaufort(d.windSpeed);
         const mainH = (bSpeed / maxBft) * drawHeight;
         ctx.fillStyle = windMainFill;
-        if (mainH > 0) ctx.fillRect(cx - barWidth / 2, LANE_HEIGHT - 30 - mainH, barWidth, mainH);
+        if (mainH > 0)
+          ctx.fillRect(cx - barWidth / 2, laneHeight - bottomAreaHeight - mainH, barWidth, mainH);
 
         // Draw gust alert dot
         const bGusts = getBeaufort(d.windGusts);
@@ -72,12 +74,12 @@ export default function WindLane({
           const gustH = (bGusts / maxBft) * drawHeight;
           ctx.fillStyle = gustColor;
           ctx.beginPath();
-          ctx.arc(cx, LANE_HEIGHT - 30 - gustH, 2, 0, Math.PI * 2);
+          ctx.arc(cx, laneHeight - bottomAreaHeight - gustH, 2, 0, Math.PI * 2);
           ctx.fill();
         }
       });
     },
-    [data, maxBft, layout, barWidth, isEink],
+    [data, maxBft, layout, barWidth, isEink, laneHeight, bottomAreaHeight, drawHeight],
   );
 
   if (compact) {
@@ -151,7 +153,7 @@ export default function WindLane({
     <div
       className="lane wind-lane"
       style={{
-        height: `${LANE_HEIGHT}px`,
+        height: `${laneHeight}px`,
         position: 'relative',
         borderBottom: '1px solid var(--lane-border)',
       }}
@@ -164,7 +166,7 @@ export default function WindLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
             zIndex: 1,
           }}
         />
@@ -176,7 +178,7 @@ export default function WindLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
             display: 'flex',
             zIndex: 2,
           }}

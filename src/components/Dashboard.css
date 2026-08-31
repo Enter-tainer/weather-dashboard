@@ -478,6 +478,88 @@
   box-sizing: border-box;
 }
 
+/* Physical-size layout for high-DPI reader and E-ink devices. Geometry comes from
+   DashboardLayoutProvider so DOM, Canvas and hit targets stay aligned. */
+:root[data-layout='reader'] .legend-cell,
+:root[data-layout='reader'] .legend-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+:root[data-layout='reader'] .legend-unit,
+:root[data-layout='reader'] .legend-secondary,
+:root[data-layout='reader'] .legend-axis-tick {
+  font-size: 12px;
+}
+
+:root[data-layout='reader'] .location-name {
+  padding: 4px 10px !important;
+  font-size: 17px !important;
+}
+
+:root[data-layout='reader'] .location-name svg {
+  width: 16px;
+  height: 16px;
+}
+
+:root[data-layout='reader'] .location-switch-count {
+  font-size: 12px !important;
+}
+
+:root[data-layout='reader'] .time-day-label {
+  padding: 4px 6px !important;
+  font-size: 15px !important;
+}
+
+:root[data-layout='reader'] .time-moon-phase {
+  font-size: 12px !important;
+}
+
+:root[data-layout='reader'] .time-hour-label {
+  font-size: 16px !important;
+  font-weight: 600;
+}
+
+:root[data-layout='reader'] .astro-event-label,
+:root[data-layout='reader'] .moon-event-label {
+  font-size: 13px !important;
+}
+
+:root[data-layout='reader'] .weather-run-overlay svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.2;
+}
+
+:root[data-layout='reader'] .uv-run-value {
+  padding: 1px 6px !important;
+  font-size: 14px !important;
+}
+
+:root[data-layout='reader'] .hourly-precip-label,
+:root[data-layout='reader'] .precip-cell span,
+:root[data-layout='reader'] .cape-cell span {
+  font-size: 13px !important;
+}
+
+:root[data-layout='reader'] .wind-lane .lane-cell span {
+  font-size: 15px !important;
+}
+
+:root[data-layout='reader'] .wind-lane .lane-cell svg {
+  width: 14px;
+  height: 14px;
+}
+
+:root[data-layout='reader'] .aqi-cell {
+  font-size: 15px !important;
+  font-weight: 600;
+}
+
+:root[data-layout='reader'] .visibility-cell {
+  font-size: 13px !important;
+}
+
 .minutely-rain-hit-target {
   position: absolute;
   bottom: 0;
@@ -746,7 +828,7 @@
 
 .timeline-capture-overlay {
   position: absolute;
-  top: 24px;
+  top: var(--lane-height-location, 24px);
   left: 0;
   height: var(--lane-height-basic);
   z-index: 900;

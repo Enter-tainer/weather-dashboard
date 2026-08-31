@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import type { DashboardScales } from '../types/weather';
 import { getHourlyPrecipBarHeight, PRECIP_INTENSITY_BANDS } from '../services/minutelyChart';
 import { cloudAltitudeToY } from '../services/cloudAndRainScale';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 const CLOUD_ALTITUDE_TICKS = [
   { altitude: 10_000, label: '10k' },
@@ -18,8 +19,12 @@ interface GitHubLegendCellProps {
 }
 
 function GitHubLegendCell({ showLink }: GitHubLegendCellProps) {
+  const dashboardLayout = useDashboardLayout();
   return (
-    <div className="legend-cell" style={{ height: '24px', borderBottom: 'none' }}>
+    <div
+      className="legend-cell"
+      style={{ height: `${dashboardLayout.locationHeight}px`, borderBottom: 'none' }}
+    >
       {showLink && (
         <a
           href="https://github.com/Enter-tainer/weather-dashboard"
@@ -93,12 +98,13 @@ function LegendAxisTick({ children, className = '', style }: LegendAxisTickProps
 }
 
 function CloudLegendCells() {
+  const dashboardLayout = useDashboardLayout();
   return (
     <>
       <div
         className="legend-cell"
         style={{
-          height: '50px',
+          height: `${dashboardLayout.cloudEnsembleHeight}px`,
           position: 'relative',
           borderBottom: '1px solid var(--lane-border)',
         }}
@@ -113,7 +119,7 @@ function CloudLegendCells() {
 
       <div
         className="legend-cell"
-        style={{ height: 'var(--lane-height-clouds)', position: 'relative' }}
+        style={{ height: `${dashboardLayout.cloudRainHeight}px`, position: 'relative' }}
       >
         <LegendLabel unit="m" className="legend-scale-title">
           云
@@ -123,7 +129,10 @@ function CloudLegendCells() {
             key={tick.altitude}
             className="cloud-altitude-legend-tick"
             style={{
-              top: `${Math.max(-4, cloudAltitudeToY(tick.altitude) - 6)}px`,
+              top: `${Math.max(
+                -4,
+                cloudAltitudeToY(tick.altitude, dashboardLayout.cloudPlotHeight) - 7,
+              )}px`,
             }}
           >
             {tick.label}
@@ -184,6 +193,8 @@ function PrecipitationLegendCell({ compactMode }: CompactModeLegendProps) {
 }
 
 function WindLegendCell({ compactMode, maxBft }: WindLegendCellProps) {
+  const dashboardLayout = useDashboardLayout();
+  const plotBottom = dashboardLayout.windHeight - dashboardLayout.windBottomAreaHeight;
   return (
     <div
       className="legend-cell"
@@ -196,8 +207,10 @@ function WindLegendCell({ compactMode, maxBft }: WindLegendCellProps) {
           <LegendLabel className="legend-scale-title">风速</LegendLabel>
           <span className="legend-secondary legend-secondary--bottom">bft</span>
           <LegendAxisTick style={{ top: '1px' }}>{maxBft}</LegendAxisTick>
-          <LegendAxisTick style={{ top: '25px' }}>{Math.round(maxBft / 2)}</LegendAxisTick>
-          <LegendAxisTick style={{ top: '45px' }}>0</LegendAxisTick>
+          <LegendAxisTick style={{ top: `${Math.max(16, plotBottom / 2 - 4)}px` }}>
+            {Math.round(maxBft / 2)}
+          </LegendAxisTick>
+          <LegendAxisTick style={{ top: `${Math.max(24, plotBottom - 7)}px` }}>0</LegendAxisTick>
         </>
       )}
     </div>
@@ -224,6 +237,7 @@ export default function DashboardLegend({
   scales,
   showGitHubLink = true,
 }: DashboardLegendProps) {
+  const dashboardLayout = useDashboardLayout();
   const { tempSteps, minTemp, maxTemp, maxBft, minP, maxP } = scales;
 
   return (
@@ -238,10 +252,10 @@ export default function DashboardLegend({
         <LegendLabel>星期</LegendLabel>
         <span className="legend-secondary legend-secondary--stacked">小时</span>
       </div>
-      <div className="legend-cell" style={{ height: '12px' }}>
+      <div className="legend-cell" style={{ height: `${dashboardLayout.twilightHeight}px` }}>
         <span className="legend-secondary">曙暮</span>
       </div>
-      <div className="legend-cell" style={{ height: '28px' }}>
+      <div className="legend-cell" style={{ height: `${dashboardLayout.weatherIconHeight}px` }}>
         <LegendLabel>天气</LegendLabel>
       </div>
       <div
@@ -260,10 +274,11 @@ export default function DashboardLegend({
           <LegendLabel className="legend-scale-title">温湿度</LegendLabel>
           <span className="legend-secondary legend-secondary--bottom">湿度 %</span>
           {tempSteps.map((t) => {
-            const H = 80;
-            const PLOT = 80 - 13 - 12; // TOP_LABEL_H + BOT_LABEL_H
-            const y = 13 + PLOT * (1 - (t - minTemp) / (maxTemp - minTemp));
-            if (y >= 22 && y <= 68) {
+            const topLabelHeight = dashboardLayout.mode === 'reader' ? 22 : 13;
+            const bottomLabelHeight = dashboardLayout.mode === 'reader' ? 20 : 12;
+            const plotHeight = dashboardLayout.thermalHeight - topLabelHeight - bottomLabelHeight;
+            const y = topLabelHeight + plotHeight * (1 - (t - minTemp) / (maxTemp - minTemp));
+            if (y >= topLabelHeight + 6 && y <= dashboardLayout.thermalHeight - 10) {
               return (
                 <LegendAxisTick
                   key={t}
@@ -316,7 +331,7 @@ export default function DashboardLegend({
       <div
         className="legend-cell"
         style={{
-          height: '30px',
+          height: `${dashboardLayout.aqiHeight}px`,
         }}
       >
         <LegendLabel>AQI</LegendLabel>
@@ -324,7 +339,7 @@ export default function DashboardLegend({
       <div
         className="legend-cell"
         style={{
-          height: '20px',
+          height: `${dashboardLayout.visibilityHeight}px`,
         }}
       >
         <LegendLabel unit="km">能见度</LegendLabel>
@@ -332,7 +347,7 @@ export default function DashboardLegend({
       <div
         className="legend-cell"
         style={{
-          height: '30px',
+          height: `${dashboardLayout.aerosolHeight}px`,
           borderBottom: 'none',
         }}
       >

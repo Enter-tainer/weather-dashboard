@@ -23,6 +23,7 @@ import type { WeatherPoint } from '../types/weather';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { useIsEink } from '../hooks/useRenderProfile';
 import { splitRunsAtExpandedColumns } from '../services/timelineLayout';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 const WEATHER_NAMES: Record<number, string> = {
   0: '晴',
@@ -285,6 +286,7 @@ function WeatherTooltip({
 }
 
 export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
+  const dashboardLayout = useDashboardLayout();
   const layout = useTimelineLayout(data.length);
   const [activeRun, setActiveRun] = useState<number | null>(null);
   const handleClose = useCallback(() => setActiveRun(null), []);
@@ -315,7 +317,10 @@ export default function WeatherIconLane({ data }: WeatherIconLaneProps) {
   }, [data, runs]);
 
   return (
-    <div className="lane weather-icon-lane" style={{ height: '28px' }}>
+    <div
+      className="lane weather-icon-lane"
+      style={{ height: `${dashboardLayout.weatherIconHeight}px` }}
+    >
       <div className="lane-data" style={{ position: 'relative' }}>
         {data.map((item, index) => {
           const ci = cellInfo[index];

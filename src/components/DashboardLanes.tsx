@@ -26,11 +26,7 @@ import { useSunCloudSection } from '../hooks/useSunCloudSection';
 import { computeSunDirection } from '../services/sunDirection';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import TimelineLayoutProvider from './TimelineLayoutProvider';
-import {
-  createTimelineLayout,
-  DEFAULT_HOUR_WIDTH,
-  getTimelineHourWidth,
-} from '../services/timelineLayout';
+import { createTimelineLayout, DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import {
   getExpandedMinutelyWidth,
   getMinutelySelectionExpandedSpan,
@@ -40,10 +36,10 @@ import {
 import type { SwitchInfo } from '../hooks/useDashboardData';
 import type { CaptureSelection } from '../services/timelineCapture';
 import type { DashboardScales, SunEvent, WeatherTimeline } from '../types/weather';
-import { CLOUD_AND_RAIN_LANE_HEIGHT, CLOUD_PLOT_HEIGHT } from '../services/cloudAndRainScale';
 import { useMemo } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 import { useIsEink } from '../hooks/useRenderProfile';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 interface EmptyTimelineStateProps {
   loadingDone: boolean;
@@ -136,9 +132,10 @@ export function DashboardLaneStack({
   minutelySelection,
 }: DashboardLaneStackProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
   const { minTemp, maxTemp, maxBft, minP, maxP } = scales;
   const interactive = renderMode === 'interactive';
-  const hourWidth = getTimelineHourWidth();
+  const hourWidth = dashboardLayout.hourWidth;
   const usesEnsembleFallback = data.some((item) => item.dataSource === 'ensemble');
   const expandedIndex = minutelySelection?.index ?? null;
   const expandedSpan = getMinutelySelectionExpandedSpan(minutelySelection, data.length);
@@ -209,7 +206,7 @@ export function DashboardLaneStack({
                 activeTime={activeSoundingTime}
                 onSelect={onSelectSounding}
                 hourWidth={hourWidth}
-                bottomOffset={CLOUD_AND_RAIN_LANE_HEIGHT - CLOUD_PLOT_HEIGHT}
+                bottomOffset={dashboardLayout.cloudRainHeight - dashboardLayout.cloudPlotHeight}
               />
             )}
           </div>
@@ -253,6 +250,7 @@ function TimelineLanes({
   onMinutelySelect,
   onSelectSunEvent,
 }: TimelineLanesProps) {
+  const dashboardLayout = useDashboardLayout();
   const { activeSoundingItem, closeSounding, selectSoundingItem, soundingIndex, stepSounding } =
     useSoundingSelection(data);
   const { activeSunEvent, originItem, selectSunEvent, closeSunView } = useSunViewSelection(data);
@@ -270,7 +268,7 @@ function TimelineLanes({
     const scroller = scrollerRef?.current;
     if (!scroller) return;
     window.requestAnimationFrame(() => {
-      const panelLeft = index * getTimelineHourWidth();
+      const panelLeft = index * dashboardLayout.hourWidth;
       let previewSpan = 0;
       while (minutelyAvailableIndices?.has(index + previewSpan)) previewSpan++;
       const panelWidth = getExpandedMinutelyWidth(
@@ -347,7 +345,8 @@ export default function DashboardLanes({
   onSelectSunEvent,
 }: DashboardLanesProps) {
   const hasData = data && data.length > 0;
-  const hourWidth = getTimelineHourWidth();
+  const dashboardLayout = useDashboardLayout();
+  const hourWidth = dashboardLayout.hourWidth;
   const expandedSpan = getMinutelySelectionExpandedSpan(minutelySelection, data?.length ?? 0);
 
   return (

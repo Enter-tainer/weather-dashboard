@@ -12,14 +12,13 @@ import {
   sliceTimelineForCapture,
   type CaptureSelection,
 } from '../services/timelineCapture';
-import { createTimelineLayout, getTimelineHourWidth } from '../services/timelineLayout';
+import { createTimelineLayout } from '../services/timelineLayout';
 import {
   getExpandedMinutelyWidth,
   getMinutelySelectionExpandedSpan,
 } from '../services/minutelyExpansion';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
-
-const CAPTURE_LEGEND_WIDTH = 48;
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 interface DashboardCaptureRenderProps {
   data: WeatherTimeline;
@@ -42,6 +41,7 @@ export default function DashboardCaptureRender({
   minutelySelection = null,
   onCanvasStatusChange,
 }: DashboardCaptureRenderProps) {
+  const dashboardLayout = useDashboardLayout();
   const normalizedSelection = useMemo(
     () => normalizeCaptureSelection(selection, data.length),
     [data.length, selection],
@@ -50,7 +50,7 @@ export default function DashboardCaptureRender({
     () => sliceTimelineForCapture(data, normalizedSelection),
     [data, normalizedSelection],
   );
-  const hourWidth = getTimelineHourWidth();
+  const hourWidth = dashboardLayout.hourWidth;
   const minutelyExpandedSpan = getMinutelySelectionExpandedSpan(minutelySelection, data.length);
   const captureMinutelySelection = useMemo(() => {
     if (
@@ -80,7 +80,7 @@ export default function DashboardCaptureRender({
       ),
     [captureData.length, captureMinutelyExpandedSpan, captureMinutelySelection?.index, hourWidth],
   );
-  const width = CAPTURE_LEGEND_WIDTH + captureLayout.totalWidth;
+  const width = dashboardLayout.legendWidth + captureLayout.totalWidth;
 
   return (
     <CanvasCaptureProvider onStatusChange={onCanvasStatusChange}>

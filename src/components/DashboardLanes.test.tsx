@@ -4,6 +4,8 @@ import { makeWeatherPoint, makeWeatherTimeline } from '../test-utils/weather';
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
 import DashboardLanes, { DashboardLaneStack } from './DashboardLanes';
 import RenderProfileProvider from '../hooks/RenderProfileProvider';
+import { DashboardLayoutContext } from '../hooks/dashboardLayoutContext';
+import { getDashboardLayoutMetrics } from '../services/dashboardLayout';
 
 vi.mock('../hooks/useCanvas', () => ({
   useCanvas: () => ({ current: null }),
@@ -120,6 +122,26 @@ describe('DashboardLanes', () => {
 });
 
 describe('DashboardLaneStack', () => {
+  it('uses the shared portrait reader geometry for columns and canvases', () => {
+    const metrics = getDashboardLayoutMetrics('reader', 'portrait');
+    const { container } = render(
+      <DashboardLayoutContext.Provider value={metrics}>
+        <DashboardLaneStack
+          data={makeTimeline(6)}
+          compactMode={false}
+          scales={SCALES}
+          switchInfo={{}}
+        />
+      </DashboardLayoutContext.Provider>,
+    );
+
+    expect(container.querySelector('.lanes-container')).toHaveStyle({ width: '216px' });
+    expect(container.querySelector('.thermo-hygro-lane')).toHaveStyle({ height: '125px' });
+    expect(container.querySelector('.cloud-rain-lane')).toHaveStyle({ height: '245px' });
+    expect(container.querySelector('.wind-lane')).toHaveStyle({ height: '120px' });
+    expect(container.querySelector('.aerosol-lane')).toHaveStyle({ height: '44px' });
+  });
+
   it('keeps the full lane stack while omitting the color-only ambient layer in eink mode', () => {
     const { container } = render(
       <RenderProfileProvider displayMode="eink">

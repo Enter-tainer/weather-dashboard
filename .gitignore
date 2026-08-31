@@ -25,6 +25,7 @@ dist-ssr
 
 # Generated images
 *.png
+artifacts/
 
 # Playwright
 playwright-report/

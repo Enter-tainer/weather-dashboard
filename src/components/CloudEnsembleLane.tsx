@@ -3,10 +3,9 @@ import { cssVar } from '../services/themeColors';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { useIsEink } from '../hooks/useRenderProfile';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import type { WeatherPoint } from '../types/weather';
 import './Dashboard.css';
-
-const LANE_HEIGHT = 50;
 
 interface CloudEnsembleLaneProps {
   data: WeatherPoint[];
@@ -18,12 +17,14 @@ export default function CloudEnsembleLane({
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: CloudEnsembleLaneProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
+  const laneHeight = dashboardLayout.cloudEnsembleHeight;
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
 
   const canvasRef = useCanvas(
     width,
-    LANE_HEIGHT,
+    laneHeight,
     (ctx, w, h) => {
       const getY = (cov: number) => h - 5 - (cov / 100) * (h - 10);
       const getX = (index: number) => layout.getTimePosition(index);
@@ -78,7 +79,7 @@ export default function CloudEnsembleLane({
     <div
       className="lane cloud-ensemble-lane"
       style={{
-        height: `${LANE_HEIGHT}px`,
+        height: `${laneHeight}px`,
         position: 'relative',
         borderBottom: '1px solid var(--lane-border)',
         backgroundColor: 'transparent',
@@ -92,7 +93,7 @@ export default function CloudEnsembleLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
           }}
         />
       </div>

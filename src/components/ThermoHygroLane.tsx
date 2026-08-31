@@ -7,13 +7,8 @@ import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { TemperatureEnsemble, WeatherPoint } from '../types/weather';
 import { useIsEink } from '../hooks/useRenderProfile';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
-const LANE_HEIGHT = 80;
-const TOP_LABEL_H = 13;
-const BOT_LABEL_H = 12;
-const BAR_TOP = TOP_LABEL_H;
-const BAR_BOT = LANE_HEIGHT - BOT_LABEL_H;
-const BAR_H_MAX = BAR_BOT - BAR_TOP;
 const DEFAULT_BAR_W = 12;
 
 // ── Temperature color stops ──
@@ -330,6 +325,16 @@ export default function ThermoHygroLane({
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: ThermoHygroLaneProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
+  const laneHeight = dashboardLayout.thermalHeight;
+  const topLabelHeight = dashboardLayout.mode === 'reader' ? 22 : 13;
+  const bottomLabelHeight = dashboardLayout.mode === 'reader' ? 20 : 12;
+  const barTop = topLabelHeight;
+  const barBottom = laneHeight - bottomLabelHeight;
+  const maxBarHeight = barBottom - barTop;
+  const mainLabelFontSize = dashboardLayout.mode === 'reader' ? 16 : 10;
+  const apparentLabelFontSize = dashboardLayout.mode === 'reader' ? 11 : 7;
+  const humidityLabelFontSize = dashboardLayout.canvasLabelFontSize;
   const layout = useTimelineLayout(data.length, hourWidth);
   const totalWidth = layout.totalWidth;
   const ensembles = useMemo(() => data.map((d) => getEnsemble(d)), [data]);
@@ -343,11 +348,11 @@ export default function ThermoHygroLane({
   const hasTempScale = Number.isFinite(minTemp) && Number.isFinite(maxTemp);
   const rawTRange = maxTemp - minTemp;
   const tRange = Number.isFinite(rawTRange) && rawTRange !== 0 ? rawTRange : 1;
-  const tempToY = (t: number) => BAR_BOT - ((t - minTemp) / tRange) * BAR_H_MAX;
+  const tempToY = (t: number) => barBottom - ((t - minTemp) / tRange) * maxBarHeight;
 
   const canvasRef = useCanvas(
     totalWidth,
-    LANE_HEIGHT,
+    laneHeight,
     (ctx) => {
       if (!hasTempScale) return;
 
@@ -371,20 +376,20 @@ export default function ThermoHygroLane({
         // ── Highlight for hover/active cell ──
         if (i === activeIndex) {
           ctx.fillStyle = cellHover;
-          ctx.fillRect(layout.getColumnLeft(i), 0, layout.getColumnWidth(i), LANE_HEIGHT);
+          ctx.fillRect(layout.getColumnLeft(i), 0, layout.getColumnWidth(i), laneHeight);
         }
 
         // ── Temperature bar ──
         if (d.temperature != null) {
           const yTemp = tempToY(d.temperature);
-          const barH = Math.max(2, BAR_BOT - yTemp);
+          const barH = Math.max(2, barBottom - yTemp);
           ctx.fillStyle = isEink ? '#000000' : tempColor(d.temperature);
           ctx.fillRect(bx, yTemp, barWidth, barH);
         }
 
         // ── Dew point (tiny dot) ──
         if (d.dewPoint != null) {
-          const yDew = Math.min(BAR_BOT - 2, Math.max(BAR_TOP + 2, tempToY(d.dewPoint)));
+          const yDew = Math.min(barBottom - 2, Math.max(barTop + 2, tempToY(d.dewPoint)));
           ctx.fillStyle = isEink ? '#000000' : '#fff';
           ctx.beginPath();
           ctx.arc(cx, yDew, 2.5, 0, Math.PI * 2);
@@ -409,8 +414,8 @@ export default function ThermoHygroLane({
           feelsDiff != null &&
           yApp != null &&
           Math.abs(feelsDiff) >= 0.8 &&
-          yApp >= BAR_TOP &&
-          yApp <= BAR_BOT
+          yApp >= barTop &&
+          yApp <= barBottom
         ) {
           const isWarmer = feelsDiff > 0;
           ctx.fillStyle = isEink ? '#000000' : isWarmer ? warmFeels : coolFeels;
@@ -424,8 +429,8 @@ export default function ThermoHygroLane({
 
         // ── Ensemble I-beam error bar ──
         if (ens && ens.p10 != null && ens.p90 != null && ens.p10 !== ens.p90) {
-          const y10 = Math.max(BAR_TOP, tempToY(ens.p10));
-          const y90 = Math.min(BAR_BOT, tempToY(ens.p90));
+          const y10 = Math.max(barTop, tempToY(ens.p10));
+          const y90 = Math.min(barBottom, tempToY(ens.p90));
           ctx.strokeStyle = ensembleLine;
           ctx.lineWidth = 0.8;
           ctx.beginPath();
@@ -450,26 +455,26 @@ export default function ThermoHygroLane({
         const cx = layout.getColumnCenter(i);
 
         // Main temperature
-        ctx.font = 'bold 10px system-ui';
+        ctx.font = `bold ${mainLabelFontSize}px system-ui`;
         ctx.textBaseline = 'bottom';
         ctx.fillStyle = tempLabel;
-        ctx.fillText(`${Math.round(d.temperature)}°`, cx, TOP_LABEL_H - 2);
+        ctx.fillText(`${Math.round(d.temperature)}°`, cx, topLabelHeight - 2);
 
         // Apparent temp (small, below main temp, only if differs meaningfully)
         if (d.apparentTemp != null) {
           const feelsDiff = d.apparentTemp - d.temperature;
           if (Math.abs(feelsDiff) < 0.8) continue;
-          ctx.font = '7px system-ui';
+          ctx.font = `${apparentLabelFontSize}px system-ui`;
           ctx.textBaseline = 'top';
           ctx.fillStyle =
             Math.abs(feelsDiff) >= 2 ? (feelsDiff > 0 ? warmFeels : coolFeels) : neutralFeels;
-          ctx.fillText(`${Math.round(d.apparentTemp)}°`, cx, TOP_LABEL_H - 1);
+          ctx.fillText(`${Math.round(d.apparentTemp)}°`, cx, topLabelHeight - 1);
         }
       }
       ctx.textBaseline = 'alphabetic';
 
       // ── Bottom labels: humidity every 3h ──
-      ctx.font = '8px system-ui';
+      ctx.font = `${humidityLabelFontSize}px system-ui`;
       ctx.textAlign = 'center';
       for (let i = 0; i < data.length; i++) {
         if (!layout.isExpandedColumn(i) && i % labelInterval !== 0) continue;
@@ -477,7 +482,7 @@ export default function ThermoHygroLane({
         if (!d || d.humidity == null) continue;
         const cx = layout.getColumnCenter(i);
         ctx.fillStyle = mutedLabel;
-        ctx.fillText(`${Math.round(d.humidity)}%`, cx, LANE_HEIGHT - 2);
+        ctx.fillText(`${Math.round(d.humidity)}%`, cx, laneHeight - 3);
       }
     },
     [
@@ -491,6 +496,13 @@ export default function ThermoHygroLane({
       barWidth,
       labelInterval,
       isEink,
+      laneHeight,
+      barBottom,
+      barTop,
+      mainLabelFontSize,
+      apparentLabelFontSize,
+      humidityLabelFontSize,
+      topLabelHeight,
     ],
   );
 
@@ -501,14 +513,14 @@ export default function ThermoHygroLane({
   return (
     <div
       className="lane thermo-hygro-lane"
-      style={{ height: `${LANE_HEIGHT}px`, backgroundColor: 'transparent' }}
+      style={{ height: `${laneHeight}px`, backgroundColor: 'transparent' }}
     >
       <div className="lane-data" style={{ position: 'relative' }}>
         <canvas
           ref={canvasRef}
           style={{
             width: `${totalWidth}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
             display: 'block',
             position: 'absolute',
             top: 0,
@@ -523,7 +535,7 @@ export default function ThermoHygroLane({
             top: 0,
             left: 0,
             width: `${totalWidth}px`,
-            height: `${LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
             display: 'flex',
             zIndex: 2,
           }}

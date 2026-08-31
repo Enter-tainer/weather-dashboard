@@ -13,13 +13,7 @@ import {
 } from '../services/minutelyChart';
 import { getMinutelyChartTimeParams } from '../services/currentTimePosition';
 import { cssVar } from '../services/themeColors';
-import {
-  CLOUD_AND_RAIN_LANE_HEIGHT,
-  CLOUD_PLOT_HEIGHT,
-  cloudAltitudeToY,
-  PRECIPITATION_PLOT_HEIGHT,
-  PRECIPITATION_PLOT_TOP,
-} from '../services/cloudAndRainScale';
+import { cloudAltitudeToY } from '../services/cloudAndRainScale';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { useIsEink } from '../hooks/useRenderProfile';
@@ -27,6 +21,7 @@ import { getMonoPattern, monoPatternForUnit } from '../services/monoPatterns';
 import type { MinutelyPrecipitationSelection } from '../hooks/useMinutelyPrecipitation';
 import type { WeatherPoint } from '../types/weather';
 import { getPrecipitationPointForCell } from '../services/timelineTime';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import './Dashboard.css';
 
 const EMPTY_MINUTELY_POINTS: NonNullable<MinutelyPrecipitationSelection['data']>['points'] = [];
@@ -109,6 +104,11 @@ export default function CloudAndRainLane({
   onMinutelySelect,
 }: CloudAndRainLaneProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
+  const laneHeight = dashboardLayout.cloudRainHeight;
+  const cloudPlotHeight = dashboardLayout.cloudPlotHeight;
+  const precipitationPlotHeight = dashboardLayout.precipitationPlotHeight;
+  const precipitationPlotTop = laneHeight - precipitationPlotHeight;
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
   const precipBarWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
@@ -152,16 +152,16 @@ export default function CloudAndRainLane({
 
   const canvasRef = useCanvas(
     width,
-    CLOUD_AND_RAIN_LANE_HEIGHT,
+    laneHeight,
     (ctx, w, h) => {
       const cloudFillRgb = cssVar('--cloud-fill-rgb', '90, 90, 100');
       const cloudFillAlphaScale =
         Number.parseFloat(cssVar('--cloud-fill-alpha-scale', '0.85')) || 0.85;
 
       ctx.fillStyle = isEink ? '#ffffff' : cssVar('--cloud-layer-bg', 'rgba(230, 232, 235, 0.3)');
-      ctx.fillRect(0, 0, w, CLOUD_PLOT_HEIGHT);
+      ctx.fillRect(0, 0, w, cloudPlotHeight);
       ctx.fillStyle = isEink ? '#ffffff' : cssVar('--precip-strip-bg', 'rgba(13, 71, 161, 0.035)');
-      ctx.fillRect(0, PRECIPITATION_PLOT_TOP, w, PRECIPITATION_PLOT_HEIGHT);
+      ctx.fillRect(0, precipitationPlotTop, w, precipitationPlotHeight);
 
       // Altitude grid lines (cloud boundaries thicker)
       for (const alt of GRID_ALTS) {
@@ -173,7 +173,7 @@ export default function CloudAndRainLane({
             ? cssVar('--cloud-grid-boundary', 'rgba(0,0,0,0.25)')
             : cssVar('--cloud-grid-line', 'rgba(0,0,0,0.12)');
         ctx.lineWidth = isEink ? (isBoundary ? 1.2 : 0.75) : isBoundary ? 1.2 : 0.5;
-        const y = cloudAltitudeToY(alt);
+        const y = cloudAltitudeToY(alt, cloudPlotHeight);
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
@@ -202,8 +202,8 @@ export default function CloudAndRainLane({
             const altHigh = getCloudAltitude(upper.pressure, upper.altitude);
             if (altLow == null || altHigh == null) continue;
 
-            const yTop = cloudAltitudeToY(altHigh);
-            const yBot = cloudAltitudeToY(altLow);
+            const yTop = cloudAltitudeToY(altHigh, cloudPlotHeight);
+            const yBot = cloudAltitudeToY(altLow, cloudPlotHeight);
             if (yBot - yTop <= 0) continue;
 
             ctx.fillStyle = isEink
@@ -220,8 +220,8 @@ export default function CloudAndRainLane({
           ];
           for (const layer of layers) {
             if (layer.cover == null || layer.cover < 3) continue;
-            const yTop = cloudAltitudeToY(layer.altHigh);
-            const yBot = cloudAltitudeToY(layer.altLow);
+            const yTop = cloudAltitudeToY(layer.altHigh, cloudPlotHeight);
+            const yBot = cloudAltitudeToY(layer.altLow, cloudPlotHeight);
 
             ctx.fillStyle = isEink
               ? getMonoPattern(ctx, monoPatternForUnit(layer.cover / 100))
@@ -376,7 +376,7 @@ export default function CloudAndRainLane({
           continue;
         }
         const x = layout.getTimePosition(i);
-        const y = cloudAltitudeToY(blh);
+        const y = cloudAltitudeToY(blh, cloudPlotHeight);
         if (!started) {
           ctx.moveTo(x, y);
           started = true;
@@ -397,13 +397,17 @@ export default function CloudAndRainLane({
       selectedIndex,
       selectedEndIndex,
       isEink,
+      laneHeight,
+      cloudPlotHeight,
+      precipitationPlotHeight,
+      precipitationPlotTop,
     ],
   );
 
   return (
     <div
       className="lane cloud-rain-lane"
-      style={{ height: `${CLOUD_AND_RAIN_LANE_HEIGHT}px`, position: 'relative' }}
+      style={{ height: `${laneHeight}px`, position: 'relative' }}
     >
       <div className="lane-data" style={{ position: 'relative' }}>
         <canvas
@@ -413,7 +417,7 @@ export default function CloudAndRainLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${CLOUD_AND_RAIN_LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
             zIndex: 1,
           }}
         />
@@ -423,7 +427,7 @@ export default function CloudAndRainLane({
             top: 0,
             left: 0,
             width: `${width}px`,
-            height: `${CLOUD_AND_RAIN_LANE_HEIGHT}px`,
+            height: `${laneHeight}px`,
             display: 'flex',
             zIndex: 2,
           }}

@@ -2,6 +2,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import type { WeatherPoint } from '../types/weather';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 type WeatherCategory = 'clear' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder';
 type RgbTuple = readonly [r: number, g: number, b: number];
@@ -69,23 +70,20 @@ function computeDistribution(
 }
 
 const ALPHA = 0.22;
-const WEATHER_ICON_LANE_HEIGHT = 28;
-const UV_LANE_HEIGHT = 25;
-const THERMO_HYGRO_LANE_HEIGHT = 80;
 const COMPACT_TEMP_LANE_HEIGHT = 35;
-
-// From below the twilight strip through weather icon, UV, and temperature/humidity.
-const FULL_BG_HEIGHT = WEATHER_ICON_LANE_HEIGHT + UV_LANE_HEIGHT + THERMO_HYGRO_LANE_HEIGHT;
-const COMPACT_BG_HEIGHT = WEATHER_ICON_LANE_HEIGHT + UV_LANE_HEIGHT + COMPACT_TEMP_LANE_HEIGHT;
 
 export default function WeatherAmbientBackground({
   data,
   compact = false,
   hourWidth = DEFAULT_HOUR_WIDTH,
 }: WeatherAmbientBackgroundProps) {
+  const dashboardLayout = useDashboardLayout();
   const layout = useTimelineLayout(data.length, hourWidth);
   const totalWidth = layout.totalWidth;
-  const bgHeight = compact ? COMPACT_BG_HEIGHT : FULL_BG_HEIGHT;
+  const bgHeight =
+    dashboardLayout.weatherIconHeight +
+    dashboardLayout.uvHeight +
+    (compact ? COMPACT_TEMP_LANE_HEIGHT : dashboardLayout.thermalHeight);
 
   const canvasRef = useCanvas(
     totalWidth,
@@ -135,7 +133,7 @@ export default function WeatherAmbientBackground({
       className="weather-ambient-background"
       style={{
         position: 'absolute',
-        top: 'calc(24px + var(--lane-height-basic) + 12px)',
+        top: 'calc(var(--lane-height-location) + var(--lane-height-basic) + var(--lane-height-twilight))',
         left: 0,
         width: totalWidth,
         height: `${bgHeight}px`,

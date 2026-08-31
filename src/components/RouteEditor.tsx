@@ -26,6 +26,8 @@ interface RouteEditorProps {
   ref?: Ref<RouteEditorHandle>;
   einkMode?: boolean;
   onEinkModeChange?: (enabled: boolean) => void;
+  readerLayout?: boolean;
+  onReaderLayoutChange?: (enabled: boolean) => void;
   immersiveMode?: boolean;
   onImmersiveModeChange?: (enabled: boolean) => void;
 }
@@ -65,6 +67,8 @@ export default function RouteEditor({
   ref,
   einkMode = false,
   onEinkModeChange,
+  readerLayout = false,
+  onReaderLayoutChange,
   immersiveMode = false,
   onImmersiveModeChange,
 }: RouteEditorProps) {
@@ -284,6 +288,17 @@ export default function RouteEditor({
                 <span>
                   墨水屏模式
                   <small>使用纯黑白显示；同步 URL 参数 display=eink</small>
+                </span>
+              </label>
+              <label className="display-setting-row">
+                <input
+                  type="checkbox"
+                  checked={readerLayout}
+                  onChange={(event) => onReaderLayoutChange?.(event.target.checked)}
+                />
+                <span>
+                  阅读布局
+                  <small>加大字号和图表，横竖屏自动适配；同步 URL 参数 layout=reader</small>
                 </span>
               </label>
               <label className="display-setting-row">

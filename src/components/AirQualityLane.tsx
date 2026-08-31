@@ -3,12 +3,14 @@ import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { monoPatternClass } from '../services/monoPatterns';
 import { patternForAqi, patternForVisibility } from '../services/monoScales';
 import './Dashboard.css';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
 interface AirQualityLaneProps {
   data: WeatherPoint[];
 }
 
 export default function AirQualityLane({ data }: AirQualityLaneProps) {
+  const dashboardLayout = useDashboardLayout();
   const layout = useTimelineLayout(data.length);
   const labelInterval = 1;
 
@@ -34,7 +36,10 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 'min-content' }}>
       {/* Title / Main AQI Row */}
-      <div className="lane" style={{ height: '30px', fontWeight: 'normal' }}>
+      <div
+        className="lane aqi-row"
+        style={{ height: `${dashboardLayout.aqiHeight}px`, fontWeight: 'normal' }}
+      >
         <div className="lane-data">
           {data.map((item, index) => {
             const bgColor = getAqiColor(item.aqiUS);
@@ -58,7 +63,10 @@ export default function AirQualityLane({ data }: AirQualityLaneProps) {
       </div>
 
       {/* Visibility Row (m to km) */}
-      <div className="lane" style={{ height: '20px', fontSize: '9px' }}>
+      <div
+        className="lane visibility-row"
+        style={{ height: `${dashboardLayout.visibilityHeight}px`, fontSize: '9px' }}
+      >
         <div className="lane-data">
           {data.map((item, index) => {
             const visKm =

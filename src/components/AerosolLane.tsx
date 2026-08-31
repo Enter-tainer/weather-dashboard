@@ -7,8 +7,8 @@ import { useIsEink } from '../hooks/useRenderProfile';
 import { getMonoPattern } from '../services/monoPatterns';
 import { patternForAod } from '../services/monoScales';
 import './Dashboard.css';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
 
-const LANE_HEIGHT = 30;
 const MAX_AOD = 1.5;
 
 // Sky-appearance gradient: continuous interpolation between key color stops
@@ -88,13 +88,16 @@ function getAodTextStyle(): { fill: string; stroke: string } {
 
 export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: AerosolLaneProps) {
   const isEink = useIsEink();
+  const dashboardLayout = useDashboardLayout();
+  const laneHeight = dashboardLayout.aerosolHeight;
+  const labelFontSize = dashboardLayout.canvasLabelFontSize;
   const layout = useTimelineLayout(data.length, hourWidth);
   const totalWidth = layout.totalWidth;
   const barInset = hourWidth >= 12 ? 2 : 1;
 
   const canvasRef = useCanvas(
     totalWidth,
-    LANE_HEIGHT,
+    laneHeight,
     (ctx, w, h) => {
       const textStyle = getAodTextStyle();
 
@@ -118,25 +121,25 @@ export default function AerosolLane({ data, hourWidth = DEFAULT_HOUR_WIDTH }: Ae
 
         // Text label for notable values
         if (d.aod != null && d.aod >= 0.1) {
-          ctx.font = isEink ? '8px system-ui' : '9px system-ui';
+          ctx.font = `${isEink ? labelFontSize : Math.max(9, labelFontSize)}px system-ui`;
           ctx.textAlign = 'center';
           ctx.lineWidth = 2;
           ctx.strokeStyle = isEink ? '#ffffff' : textStyle.stroke;
-          ctx.strokeText(d.aod.toFixed(2), cx, 11);
+          ctx.strokeText(d.aod.toFixed(2), cx, labelFontSize + 3);
           ctx.fillStyle = isEink ? '#000000' : textStyle.fill;
-          ctx.fillText(d.aod.toFixed(2), cx, 11);
+          ctx.fillText(d.aod.toFixed(2), cx, labelFontSize + 3);
         }
       }
     },
-    [data, layout, barInset, isEink],
+    [data, layout, barInset, isEink, laneHeight, labelFontSize],
   );
 
   return (
-    <div className="lane" style={{ height: `${LANE_HEIGHT}px` }}>
+    <div className="lane aerosol-lane" style={{ height: `${laneHeight}px` }}>
       <div className="lane-data">
         <canvas
           ref={canvasRef}
-          style={{ width: `${totalWidth}px`, height: `${LANE_HEIGHT}px`, display: 'block' }}
+          style={{ width: `${totalWidth}px`, height: `${laneHeight}px`, display: 'block' }}
         />
       </div>
     </div>
