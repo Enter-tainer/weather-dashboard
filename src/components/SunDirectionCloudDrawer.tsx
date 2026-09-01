@@ -25,6 +25,8 @@ import {
   MAX_SUN_ALT_DEG,
   MIN_SUN_ALT_DEG,
   parallelRays,
+  refractedRayAltitudeKm,
+  refractionSagKm,
 } from '../services/sunRayGeometry';
 import type { SunEventType, WeatherPoint } from '../types/weather';
 import type { SunCloudSectionState } from '../hooks/useSunCloudSection';
@@ -96,7 +98,7 @@ interface PlotLayout {
   groundY: number;
   /** Vertical span (px) of the above-ground (0..maxAltKm) region. */
   aboveSpan: number;
-  /** Pixels per km on the above-ground altitude axis (linear), for drawing straight rays. */
+  /** Pixels per km on the above-ground altitude axis (linear), shared by clouds and light rays. */
   pxPerKm: number;
 }
 
@@ -163,22 +165,21 @@ function distToX(layout: PlotLayout, distanceKm: number): number {
 
 // Map an altitude (km, may be negative for below-ground) to a Y on the canvas using a LINEAR
 // px-per-km scale anchored at the 0 km ground line. Linear (not the timeline's 3-band nonlinear)
-// so that sunlight rays — straight lines in altitude-vs-distance — stay straight AND align with
-// the ground/grid/clouds (which all use this same function). No ray/ground divergence.
+// so refracted sunlight, ground, grid and clouds remain in one physical coordinate system.
 function altKmToY(layout: PlotLayout, altKm: number): number {
   return layout.groundY - altKm * layout.pxPerKm;
 }
 
 // Y of the curved (bulging) sea-level ground at a downrange distance. The ground sags by
 // bulge(d) = d²/(2R) in the tangent plane, so on the altitude axis it dips below the 0 km line
-// at the observer. Drawing the ground curved lets the sunlight rays stay straight lines.
+// at the observer. Drawing both ground and light paths in this frame exposes their relative curve.
 function groundYAt(layout: PlotLayout, distanceKm: number): number {
   return altKmToY(layout, -bulgeKm(distanceKm));
 }
 
 function sunAltitudeToY(layout: PlotLayout, altitudeDeg: number): number {
-  const tangentPlaneKm = layout.maxDist * Math.tan((altitudeDeg * Math.PI) / 180);
-  return altKmToY(layout, tangentPlaneKm);
+  const refractedTangentPlaneKm = refractedRayAltitudeKm(0, layout.maxDist, altitudeDeg);
+  return altKmToY(layout, refractedTangentPlaneKm);
 }
 
 function canvasHeightForSunTrack(layout: PlotLayout): number {
@@ -527,13 +528,12 @@ function drawCrossSection(
     previousLabelY = tick.y;
   }
 
-  // --- Sunlight: parallel rays only (no shadow/highlight fills) ---
-  // Parallel rays at slope tanα. Geometry supplies the grazing ray as the lower earth-shadow
-  // boundary; molecular + aerosol slant extinction decides whether each candidate is observable.
-  // A zero-clearance path therefore normally disappears instead of being shown as a bright
-  // tangent. Rays are straight lines; the curved ground carries the earth curvature.
-  // Clip to the plot rectangle so rays that run above the axis top render as a straight clipped
-  // line (entering/exiting at the edge) rather than a flat segment that reads as a kink.
+  // --- Sunlight: standard-atmosphere refracted rays (no shadow/highlight fills) ---
+  // The input α is SunCalc's apparent tangent angle. Geometry bends each ray downward by 1/7 of
+  // Earth curvature and supplies the matching grazing earth-shadow boundary. Molecular + aerosol
+  // slant extinction is integrated over that same curved path, deciding whether each candidate is
+  // observable. A zero-clearance path therefore normally disappears instead of being shown as a
+  // bright tangent. Clip to the plot rectangle without flattening the physical curve.
   const rays = parallelRays(layout.maxDist, sunAltDeg, layout.maxAltKm, SUN_RAY_COUNT);
   ctx.save();
   ctx.beginPath();
@@ -554,9 +554,8 @@ function drawCrossSection(
       for (let i = 0; i < ray.points.length; i++) {
         const p = ray.points[i]!;
         const px = distToX(layout, p.distanceKm);
-        // The Y axis is tangent-plane altitude (TPA): ground is TPA = −bulge(d) (an arc),
-        // clouds/grid are TPA = ASL − bulge(d) (arcs). A ray is STRAIGHT in TPA:
-        // TPA(d) = base + d·tanα, so plot it directly — no bulge added.
+        // The Y axis is tangent-plane altitude (TPA): ground is TPA = −bulge(d), clouds/grid are
+        // TPA = ASL − bulge(d), and geometry already returns the refracted ray in TPA.
         const py = altKmToY(layout, p.altitudeKm);
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
@@ -569,12 +568,11 @@ function drawCrossSection(
   ctx.setLineDash([]);
   ctx.restore();
 
-  // --- Physical sun at the sun end of the cross-section ---
-  // α is the angle between the observer's local horizon (tangent to earth at d=0) and the
-  // sun→observer line. The sun is at infinity in direction α, so the ray through the observer's
-  // eye (d=0, h=0) has slope tan(α) in the tangent plane. At the far end (d=maxDist) its tangent-
-  // plane altitude is maxDist·tan(α). Deep below-horizon positions intentionally fall outside the
-  // frame instead of forcing the underground area to consume most of the chart.
+  // --- Sun direction handle at the sun end of the cross-section ---
+  // α is the apparent tangent angle at the observer. The handle follows the propagated refracted
+  // path through d=maxDist, so it stays on the same curve used by the geometry rather than on an
+  // unrefracted straight extension. Deep below-horizon positions intentionally fall outside the
+  // cloud frame instead of forcing the underground area to consume most of the chart.
   const sunX = layout.farDist === 0 ? plotLeft : plotRight;
   const sunY = currentSunY;
   ctx.fillStyle = isEink ? '#000000' : sunFill;
@@ -749,7 +747,8 @@ export default function SunDirectionCloudDrawer({
       const y = ((clientY - rect.top) / rect.height) * canvasHeight;
       const layout = makeLayout(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
       const sunTpaKm = (layout.groundY - y) / layout.pxPerKm;
-      const alphaDeg = (Math.atan(sunTpaKm / layout.maxDist) * 180) / Math.PI;
+      const unrefractedTangentKm = sunTpaKm + refractionSagKm(layout.maxDist);
+      const alphaDeg = (Math.atan(unrefractedTangentKm / layout.maxDist) * 180) / Math.PI;
       const clamped = Math.min(Math.max(alphaDeg, MIN_SUN_ALT_DEG), MAX_SUN_ALT_DEG);
       setSunAltDeg(clamped);
 
@@ -877,7 +876,7 @@ export default function SunDirectionCloudDrawer({
               <div className="sun-cloud-hint">
                 <MoveVertical size={14} aria-hidden="true" />
                 <span>
-                  <strong>在图上上下拖动</strong>，调整时刻并查看光路与云层
+                  <strong>在图上上下拖动</strong>，调整时刻并查看标准大气折射光路与云层
                 </span>
               </div>
               <canvas

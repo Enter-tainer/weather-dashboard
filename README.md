@@ -38,9 +38,9 @@ Click any hour in the cloud lane to inspect the vertical cloud profile and therm
 
 ### Sunrise and sunset cloud cross-section / 日出日落方向云况剖面
 
-Click a sunrise or sunset marker to look along the solar bearing; drag vertically to move through twilight and inspect the light path through cloud layers.
+Click a sunrise or sunset marker to look along the solar bearing; drag vertically to move through twilight and inspect the standard-atmosphere refracted light path through cloud layers.
 
-点击日出或日落标记，可以沿太阳方位查看云层剖面；在图上纵向拖动可调整时刻，观察曙暮光线穿过不同云层的路径。
+点击日出或日落标记，可以沿太阳方位查看云层剖面；在图上纵向拖动可调整时刻，观察按标准大气折射弯曲的曙暮光线穿过不同云层的路径。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./feature-sun-cloud-dark.webp">
@@ -80,8 +80,8 @@ Click a sunrise or sunset marker to look along the solar bearing; drag verticall
 - **Sunrise / sunset shading** — uses real sunrise/sunset times, not a naive 18:00–06:00 cutoff
 - **日出日落着色** — 用真实 sunrise/sunset 时间画夜间阴影，不是 18:00–06:00 一刀切
 
-- **Sun-path cloud cross-section** — click sunrise/sunset markers to inspect cloud layers along the solar bearing, with a draggable twilight timeline
-- **太阳方向云况剖面** — 点击日出/日落标记，沿太阳方位查看云层，并通过可拖动的曙暮时间轴调整时刻
+- **Sun-path cloud cross-section** — click sunrise/sunset markers to inspect cloud layers along the solar bearing, with a draggable twilight timeline and standard-atmosphere refraction applied consistently to shadow geometry and optical depth
+- **太阳方向云况剖面** — 点击日出/日落标记，沿太阳方位查看云层，并通过可拖动的曙暮时间轴调整时刻；地影和光学厚度统一考虑标准大气折射
 
 - **Air quality and aerosols** — AQI, estimated visibility, and aerosol optical depth share the same trip timeline
 - **空气质量与气溶胶** — AQI、估算能见度和气溶胶光学厚度与行程天气显示在同一条时间轴上

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bulgeKm,
   columnCloudBands,
+  EFFECTIVE_EARTH_RADIUS_KM,
   earthShadowBoundaryKm,
   grazingAltitudeKm,
   groundAltKm,
@@ -10,6 +11,9 @@ import {
   MIN_SUN_ALT_DEG,
   parallelRays,
   rayCutoffDistanceKm,
+  refractedRayAltitudeKm,
+  refractionSagKm,
+  STANDARD_REFRACTION_COEFFICIENT,
 } from './sunRayGeometry';
 import type { CloudSection, CloudSectionColumn } from './sunCloudSection';
 
@@ -50,6 +54,13 @@ describe('bulgeKm / groundAltKm', () => {
     expect(bulgeKm(140)).toBeCloseTo((140 * 140) / (2 * 6371), 4);
     expect(groundAltKm(140)).toBeCloseTo(-bulgeKm(140), 4);
   });
+
+  it('bends standard-atmosphere light downward by one seventh of Earth curvature', () => {
+    expect(STANDARD_REFRACTION_COEFFICIENT).toBeCloseTo(1 / 7, 10);
+    expect(EFFECTIVE_EARTH_RADIUS_KM).toBeCloseTo((6371 * 7) / 6, 6);
+    expect(refractionSagKm(300)).toBeCloseTo(bulgeKm(300) / 7, 6);
+    expect(refractedRayAltitudeKm(5, 300, 0)).toBeCloseTo(5 - refractionSagKm(300), 6);
+  });
 });
 
 describe('earthShadowBoundaryKm', () => {
@@ -58,10 +69,13 @@ describe('earthShadowBoundaryKm', () => {
     expect(earthShadowBoundaryKm(6)).toBe(0);
   });
 
-  it('is (R/2)·tan²α for α < 0 — matches the horizon-dip threshold R·α²/2 (small-angle approx)', () => {
+  it('uses the 7R/6 effective radius for a refraction-aware horizon-dip threshold', () => {
     for (const aDeg of [-1, -2, -3, -4, -6]) {
       const tanA = Math.tan((aDeg * Math.PI) / 180);
-      expect(earthShadowBoundaryKm(aDeg)).toBeCloseTo((6371 / 2) * tanA * tanA, 2);
+      expect(earthShadowBoundaryKm(aDeg)).toBeCloseTo(
+        (EFFECTIVE_EARTH_RADIUS_KM / 2) * tanA * tanA,
+        2,
+      );
     }
   });
 });
@@ -91,7 +105,7 @@ describe('columnCloudBands', () => {
 
 describe('litUndersides', () => {
   it('during twilight lights the part of a band above the grazing ray at the observer', () => {
-    // α = −2° → grazing ray at d=0 ≈ 3.9 km. A 2–6 km mid cloud is lit from 3.9 → 6 km.
+    // α = −2° → refracted grazing ray at d=0 ≈ 4.5 km. A 2–6 km mid cloud is partly lit.
     const s = section([column(0, { cloudLow: 0, cloudMid: 60, cloudHigh: 0 })]);
     const lit = litUndersides(s, -2);
     expect(lit).toHaveLength(1);
@@ -100,7 +114,7 @@ describe('litUndersides', () => {
   });
 
   it('keeps a low cloud fully in shadow during deep twilight', () => {
-    // α = −4° → boundary ≈ 15.5 km, above the 0–2 km low band entirely.
+    // α = −4° → refraction-aware boundary ≈ 18.2 km, above the 0–2 km low band entirely.
     const s = section([column(0, { cloudLow: 80, cloudMid: 0, cloudHigh: 0 })]);
     expect(litUndersides(s, -4)).toHaveLength(0);
   });
@@ -114,8 +128,8 @@ describe('litUndersides', () => {
   });
 
   it('lights a high cloud whose tangent-plane top exceeds the grazing ray at that distance', () => {
-    // α = −3° → grazing ray at d=140 km ≈ 2.95 km. A 6–10 km high cloud at 140 km has tangent-plane
-    // top 10 − bulge(140) ≈ 8.46 km > 2.95, base 6 − 1.54 = 4.46 km > 2.95 → lit from its base.
+    // α = −3° → grazing ray at d=140 km is below a 6–10 km high-cloud band, so the whole band is
+    // lit and its returned drawing altitude is converted to the tangent plane.
     const s = section([column(140, { cloudLow: 0, cloudMid: 0, cloudHigh: 80 })]);
     const lit = litUndersides(s, -3);
     expect(lit).toHaveLength(1);
@@ -124,24 +138,24 @@ describe('litUndersides', () => {
   });
 
   it('during twilight lights far low clouds but not near ones (near dark, far lit)', () => {
-    // α = −3°: the grazing ray is ~8.7 km at the observer (so a 2–6 km mid cloud at d=0 is in
+    // α = −3°: the grazing ray is ~10.2 km at the observer (so a 2–6 km mid cloud at d=0 is in
     // shadow) but descends with distance; far out a mid cloud can clear it.
     const s = section([
       column(0, { cloudLow: 0, cloudMid: 60, cloudHigh: 0 }),
       column(140, { cloudLow: 0, cloudMid: 60, cloudHigh: 0 }),
     ]);
     const lit = litUndersides(s, -3);
-    // Near column (d=0): mid cloud top 6 km < 8.7 km → not lit. Far column: grazing is lower → lit.
+    // Near column (d=0): mid cloud top 6 km < 10.2 km → not lit. Far column: boundary is lower.
     expect(lit.some((l) => l.columnIndex === 0)).toBe(false);
     expect(lit.some((l) => l.columnIndex === 1)).toBe(true);
   });
 });
 
 describe('rayCutoffDistanceKm', () => {
-  it('cuts the grazing ray at the horizon distance −R·tanα for α < 0', () => {
-    // α = −2° → horizon distance ≈ 222 km
+  it('cuts the grazing ray at the refracted horizon distance −Reff·tanα for α < 0', () => {
     const boundary = earthShadowBoundaryKm(-2);
-    expect(rayCutoffDistanceKm(boundary, -2)).toBeCloseTo(222.5, 0);
+    const expected = -EFFECTIVE_EARTH_RADIUS_KM * Math.tan((-2 * Math.PI) / 180);
+    expect(rayCutoffDistanceKm(boundary, -2)).toBeCloseTo(expected, 0);
   });
 
   it('cuts lower rays closer to the observer (near sky dark), higher rays farther (far lit)', () => {
@@ -178,18 +192,18 @@ describe('parallelRays', () => {
     }
   });
 
-  it('rays are straight lines (altitude linear in distance)', () => {
+  it('curves rays downward by the standard refraction sag', () => {
     const rays = parallelRays(300, -3, 10, 5);
     const tanA = Math.tan((-3 * Math.PI) / 180);
     for (const r of rays) {
-      const slopes: number[] = [];
-      for (let i = 1; i < r.points.length; i++) {
-        const p0 = r.points[i - 1]!;
-        const p1 = r.points[i]!;
-        slopes.push((p1.altitudeKm - p0.altitudeKm) / (p1.distanceKm - p0.distanceKm));
+      const far = r.points[r.points.length - 1]!;
+      expect(far.altitudeKm).toBeCloseTo(
+        r.baseAltKm + far.distanceKm * tanA - refractionSagKm(far.distanceKm),
+        6,
+      );
+      if (far.distanceKm > 0) {
+        expect(far.altitudeKm).toBeLessThan(r.baseAltKm + far.distanceKm * tanA);
       }
-      // All slopes equal tanα (the ray is a straight line).
-      for (const s of slopes) expect(s).toBeCloseTo(tanA, 5);
     }
   });
 

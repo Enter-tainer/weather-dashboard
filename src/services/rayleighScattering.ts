@@ -1,8 +1,9 @@
-import { EARTH_RADIUS_KM } from './sunRayGeometry';
+import { EARTH_RADIUS_KM, refractionSagKm } from './sunRayGeometry';
 
 // A compact model for colouring the direct solar beam. The base helpers model molecular
-// (Rayleigh) extinction; the rendered-beam path also applies an AOD-driven aerosol layer. Ozone,
-// refraction, terrain and multiple scattering are not included. Spherical path integration remains
+// (Rayleigh) extinction; the rendered-beam path also applies an AOD-driven aerosol layer. The same
+// standard-atmosphere refractive curvature as the cross-section geometry is included in the slant
+// path. Ozone, terrain and multiple scattering are not included. Spherical path integration remains
 // valid across the drawer's +2°..−6° range, where plane-parallel air-mass approximations fail.
 
 const ATMOSPHERE_SCALE_HEIGHT_KM = 8.4;
@@ -89,7 +90,10 @@ function sphericalAirMass(
     sKm += integrationStepKm
   ) {
     const xKm = sKm * directionX;
-    const yKm = baseAltitudeKm + sKm * directionY;
+    // `sKm * directionX` is the downrange distance. SunCalc's altitude is already the apparent
+    // tangent at the observer; propagate that tangent with the same downward refractive sag used
+    // by the drawn rays instead of applying another angular refraction correction.
+    const yKm = baseAltitudeKm + sKm * directionY - refractionSagKm(xKm);
     const altitudeKm = radialAltitudeKm(xKm, yKm);
     if (altitudeKm < -1e-6) return Infinity;
 

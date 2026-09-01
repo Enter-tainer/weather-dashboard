@@ -142,7 +142,9 @@ describe('SunDirectionCloudDrawer', () => {
     const twilightLane = twilightCanvas.fillRect.mock.calls.find(
       ([x, , width]) => x === 38 && width === 6,
     );
-    expect(twilightLane?.[1]).toBeLessThan(30);
+    // The +2° endpoint follows the refracted path, about 1 km below its unrefracted tangent at
+    // 300 km, while remaining in the plot's top padding/headroom.
+    expect(twilightLane?.[1]).toBeLessThan(45);
     expect(Number(twilightLane?.[1]) + Number(twilightLane?.[3])).toBeGreaterThan(650);
     expect(
       twilightCanvas.fillRect.mock.calls.some(
@@ -223,6 +225,7 @@ describe('SunDirectionCloudDrawer', () => {
     expect(screen.getByText(/Beijing/)).toBeTruthy();
     expect(screen.getByText(/方位 300°/)).toBeTruthy();
     expect(screen.getByText(/太阳高度 -0.8°/)).toBeTruthy();
+    expect(screen.getByText(/标准大气折射光路/)).toBeTruthy();
   });
 
   it('keeps the sun under the pointer and draggable below the cloud frame', () => {
