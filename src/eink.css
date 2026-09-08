@@ -167,6 +167,13 @@
   color: #000000 !important;
 }
 
+/* The weather lane renders merged runs: an opaque lane background keeps the
+   hourly grid lines out of the run interiors, leaving only the run-start
+   borders as merged-cell boundaries. */
+:root[data-display='eink'] .weather-icon-lane {
+  background-color: var(--timeline-bg);
+}
+
 :root[data-display='eink'] .weather-icon-lane .weather-run-overlay,
 :root[data-display='eink'] .uv-run-value,
 :root[data-display='eink'] .aqi-lane,
