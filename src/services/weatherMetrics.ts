@@ -1,4 +1,5 @@
 import type { DashboardScales, WeatherTimeline } from '../types/weather';
+import { getCloudGroundAltitude } from './cloudLayers';
 
 export function getBeaufort(speedKmh: number | null | undefined): number {
   if (speedKmh == null || !Number.isFinite(speedKmh)) return 0;
@@ -81,5 +82,13 @@ export function calculateDashboardScales(
     for (let t = minT; t <= maxT; t += step) tempSteps.push(t);
   }
 
-  return { minTemp, maxTemp, minP, maxP, maxBft, tempSteps };
+  return {
+    minTemp,
+    maxTemp,
+    minP,
+    maxP,
+    maxBft,
+    tempSteps,
+    cloudGroundAltitude: getCloudGroundAltitude(data),
+  };
 }

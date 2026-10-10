@@ -63,7 +63,27 @@ describe('calculateDashboardScales', () => {
       maxP: 1032,
       maxBft: 12,
       tempSteps: [-40, -20, 0, 20, 40, 60],
+      cloudGroundAltitude: 0,
     });
+  });
+
+  it('anchors the cloud axis on the lowest terrain in the timeline', () => {
+    const scales = calculateDashboardScales(
+      makeWeatherTimeline([
+        makeWeatherPoint({ elevation: 3603, temperature: 4, pressure: 668 }),
+        makeWeatherPoint({ elevation: 4328, temperature: 2, pressure: 618 }),
+      ]),
+    );
+
+    expect(scales.cloudGroundAltitude).toBe(3603);
+  });
+
+  it('keeps the cloud axis at sea level when no column reports an elevation', () => {
+    const scales = calculateDashboardScales(
+      makeWeatherTimeline([makeWeatherPoint({ elevation: null })]),
+    );
+
+    expect(scales.cloudGroundAltitude).toBe(0);
   });
 
   it('keeps a usable wind scale when observed winds are calm', () => {

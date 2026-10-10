@@ -104,6 +104,10 @@
   text-align: right;
 }
 
+.cloud-ground-legend-tick {
+  color: var(--text-subtle);
+}
+
 .timeline-scroller {
   flex-grow: 1;
   min-width: 0;

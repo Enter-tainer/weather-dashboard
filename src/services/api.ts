@@ -372,6 +372,7 @@ export async function fetchCityDataForDate(cityObj: RouteEntry): Promise<Weather
       cityName: originalName || name,
       latitude,
       longitude,
+      elevation,
       time,
       timeUtcMs: toUtc(time).getTime(),
       timezone: resolvedTz,
