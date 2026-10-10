@@ -97,8 +97,15 @@ function LegendAxisTick({ children, className = '', style }: LegendAxisTickProps
   );
 }
 
-function CloudLegendCells() {
+function CloudLegendCells({ groundAltitude }: { groundAltitude: number }) {
   const dashboardLayout = useDashboardLayout();
+  // Altitude ticks are measured above the ground reference. Ones that would land on the ground
+  // line are hidden, and the line itself carries the reference label.
+  const groundTop = Math.max(
+    -4,
+    cloudAltitudeToY(groundAltitude, dashboardLayout.cloudPlotHeight, groundAltitude) - 7,
+  );
+
   return (
     <>
       <div
@@ -124,20 +131,34 @@ function CloudLegendCells() {
         <LegendLabel unit="m" className="legend-scale-title">
           云
         </LegendLabel>
-        {CLOUD_ALTITUDE_TICKS.map((tick) => (
+        {CLOUD_ALTITUDE_TICKS.map((tick) => {
+          const top = Math.max(
+            -4,
+            cloudAltitudeToY(tick.altitude, dashboardLayout.cloudPlotHeight, groundAltitude) - 7,
+          );
+          if (top > groundTop - 12) return null;
+          return (
+            <LegendAxisTick
+              key={tick.altitude}
+              className="cloud-altitude-legend-tick"
+              style={{
+                top: `${top}px`,
+              }}
+            >
+              {tick.label}
+            </LegendAxisTick>
+          );
+        })}
+        {groundAltitude > 0 && (
           <LegendAxisTick
-            key={tick.altitude}
-            className="cloud-altitude-legend-tick"
+            className="cloud-altitude-legend-tick cloud-ground-legend-tick"
             style={{
-              top: `${Math.max(
-                -4,
-                cloudAltitudeToY(tick.altitude, dashboardLayout.cloudPlotHeight) - 7,
-              )}px`,
+              top: `${groundTop}px`,
             }}
           >
-            {tick.label}
+            地
           </LegendAxisTick>
-        ))}
+        )}
         <LegendLabel unit="mm/h" className="legend-rain-title">
           雨强
         </LegendLabel>
@@ -307,7 +328,7 @@ export default function DashboardLegend({
 
       {!compactMode && (
         <>
-          <CloudLegendCells />
+          <CloudLegendCells groundAltitude={scales.cloudGroundAltitude} />
         </>
       )}
 

@@ -41,6 +41,8 @@ export interface WeatherPoint {
   cityName: string;
   latitude?: number;
   longitude?: number;
+  /** Model elevation of the location (m ASL) — the terrain the cloud axis is drawn against. */
+  elevation?: NullableNumber | undefined;
   time: string;
   timeUtcMs?: number;
   /** End of the displayed interval for aggregated timeline points. */
@@ -176,4 +178,6 @@ export interface DashboardScales {
   maxP: number;
   maxBft: number;
   tempSteps: number[];
+  /** Ground reference (m ASL) of the cloud axis: the lowest terrain in the timeline. */
+  cloudGroundAltitude: number;
 }

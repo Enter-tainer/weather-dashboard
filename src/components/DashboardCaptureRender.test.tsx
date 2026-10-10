@@ -15,6 +15,7 @@ const SCALES: DashboardScales = {
   maxP: 1020,
   maxBft: 6,
   tempSteps: [0, 10, 20, 30],
+  cloudGroundAltitude: 0,
 };
 
 function makeTimeline(): WeatherTimeline {

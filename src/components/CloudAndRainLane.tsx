@@ -14,6 +14,7 @@ import {
 import { getMinutelyChartTimeParams } from '../services/currentTimePosition';
 import { cssVar } from '../services/themeColors';
 import { cloudAltitudeToY } from '../services/cloudAndRainScale';
+import { cloudBandsForPoint, getCloudGroundAltitude } from '../services/cloudLayers';
 import { DEFAULT_HOUR_WIDTH } from '../services/timelineLayout';
 import { useTimelineLayout } from '../hooks/useTimelineLayout';
 import { useIsEink } from '../hooks/useRenderProfile';
@@ -27,22 +28,6 @@ import './Dashboard.css';
 const EMPTY_MINUTELY_POINTS: NonNullable<MinutelyPrecipitationSelection['data']>['points'] = [];
 const EMPTY_MINUTELY_INDICES = new Set<number>();
 
-// Fallback altitudes (meters) when geopotential height is unavailable
-const FALLBACK_ALT: Readonly<Record<number, number>> = {
-  1000: 110,
-  975: 320,
-  950: 500,
-  925: 800,
-  900: 1000,
-  850: 1500,
-  800: 1900,
-  700: 3000,
-  600: 4200,
-  500: 5600,
-  400: 7200,
-  300: 9200,
-};
-
 interface CloudAndRainLaneProps {
   data: WeatherPoint[];
   hourWidth?: number;
@@ -51,14 +36,10 @@ interface CloudAndRainLaneProps {
   onMinutelySelect?: ((index: number) => void) | undefined;
 }
 
-// Grid lines at key altitudes matching the legend sidebar
+// Grid lines at key altitudes matching the legend sidebar, measured above the ground reference
 const GRID_ALTS = [1000, 2000, 4000, 5000, 6000, 8000, 10000];
 // Cloud classification boundaries get thicker lines
 const BOUNDARY_ALTS = new Set([2000, 6000]);
-
-function getCloudAltitude(pressure: number, altitude: number | null): number | null {
-  return altitude ?? FALLBACK_ALT[pressure] ?? null;
-}
 
 // Precipitation color by weather code type
 function precipColor(code: number | null, alpha = 0.6): string {
@@ -111,6 +92,7 @@ export default function CloudAndRainLane({
   const precipitationPlotTop = laneHeight - precipitationPlotHeight;
   const layout = useTimelineLayout(data.length, hourWidth);
   const width = layout.totalWidth;
+  const groundAltitude = useMemo(() => getCloudGroundAltitude(data), [data]);
   const precipBarWidth = Math.max(2, Math.min(8, hourWidth * 0.7));
   const minutelyTimeParams =
     minutelySelection != null ? getMinutelyChartTimeParams(minutelySelection, layout) : null;
@@ -163,8 +145,10 @@ export default function CloudAndRainLane({
       ctx.fillStyle = isEink ? '#ffffff' : cssVar('--precip-strip-bg', 'rgba(13, 71, 161, 0.035)');
       ctx.fillRect(0, precipitationPlotTop, w, precipitationPlotHeight);
 
-      // Altitude grid lines (cloud boundaries thicker)
+      // Altitude grid lines (cloud boundaries thicker). Lines below the ground reference would
+      // collapse onto the axis baseline, so they are dropped instead.
       for (const alt of GRID_ALTS) {
+        if (alt <= groundAltitude) continue;
         const isBoundary = BOUNDARY_ALTS.has(alt);
         ctx.setLineDash(isEink ? [] : isBoundary ? [6, 4] : [4, 6]);
         ctx.strokeStyle = isEink
@@ -173,7 +157,7 @@ export default function CloudAndRainLane({
             ? cssVar('--cloud-grid-boundary', 'rgba(0,0,0,0.25)')
             : cssVar('--cloud-grid-line', 'rgba(0,0,0,0.12)');
         ctx.lineWidth = isEink ? (isBoundary ? 1.2 : 0.75) : isBoundary ? 1.2 : 0.5;
-        const y = cloudAltitudeToY(alt, cloudPlotHeight);
+        const y = cloudAltitudeToY(alt, cloudPlotHeight, groundAltitude);
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
@@ -189,45 +173,31 @@ export default function CloudAndRainLane({
         const x = layout.getColumnLeft(i);
         const columnWidth = layout.getColumnWidth(i);
 
-        if (d.cloudByLevel) {
-          for (let li = 0; li < d.cloudByLevel.length - 1; li++) {
-            const lower = d.cloudByLevel[li];
-            const upper = d.cloudByLevel[li + 1];
-            if (!lower || !upper) continue;
-            if (lower.cover == null && upper.cover == null) continue;
-            const cover = Math.max(lower.cover ?? 0, upper.cover ?? 0);
-            if (cover < 3) continue;
+        // Terrain of this column: everything under it is ground, never cloud.
+        const columnGround = d.elevation ?? groundAltitude;
+        if (columnGround > groundAltitude) {
+          const groundY = cloudAltitudeToY(columnGround, cloudPlotHeight, groundAltitude);
+          ctx.fillStyle = isEink
+            ? getMonoPattern(ctx, 'dots-1')
+            : cssVar('--cloud-terrain-fill', 'rgba(120, 120, 130, 0.10)');
+          ctx.fillRect(x, groundY, columnWidth + 1, cloudPlotHeight - groundY);
+          ctx.strokeStyle = isEink ? '#000000' : cssVar('--cloud-terrain-line', 'rgba(0,0,0,0.18)');
+          ctx.lineWidth = isEink ? 1 : 0.8;
+          ctx.beginPath();
+          ctx.moveTo(x, groundY + 0.5);
+          ctx.lineTo(x + columnWidth + 1, groundY + 0.5);
+          ctx.stroke();
+        }
 
-            const altLow = getCloudAltitude(lower.pressure, lower.altitude);
-            const altHigh = getCloudAltitude(upper.pressure, upper.altitude);
-            if (altLow == null || altHigh == null) continue;
+        for (const band of cloudBandsForPoint(d)) {
+          const yTop = cloudAltitudeToY(band.topAltitude, cloudPlotHeight, groundAltitude);
+          const yBot = cloudAltitudeToY(band.baseAltitude, cloudPlotHeight, groundAltitude);
+          if (yBot - yTop <= 0) continue;
 
-            const yTop = cloudAltitudeToY(altHigh, cloudPlotHeight);
-            const yBot = cloudAltitudeToY(altLow, cloudPlotHeight);
-            if (yBot - yTop <= 0) continue;
-
-            ctx.fillStyle = isEink
-              ? getMonoPattern(ctx, monoPatternForUnit(cover / 100))
-              : cloudColor(cover, cloudFillRgb, cloudFillAlphaScale);
-            ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
-          }
-        } else {
-          // Fallback: use low/mid/high cloud cover
-          const layers = [
-            { cover: d.cloudLow, altLow: 0, altHigh: 2000 },
-            { cover: d.cloudMid, altLow: 2000, altHigh: 6000 },
-            { cover: d.cloudHigh, altLow: 6000, altHigh: 10000 },
-          ];
-          for (const layer of layers) {
-            if (layer.cover == null || layer.cover < 3) continue;
-            const yTop = cloudAltitudeToY(layer.altHigh, cloudPlotHeight);
-            const yBot = cloudAltitudeToY(layer.altLow, cloudPlotHeight);
-
-            ctx.fillStyle = isEink
-              ? getMonoPattern(ctx, monoPatternForUnit(layer.cover / 100))
-              : cloudColor(layer.cover, cloudFillRgb, cloudFillAlphaScale);
-            ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
-          }
+          ctx.fillStyle = isEink
+            ? getMonoPattern(ctx, monoPatternForUnit(band.cover / 100))
+            : cloudColor(band.cover, cloudFillRgb, cloudFillAlphaScale);
+          ctx.fillRect(x, yTop, columnWidth + 1, yBot - yTop);
         }
 
         if (
@@ -376,7 +346,13 @@ export default function CloudAndRainLane({
           continue;
         }
         const x = layout.getTimePosition(i);
-        const y = cloudAltitudeToY(blh, cloudPlotHeight);
+        // Open-Meteo's boundary layer height is measured above the ground, so it rides on the
+        // column's terrain instead of being drawn at that altitude above sea level.
+        const y = cloudAltitudeToY(
+          blh + (data[i]?.elevation ?? 0),
+          cloudPlotHeight,
+          groundAltitude,
+        );
         if (!started) {
           ctx.moveTo(x, y);
           started = true;
@@ -388,6 +364,7 @@ export default function CloudAndRainLane({
     [
       data,
       layout,
+      groundAltitude,
       minutelyPoints,
       minutelySelection,
       minutelyPointCount,

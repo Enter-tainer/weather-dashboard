@@ -33,4 +33,19 @@ describe('cloud and rain vertical scale', () => {
     expect(cloudAltitudeToY(-500, height)).toBe(height);
     expect(cloudAltitudeToY(50_000, height)).toBe(0);
   });
+
+  it('measures altitudes from the ground reference instead of sea level', () => {
+    const plateau = 3_603;
+    // The terrain itself sits on the axis baseline, and the sky above it uses the full span.
+    expect(cloudAltitudeToY(plateau, CLOUD_PLOT_HEIGHT, plateau)).toBe(CLOUD_PLOT_HEIGHT);
+    expect(cloudAltitudeToY(plateau + 2_000, CLOUD_PLOT_HEIGHT, plateau)).toBeCloseTo(
+      CLOUD_PLOT_HEIGHT * (1 - 0.333),
+    );
+    expect(cloudAltitudeToY(plateau + 6_000, CLOUD_PLOT_HEIGHT, plateau)).toBeCloseTo(
+      CLOUD_PLOT_HEIGHT * (1 - 0.667),
+    );
+    expect(cloudAltitudeToY(plateau + 10_000, CLOUD_PLOT_HEIGHT, plateau)).toBe(0);
+    // Anything below the ground reference collapses onto the baseline.
+    expect(cloudAltitudeToY(1_500, CLOUD_PLOT_HEIGHT, plateau)).toBe(CLOUD_PLOT_HEIGHT);
+  });
 });

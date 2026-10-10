@@ -10,6 +10,7 @@ const SCALES: DashboardScales = {
   maxP: 1020,
   maxBft: 6,
   tempSteps: [0, 10, 20, 30],
+  cloudGroundAltitude: 0,
 };
 
 describe('DashboardLegend', () => {
@@ -31,6 +32,24 @@ describe('DashboardLegend', () => {
     expect(screen.getByText('小时')).toHaveClass('legend-secondary');
     expect(screen.getByText('20°')).toHaveClass('legend-axis-tick');
     expect(screen.getByText('10k')).toHaveClass('legend-axis-tick');
+  });
+
+  it('anchors the cloud altitude ticks on the ground reference of the timeline', () => {
+    render(
+      <DashboardLegend
+        compactMode={false}
+        scales={{ ...SCALES, cloudGroundAltitude: 3603 }}
+        showGitHubLink={false}
+      />,
+    );
+
+    // Ticks that would land on the ground line are hidden, and the ground is labelled instead.
+    expect(screen.queryByText('1k')).toBeNull();
+    expect(screen.queryByText('2k')).toBeNull();
+    expect(screen.queryByText('4k')).toBeNull();
+    expect(screen.getByText('5k')).toBeInTheDocument();
+    expect(screen.getByText('10k')).toBeInTheDocument();
+    expect(screen.getByText('地')).toHaveClass('cloud-ground-legend-tick');
   });
 
   it('puts all three shared rain guides in the left legend', () => {
