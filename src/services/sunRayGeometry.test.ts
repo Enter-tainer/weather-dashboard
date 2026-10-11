@@ -13,6 +13,7 @@ import {
   rayCutoffDistanceKm,
   refractedRayAltitudeKm,
   refractionSagKm,
+  sectionGroundAltitudeKm,
   STANDARD_REFRACTION_COEFFICIENT,
 } from './sunRayGeometry';
 import type { CloudSection, CloudSectionColumn } from './sunCloudSection';
@@ -22,6 +23,7 @@ function column(distanceKm: number, opts: Partial<CloudSectionColumn> = {}): Clo
     lat: 39.9,
     lon: 116.4,
     distanceKm,
+    elevation: null,
     cloudByLevel: undefined,
     cloudLow: null,
     cloudMid: null,
@@ -101,16 +103,46 @@ describe('columnCloudBands', () => {
     expect(bands).toHaveLength(2);
     expect(bands.map((b) => b.cover).sort((a, b) => a - b)).toEqual([20, 80]);
   });
+
+  it('drops pressure levels below the column terrain and cuts a straddling band', () => {
+    // A 3.6 km plateau: 1000–700 hPa are underground, 600 hPa is 0.8 km above the ground.
+    const levels = [
+      { pressure: 1000, cover: 30, altitude: 173 },
+      { pressure: 850, cover: 34, altitude: 1543 },
+      { pressure: 700, cover: 42, altitude: 3153 },
+      { pressure: 600, cover: 0, altitude: 4411 },
+    ];
+    expect(columnCloudBands(column(0, { elevation: 3603, cloudByLevel: levels }))).toEqual([]);
+
+    // A band that straddles the terrain is cut at the ground and keeps the above-ground cover.
+    expect(
+      columnCloudBands(
+        column(0, {
+          elevation: 3603,
+          cloudByLevel: [
+            { pressure: 700, cover: 42, altitude: 3153 },
+            { pressure: 600, cover: 25, altitude: 4411 },
+          ],
+        }),
+      ),
+    ).toEqual([{ baseAltKm: 3.603, topAltKm: 4.411, cover: 25 }]);
+  });
+
+  it('uses the ground-relative low/mid/high classes when no level has cover', () => {
+    const bands = columnCloudBands(column(0, { elevation: 3603, cloudLow: 100, cloudMid: 0 }));
+
+    expect(bands).toEqual([{ baseAltKm: 3.603, topAltKm: 6.603, cover: 100 }]);
+  });
 });
 
 describe('litUndersides', () => {
   it('during twilight lights the part of a band above the grazing ray at the observer', () => {
-    // α = −2° → refracted grazing ray at d=0 ≈ 4.5 km. A 2–6 km mid cloud is partly lit.
+    // α = −2° → refracted grazing ray at d=0 ≈ 4.5 km. A 3–8 km mid cloud is partly lit.
     const s = section([column(0, { cloudLow: 0, cloudMid: 60, cloudHigh: 0 })]);
     const lit = litUndersides(s, -2);
     expect(lit).toHaveLength(1);
     expect(lit[0]!.litFromAltKm).toBeCloseTo(grazingAltitudeKm(0, -2), 1);
-    expect(lit[0]!.band.topAltKm).toBe(6);
+    expect(lit[0]!.band.topAltKm).toBe(8);
   });
 
   it('keeps a low cloud fully in shadow during deep twilight', () => {
@@ -128,12 +160,12 @@ describe('litUndersides', () => {
   });
 
   it('lights a high cloud whose tangent-plane top exceeds the grazing ray at that distance', () => {
-    // α = −3° → grazing ray at d=140 km is below a 6–10 km high-cloud band, so the whole band is
+    // α = −3° → grazing ray at d=140 km is below an 8–10 km high-cloud band, so the whole band is
     // lit and its returned drawing altitude is converted to the tangent plane.
     const s = section([column(140, { cloudLow: 0, cloudMid: 0, cloudHigh: 80 })]);
     const lit = litUndersides(s, -3);
     expect(lit).toHaveLength(1);
-    expect(lit[0]!.litFromAltKm).toBeCloseTo(6 - bulgeKm(140), 1); // tangent-plane base
+    expect(lit[0]!.litFromAltKm).toBeCloseTo(8 - bulgeKm(140), 1); // tangent-plane base
     expect(lit[0]!.band.topAltKm).toBe(10);
   });
 
@@ -211,5 +243,59 @@ describe('parallelRays', () => {
     expect(parallelRays(300, -4, 10, 4).length).toBeGreaterThan(0);
     expect(parallelRays(300, 0, 10, 4).length).toBeGreaterThan(0);
     expect(parallelRays(300, 1.9, 10, 4).length).toBeGreaterThan(0);
+  });
+
+  it('lifts the whole fan onto the observer terrain while keeping bases ground-relative', () => {
+    const groundAltKm = 3.603;
+    const plateau = parallelRays(300, -3, 10, 5, groundAltKm);
+    const seaLevel = parallelRays(300, -3, 10, 5, 0);
+    expect(plateau).toHaveLength(seaLevel.length);
+
+    plateau.forEach((ray, index) => {
+      const flat = seaLevel[index]!;
+      // Bases stay measured above the local ground (they drive slant extinction)…
+      expect(ray.baseAltKm).toBeCloseTo(flat.baseAltKm, 9);
+      // …while the drawn points sit on the observer's terrain frame.
+      ray.points.forEach((point, pointIndex) => {
+        expect(point.altitudeKm).toBeCloseTo(flat.points[pointIndex]!.altitudeKm + groundAltKm, 9);
+      });
+    });
+  });
+});
+
+describe('sectionGroundAltitudeKm', () => {
+  it('reads the observer terrain from the d = 0 column', () => {
+    const s = section([column(0, { elevation: 3603 }), column(20, { elevation: 4209 })]);
+    expect(sectionGroundAltitudeKm(s)).toBeCloseTo(3.603, 9);
+  });
+
+  it('falls back to sea level when the section has no elevation', () => {
+    expect(sectionGroundAltitudeKm(section([column(0)]))).toBe(0);
+    expect(sectionGroundAltitudeKm(section([]))).toBe(0);
+  });
+});
+
+describe('litUndersides on high terrain', () => {
+  it('keeps a cloud a sea-level observer sees lit inside the earth shadow on a plateau', () => {
+    // Same 6–8 km ASL layer, α = −2°: the grazing ray clears 4.5 km above a sea-level observer (so
+    // the layer is lit) but 3.6 km higher from a 3.6 km plateau (8.1 km), above the layer top.
+    const levels = [
+      { pressure: 600, cover: 60, altitude: 6000 },
+      { pressure: 500, cover: 60, altitude: 8000 },
+    ];
+    const flat = section([column(0, { cloudByLevel: levels })]);
+    expect(litUndersides(flat, -2)).toHaveLength(1);
+
+    const plateau = section([column(0, { elevation: 3603, cloudByLevel: levels })]);
+    expect(litUndersides(plateau, -2)).toHaveLength(0);
+  });
+
+  it('shifts the lit-from altitude by the terrain', () => {
+    // A ground-relative mid layer on a 3.6 km plateau spans 6.6–11.6 km ASL; the plateau boundary
+    // at α = −2° is 3.6 + 4.5 km, so the layer is lit from 8.1 km ASL (vs 4.5 km from sea level).
+    const plateau = section([column(0, { elevation: 3603, cloudMid: 60 })]);
+    const lit = litUndersides(plateau, -2);
+    expect(lit).toHaveLength(1);
+    expect(lit[0]!.litFromAltKm).toBeCloseTo(3.603 + grazingAltitudeKm(0, -2), 1);
   });
 });

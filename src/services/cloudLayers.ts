@@ -1,4 +1,4 @@
-import type { CloudLevel, WeatherPoint, WeatherTimeline } from '../types/weather';
+import type { CloudLevel, NullableNumber, WeatherPoint, WeatherTimeline } from '../types/weather';
 
 /** Covers below this are treated as "no cloud" (matches the lane's historical threshold). */
 const MIN_BAND_COVER = 3;
@@ -65,8 +65,14 @@ export function getCloudGroundAltitude(data: WeatherTimeline | null | undefined)
   return ground ?? 0;
 }
 
-function classifiedCloudBands(item: WeatherPoint, ground: number): CloudBand[] {
-  const covers = [item.cloudLow, item.cloudMid, item.cloudHigh];
+/** Cloud layers from the model's ground-relative low/mid/high classes, in meters ASL. */
+export function classifiedCloudBands(
+  low: NullableNumber | undefined,
+  mid: NullableNumber | undefined,
+  high: NullableNumber | undefined,
+  ground: number,
+): CloudBand[] {
+  const covers = [low, mid, high];
   const bands: CloudBand[] = [];
   CLASSIFIED_CLOUD_BANDS.forEach((band, index) => {
     const cover = covers[index];
@@ -81,14 +87,16 @@ function classifiedCloudBands(item: WeatherPoint, ground: number): CloudBand[] {
 }
 
 /**
- * Bands between adjacent pressure levels. Levels below the terrain are dropped instead of drawn:
- * over high ground the model still reports cover there (mirrored surface humidity fed through the
- * relative-humidity cloud approximation), which used to paint cloud several kilometres under the
- * plateau. A band that straddles the terrain is cut off at the ground and keeps only the cover of
- * the levels above it.
+ * Bands between adjacent pressure levels, in meters ASL. Levels below the terrain are dropped
+ * instead of drawn: over high ground the model still reports cover there (mirrored surface
+ * humidity fed through the relative-humidity cloud approximation), which used to paint cloud
+ * several kilometres under the plateau. A band that straddles the terrain is cut off at the ground
+ * and keeps only the cover of the levels above it.
  */
-function pressureLevelCloudBands(item: WeatherPoint, ground: number): CloudBand[] {
-  const levels: CloudLevel[] | undefined = item.cloudByLevel;
+export function pressureLevelCloudBands(
+  levels: CloudLevel[] | undefined,
+  ground: number,
+): CloudBand[] {
   if (!levels) return [];
 
   const bands: CloudBand[] = [];
@@ -127,7 +135,7 @@ function pressureLevelCloudBands(item: WeatherPoint, ground: number): CloudBand[
 export function cloudBandsForPoint(item: WeatherPoint | null | undefined): CloudBand[] {
   if (!item) return [];
   const ground = item.elevation ?? 0;
-  const levelBands = pressureLevelCloudBands(item, ground);
+  const levelBands = pressureLevelCloudBands(item.cloudByLevel, ground);
   if (levelBands.length > 0) return levelBands;
-  return classifiedCloudBands(item, ground);
+  return classifiedCloudBands(item.cloudLow, item.cloudMid, item.cloudHigh, ground);
 }

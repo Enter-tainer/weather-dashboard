@@ -6,12 +6,14 @@ import { getMonoPattern } from '../services/monoPatterns';
 import { monoPatternForUnit } from '../services/monoPatterns';
 import { cssVar } from '../services/themeColors';
 import {
+  buildTerrainProfile,
   SUN_CLOUD_PLOT_HEIGHT,
   SUN_SECTION_DISTANCES_KM,
+  terrainAltitudeKmAt,
   type CloudSection,
   type CloudSectionColumn,
+  type TerrainSample,
 } from '../services/sunCloudSection';
-import { APPROX_PRESSURE_HEIGHTS } from '../services/sounding';
 import { bearingLabel } from '../services/geo';
 import {
   clampToEventWindow,
@@ -22,11 +24,13 @@ import {
 } from '../services/sunDirection';
 import {
   bulgeKm,
+  columnCloudBands,
   MAX_SUN_ALT_DEG,
   MIN_SUN_ALT_DEG,
   parallelRays,
   refractedRayAltitudeKm,
   refractionSagKm,
+  sectionGroundAltitudeKm,
 } from '../services/sunRayGeometry';
 import type { SunEventType, WeatherPoint } from '../types/weather';
 import type { SunCloudSectionState } from '../hooks/useSunCloudSection';
@@ -66,12 +70,6 @@ function eventLabel(eventType: SunEventType): string {
   return eventType === 'sunrise' ? '日出方向' : '日落方向';
 }
 
-// Mirror of CloudAndRainLane's getCloudAltitude — geopotential height, else the standard
-// pressure→altitude fallback. (250/200 hPa have no fallback; they're above the 10 km axis.)
-function getCloudAltitude(pressure: number, altitude: number | null): number | null {
-  return altitude ?? APPROX_PRESSURE_HEIGHTS[pressure] ?? null;
-}
-
 // Mirror of CloudAndRainLane's cloudColor — single fill colour, only alpha varies with cover.
 function cloudColor(cover: number, rgb: string, alphaScale: number): string {
   const alpha = (cover / 100) * alphaScale;
@@ -90,13 +88,15 @@ interface PlotLayout {
   /** Distance (km) represented by the right edge of the plot. */
   farDist: number;
   maxDist: number;
-  /** Lowest altitude drawn on the Y axis (km, negative → below ground). */
+  /** Altitude (km ASL) of the section's ground at the observer — the axis baseline. */
+  groundAltKm: number;
+  /** Lowest altitude drawn on the Y axis (km, negative → below the observer's ground). */
   minAltKm: number;
-  /** Highest altitude drawn on the Y axis (km). */
+  /** Altitude span (km) drawn above the observer's ground. */
   maxAltKm: number;
-  /** Y of the 0 km ground line. */
+  /** Y of the observer's ground line (altitude `groundAltKm`). */
   groundY: number;
-  /** Vertical span (px) of the above-ground (0..maxAltKm) region. */
+  /** Vertical span (px) of the above-ground (groundAltKm..groundAltKm+maxAltKm) region. */
   aboveSpan: number;
   /** Pixels per km on the above-ground altitude axis (linear), shared by clouds and light rays. */
   pxPerKm: number;
@@ -106,7 +106,7 @@ const BASE_AXIS_MAX_ALT_KM = 10; // cloud data tops out at 10 km
 const SUN_HANDLE_ALT_MARGIN_KM = 0.25;
 const FAR_EARTH_HEIGHT_FRACTION = 0.25;
 
-function makeLayout(w: number, h: number, eventType: SunEventType): PlotLayout {
+function makeLayout(w: number, h: number, eventType: SunEventType, groundAltKm = 0): PlotLayout {
   // Both sides need room: altitude is labelled at the observer, time at the sun.
   const padLeft = 50;
   const padRight = 50;
@@ -136,6 +136,8 @@ function makeLayout(w: number, h: number, eventType: SunEventType): PlotLayout {
   // to fit comfortably in a phone drawer while preserving true sun/pointer coordinates.
   const farGroundSagKm = bulgeKm(maxDist);
   const farGroundY = plotBottom - plotH * FAR_EARTH_HEIGHT_FRACTION;
+  // The altitude span between the far (sagged) ground and the axis top is independent of where the
+  // observer stands, so the vertical scale is the same on a plateau as at sea level.
   const pxPerKm = (farGroundY - plotTop) / (maxAltKm + farGroundSagKm);
   const aboveSpan = maxAltKm * pxPerKm;
   const groundY = plotTop + aboveSpan;
@@ -150,6 +152,7 @@ function makeLayout(w: number, h: number, eventType: SunEventType): PlotLayout {
     originDist,
     farDist,
     maxDist,
+    groundAltKm,
     minAltKm,
     maxAltKm,
     groundY,
@@ -163,22 +166,26 @@ function distToX(layout: PlotLayout, distanceKm: number): number {
   return layout.plotLeft + t * layout.plotW;
 }
 
-// Map an altitude (km, may be negative for below-ground) to a Y on the canvas using a LINEAR
-// px-per-km scale anchored at the 0 km ground line. Linear (not the timeline's 3-band nonlinear)
-// so refracted sunlight, ground, grid and clouds remain in one physical coordinate system.
+// Map a tangent-plane altitude (km ASL, may be negative for below-ground) to a Y on the canvas
+// using a LINEAR px-per-km scale anchored at the observer's ground. Linear (not the timeline's
+// 3-band nonlinear) so refracted sunlight, ground, grid and clouds remain in one physical
+// coordinate system.
 function altKmToY(layout: PlotLayout, altKm: number): number {
-  return layout.groundY - altKm * layout.pxPerKm;
+  return layout.groundY - (altKm - layout.groundAltKm) * layout.pxPerKm;
 }
 
-// Y of the curved (bulging) sea-level ground at a downrange distance. The ground sags by
-// bulge(d) = d²/(2R) in the tangent plane, so on the altitude axis it dips below the 0 km line
-// at the observer. Drawing both ground and light paths in this frame exposes their relative curve.
-function groundYAt(layout: PlotLayout, distanceKm: number): number {
-  return altKmToY(layout, -bulgeKm(distanceKm));
+// Y of the ground at a downrange distance for a terrain profile: the profile sags by
+// bulge(d) = d²/(2R) in the tangent plane, exactly like the sea-level surface did, but it sits at
+// the sampled terrain altitude instead of 0 km. On a plateau the drawn ground is therefore the
+// terrain the observer actually stands on, not a sea-level plain three kilometres below.
+function terrainYAt(layout: PlotLayout, profile: TerrainSample[], distanceKm: number): number {
+  const altitudeKm = terrainAltitudeKmAt(profile, distanceKm, layout.groundAltKm);
+  return altKmToY(layout, altitudeKm - bulgeKm(distanceKm));
 }
 
 function sunAltitudeToY(layout: PlotLayout, altitudeDeg: number): number {
-  const refractedTangentPlaneKm = refractedRayAltitudeKm(0, layout.maxDist, altitudeDeg);
+  const refractedTangentPlaneKm =
+    layout.groundAltKm + refractedRayAltitudeKm(0, layout.maxDist, altitudeDeg);
   return altKmToY(layout, refractedTangentPlaneKm);
 }
 
@@ -262,9 +269,13 @@ function drawCrossSection(
 
   const { plotLeft, plotRight, plotTop, plotBottom, plotW } = layout;
   const columns = section.columns;
+  // Terrain of the section: the model elevation of each sampled point, sagging with the earth's
+  // curve. An empty profile falls back to the observer's ground altitude, which reproduces the
+  // flat sea-level reference the section used to be drawn against.
+  const terrainProfile = buildTerrainProfile(section);
 
-  // Curved earth: the sea-level surface sags by bulge(d) = d²/(2R) in the tangent plane, so at
-  // 140 km the ground is ~1.5 km below the observer's horizon.
+  // Curved earth: the terrain sags by bulge(d) = d²/(2R) in the tangent plane, so at 140 km the
+  // ground is ~1.5 km below the observer's horizon.
   const groundSteps = 60;
   // Collect ground-curve samples sorted by x so the fill polygon closes cleanly regardless of
   // whether the axis runs right→left (sunset) or left→right (sunrise) — otherwise the closing
@@ -273,7 +284,7 @@ function drawCrossSection(
   const groundSamples: Array<{ d: number; x: number; y: number }> = [];
   for (let s = 0; s <= groundSteps; s++) {
     const d = (s / groundSteps) * layout.maxDist;
-    groundSamples.push({ d, x: distToX(layout, d), y: groundYAt(layout, d) });
+    groundSamples.push({ d, x: distToX(layout, d), y: terrainYAt(layout, terrainProfile, d) });
   }
   groundSamples.sort((a, b) => a.x - b.x);
   ctx.beginPath();
@@ -327,7 +338,10 @@ function drawCrossSection(
 
   // Keep a simple printed-diagram label over the hatch.
   const earthLabelX = distToX(layout, layout.maxDist / 2);
-  const earthLabelY = Math.min(plotBottom - 16, groundYAt(layout, layout.maxDist / 2) + 48);
+  const earthLabelY = Math.min(
+    plotBottom - 16,
+    terrainYAt(layout, terrainProfile, layout.maxDist / 2) + 48,
+  );
   ctx.fillStyle = isEink
     ? '#ffffff'
     : cssVar('--sun-cloud-earth-label-bg', 'rgba(250, 250, 250, 0.82)');
@@ -340,10 +354,10 @@ function drawCrossSection(
   ctx.fillText('地球', earthLabelX, earthLabelY);
 
   // Altitude grid lines (cloud boundaries thicker) — each is a constant sea-level altitude, so it
-  // SAGS with the curved ground (parallel to it), including the 0 km line which coincides with
-  // the ground. This keeps the ground and the 0 km grid line visually identical, so a ray ending
-  // on the ground never reads as "from below ground".
+  // SAGS with the curved ground (parallel to it). Lines at or below the observer's terrain are
+  // dropped: on a plateau they would be drawn inside the ground.
   for (const alt of GRID_ALTS) {
+    if (alt / 1000 <= layout.groundAltKm) continue;
     const isBoundary = BOUNDARY_ALTS.has(alt);
     ctx.setLineDash(isBoundary ? [6, 4] : [4, 6]);
     ctx.strokeStyle = isEink ? '#000000' : isBoundary ? gridBoundary : gridLine;
@@ -367,6 +381,7 @@ function drawCrossSection(
   ctx.font = '9px system-ui, sans-serif';
   ctx.textBaseline = 'middle';
   for (const alt of GRID_ALTS) {
+    if (alt / 1000 <= layout.groundAltKm) continue;
     const text = alt >= 1000 ? `${alt / 1000}km` : `${alt}m`;
     const y = altKmToY(layout, alt / 1000);
     if (labelOnLeft) {
@@ -389,49 +404,13 @@ function drawCrossSection(
     const leftDist = (prevDist + col.distanceKm) / 2;
     const rightDist = (col.distanceKm + nextDist) / 2;
 
-    const bands: Array<{ cover: number; seaLevelTopKm: number; seaLevelBaseKm: number }> = [];
-    if (col.cloudByLevel) {
-      for (let li = 0; li < col.cloudByLevel.length - 1; li++) {
-        const lower = col.cloudByLevel[li];
-        const upper = col.cloudByLevel[li + 1];
-        if (!lower || !upper) continue;
-        if (lower.cover == null && upper.cover == null) continue;
-        const cover = Math.max(lower.cover ?? 0, upper.cover ?? 0);
-        if (cover < 3) continue;
-        const altLow = getCloudAltitude(lower.pressure, lower.altitude);
-        const altHigh = getCloudAltitude(upper.pressure, upper.altitude);
-        if (altLow == null || altHigh == null) continue;
-        bands.push({ cover, seaLevelTopKm: altHigh / 1000, seaLevelBaseKm: altLow / 1000 });
-      }
-    } else {
-      const layers = [
-        { cover: col.cloudLow, seaLevelBaseKm: 0, seaLevelTopKm: 2 },
-        { cover: col.cloudMid, seaLevelBaseKm: 2, seaLevelTopKm: 6 },
-        { cover: col.cloudHigh, seaLevelBaseKm: 6, seaLevelTopKm: 10 },
-      ];
-      for (const layer of layers) {
-        if (layer.cover == null || layer.cover < 3) continue;
-        bands.push({
-          cover: layer.cover,
-          seaLevelTopKm: layer.seaLevelTopKm,
-          seaLevelBaseKm: layer.seaLevelBaseKm,
-        });
-      }
-    }
+    const bands = columnCloudBands(col);
     for (const band of bands) {
-      if (band.seaLevelTopKm <= band.seaLevelBaseKm) continue;
+      if (band.topAltKm <= band.baseAltKm) continue;
       const fill = isEink
         ? getMonoPattern(ctx, monoPatternForUnit(band.cover / 100))
         : cloudColor(band.cover, cloudFillRgb, cloudFillAlphaScale);
-      fillSaggingBand(
-        ctx,
-        layout,
-        band.seaLevelTopKm,
-        band.seaLevelBaseKm,
-        leftDist,
-        rightDist,
-        fill,
-      );
+      fillSaggingBand(ctx, layout, band.topAltKm, band.baseAltKm, leftDist, rightDist, fill);
     }
   }
 
@@ -534,7 +513,13 @@ function drawCrossSection(
   // slant extinction is integrated over that same curved path, deciding whether each candidate is
   // observable. A zero-clearance path therefore normally disappears instead of being shown as a
   // bright tangent. Clip to the plot rectangle without flattening the physical curve.
-  const rays = parallelRays(layout.maxDist, sunAltDeg, layout.maxAltKm, SUN_RAY_COUNT);
+  const rays = parallelRays(
+    layout.maxDist,
+    sunAltDeg,
+    layout.maxAltKm,
+    SUN_RAY_COUNT,
+    layout.groundAltKm,
+  );
   ctx.save();
   ctx.beginPath();
   ctx.rect(plotLeft, plotTop, plotW, plotBottom - plotTop);
@@ -554,9 +539,13 @@ function drawCrossSection(
       for (let i = 0; i < ray.points.length; i++) {
         const p = ray.points[i]!;
         const px = distToX(layout, p.distanceKm);
-        // The Y axis is tangent-plane altitude (TPA): ground is TPA = −bulge(d), clouds/grid are
-        // TPA = ASL − bulge(d), and geometry already returns the refracted ray in TPA.
+        // The Y axis is tangent-plane altitude (TPA): ground is TPA = terrain − bulge(d),
+        // clouds/grid are TPA = ASL − bulge(d), and geometry already returns the refracted ray in
+        // TPA.
         const py = altKmToY(layout, p.altitudeKm);
+        // Stop the ray where it meets the drawn terrain: the geometry cuts it against the smooth
+        // sphere through the observer, but a sampled ridge can stand above that.
+        if (i > 0 && py >= terrainYAt(layout, terrainProfile, p.distanceKm)) break;
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
       }
@@ -615,7 +604,7 @@ function drawCrossSection(
   // sunrise. Keeping it level with the surface avoids covering the lowest cloud layers.
   const observerOnLeft = !isSunset;
   const observerX = distToX(layout, 0);
-  const observerY = groundYAt(layout, 0);
+  const observerY = terrainYAt(layout, terrainProfile, 0);
   const observerColor = isEink ? '#000000' : cssVar('--sun-cloud-observer', '#277a65');
   ctx.strokeStyle = observerColor;
   ctx.fillStyle = observerColor;
@@ -665,14 +654,21 @@ export default function SunDirectionCloudDrawer({
   const activeTimeMs = dragTimeMs ?? direction.eventTrueMs;
 
   // Give useCanvas the real renderer so its resize / focus / theme redraws repaint the chart
-  // after resetting the canvas bitmap dimensions.
-  const plotLayout = makeLayout(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
+  // after resetting the canvas bitmap dimensions. The section's ground altitude is part of the
+  // layout: it sets the axis baseline and the canvas height the sun track needs.
+  const groundAltKm = sectionState.data ? sectionGroundAltitudeKm(sectionState.data) : 0;
+  const plotLayout = makeLayout(
+    CANVAS_WIDTH,
+    SUN_CLOUD_PLOT_HEIGHT,
+    direction.eventType,
+    groundAltKm,
+  );
   const canvasHeight = canvasHeightForSunTrack(plotLayout);
 
   const paintCanvas = useCallback(
     (ctx: CanvasRenderingContext2D, width: number, height: number) => {
       if (!sectionState.data) return;
-      const layout = makeLayout(width, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
+      const layout = makeLayout(width, SUN_CLOUD_PLOT_HEIGHT, direction.eventType, groundAltKm);
       drawCrossSection(
         ctx,
         width,
@@ -687,13 +683,14 @@ export default function SunDirectionCloudDrawer({
         isEink,
       );
     },
-    [sectionState.data, sunAltDeg, direction, origin, activeTimeMs, isEink],
+    [sectionState.data, sunAltDeg, direction, groundAltKm, origin, activeTimeMs, isEink],
   );
   const canvasRef = useCanvas(CANVAS_WIDTH, canvasHeight, paintCanvas, [
     sectionState.data,
     sunAltDeg,
     direction.eventType,
     activeTimeMs,
+    groundAltKm,
     isEink,
   ]);
 
@@ -745,8 +742,14 @@ export default function SunDirectionCloudDrawer({
       const rect = canvas.getBoundingClientRect();
       if (rect.height <= 0) return;
       const y = ((clientY - rect.top) / rect.height) * canvasHeight;
-      const layout = makeLayout(CANVAS_WIDTH, SUN_CLOUD_PLOT_HEIGHT, direction.eventType);
-      const sunTpaKm = (layout.groundY - y) / layout.pxPerKm;
+      const layout = makeLayout(
+        CANVAS_WIDTH,
+        SUN_CLOUD_PLOT_HEIGHT,
+        direction.eventType,
+        groundAltKm,
+      );
+      // Invert altKmToY: the pointer's tangent-plane altitude includes the observer's ground.
+      const sunTpaKm = layout.groundAltKm + (layout.groundY - y) / layout.pxPerKm;
       const unrefractedTangentKm = sunTpaKm + refractionSagKm(layout.maxDist);
       const alphaDeg = (Math.atan(unrefractedTangentKm / layout.maxDist) * 180) / Math.PI;
       const clamped = Math.min(Math.max(alphaDeg, MIN_SUN_ALT_DEG), MAX_SUN_ALT_DEG);
@@ -755,7 +758,7 @@ export default function SunDirectionCloudDrawer({
       const ms = findTimeForAltitude(origin, clamped, direction.eventTrueMs);
       setDragTimeMs(ms != null ? clampToEventWindow(ms, direction.eventTrueMs) : null);
     },
-    [canvasRef, canvasHeight, direction.eventType, direction.eventTrueMs, origin],
+    [canvasRef, canvasHeight, direction.eventType, direction.eventTrueMs, groundAltKm, origin],
   );
 
   const stopDragAutoScroll = useCallback(() => {
