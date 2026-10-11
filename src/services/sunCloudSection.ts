@@ -24,6 +24,8 @@ export interface CloudSectionColumn {
   lat: number;
   lon: number;
   distanceKm: number;
+  /** Model terrain elevation (m ASL) of the sampled point — the ground of the section. */
+  elevation: NullableNumber;
   cloudByLevel: CloudLevel[] | undefined;
   cloudLow: NullableNumber;
   cloudMid: NullableNumber;
@@ -48,6 +50,7 @@ interface OpenMeteoLocation {
   latitude: number;
   longitude: number;
   utc_offset_seconds: number;
+  elevation?: number;
   hourly: OpenMeteoHourly;
 }
 
@@ -153,6 +156,7 @@ export function parseSunCloudSectionResponse(
       lat: location.latitude,
       lon: location.longitude,
       distanceKm,
+      elevation: typeof location.elevation === 'number' ? location.elevation : null,
       cloudByLevel,
       cloudLow: i >= 0 ? numberAt(hourly, 'cloud_cover_low', i) : null,
       cloudMid: i >= 0 ? numberAt(hourly, 'cloud_cover_mid', i) : null,
@@ -206,6 +210,49 @@ export async function fetchSunCloudSection(
 /** Fallback altitude (m) for a pressure level when geopotential height is missing. */
 function altitudeForPressure(pressure: number, altitude: number | null): number | null {
   return altitude ?? APPROX_PRESSURE_HEIGHTS[pressure] ?? null;
+}
+
+/** One sample of the section's terrain profile. */
+export interface TerrainSample {
+  distanceKm: number;
+  altitudeKm: number;
+}
+
+/**
+ * Terrain profile of the section (km ASL), one sample per response column that reports an
+ * elevation. Columns without one are dropped; an empty profile means the caller should fall back
+ * to a flat reference (sea level, or the observer's own altitude).
+ */
+export function buildTerrainProfile(section: CloudSection): TerrainSample[] {
+  return section.columns
+    .filter((col) => col.elevation != null && Number.isFinite(col.elevation))
+    .map((col) => ({ distanceKm: col.distanceKm, altitudeKm: (col.elevation as number) / 1000 }))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+}
+
+/** Terrain altitude (km ASL) at a distance, linearly interpolated between profile samples. */
+export function terrainAltitudeKmAt(
+  profile: TerrainSample[],
+  distanceKm: number,
+  fallbackKm: number,
+): number {
+  if (profile.length === 0) return fallbackKm;
+  const first = profile[0]!;
+  if (distanceKm <= first.distanceKm) return first.altitudeKm;
+  const last = profile[profile.length - 1]!;
+  if (distanceKm >= last.distanceKm) return last.altitudeKm;
+
+  for (let i = 0; i < profile.length - 1; i++) {
+    const a = profile[i]!;
+    const b = profile[i + 1]!;
+    if (distanceKm >= a.distanceKm && distanceKm <= b.distanceKm) {
+      const span = b.distanceKm - a.distanceKm;
+      if (span <= 0) return b.altitudeKm;
+      const t = (distanceKm - a.distanceKm) / span;
+      return a.altitudeKm + (b.altitudeKm - a.altitudeKm) * t;
+    }
+  }
+  return last.altitudeKm;
 }
 
 /** Re-exported for the drawer's geometry helpers. */

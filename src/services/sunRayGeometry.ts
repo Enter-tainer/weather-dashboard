@@ -21,7 +21,7 @@
 // second angular correction.
 
 import type { CloudSection, CloudSectionColumn } from './sunCloudSection';
-import { altitudeForPressureExport as altitudeForPressure } from './sunCloudSection';
+import { classifiedCloudBands, pressureLevelCloudBands } from './cloudLayers';
 
 export const EARTH_RADIUS_KM = 6371;
 /** Standard visible-light terrestrial refraction: ray curvature ≈ 1/7 Earth curvature. */
@@ -106,35 +106,35 @@ export interface CloudBand {
   cover: number;
 }
 
-/** Expand a column's cloud cover into drawable [base, top] bands (mirrors CloudAndRainLane). */
+/**
+ * Terrain altitude (km ASL) of the observer end of the section. Everything the observer sees is
+ * measured from this ground: on a 3.6 km plateau the grazing ray, the ray fan and the observer
+ * marker all sit three to four kilometres above the sea-level tangent plane the section used to
+ * be drawn in.
+ */
+export function sectionGroundAltitudeKm(section: CloudSection): number {
+  const originColumn = section.columns.find((col) => col.distanceKm === 0) ?? section.columns[0];
+  const elevation = originColumn?.elevation;
+  return elevation != null && Number.isFinite(elevation) ? elevation / 1000 : 0;
+}
+
+/**
+ * Expand a column's cloud cover into drawable [base, top] bands (km ASL), sharing the lane's band
+ * selection: pressure levels below the column's terrain are dropped and a straddling band is cut
+ * at the ground, with the model's ground-relative low/mid/high classes as the fallback.
+ */
 export function columnCloudBands(col: CloudSectionColumn): CloudBand[] {
-  if (col.cloudByLevel && col.cloudByLevel.length > 0) {
-    const bands: CloudBand[] = [];
-    for (let li = 0; li < col.cloudByLevel.length - 1; li++) {
-      const lower = col.cloudByLevel[li];
-      const upper = col.cloudByLevel[li + 1];
-      if (!lower || !upper) continue;
-      if (lower.cover == null && upper.cover == null) continue;
-      const cover = Math.max(lower.cover ?? 0, upper.cover ?? 0);
-      if (cover < 3) continue;
-      const altLow = altitudeForPressure(lower.pressure, lower.altitude);
-      const altHigh = altitudeForPressure(upper.pressure, upper.altitude);
-      if (altLow == null || altHigh == null) continue;
-      bands.push({ baseAltKm: altLow / 1000, topAltKm: altHigh / 1000, cover });
-    }
-    return bands;
-  }
-  const layers = [
-    { cover: col.cloudLow, baseAltKm: 0, topAltKm: 2 },
-    { cover: col.cloudMid, baseAltKm: 2, topAltKm: 6 },
-    { cover: col.cloudHigh, baseAltKm: 6, topAltKm: 10 },
-  ];
-  const bands: CloudBand[] = [];
-  for (const layer of layers) {
-    if (layer.cover == null || layer.cover < 3) continue;
-    bands.push({ baseAltKm: layer.baseAltKm, topAltKm: layer.topAltKm, cover: layer.cover });
-  }
-  return bands;
+  const ground = col.elevation ?? 0;
+  const bands = pressureLevelCloudBands(col.cloudByLevel, ground);
+  const selected =
+    bands.length > 0
+      ? bands
+      : classifiedCloudBands(col.cloudLow, col.cloudMid, col.cloudHigh, ground);
+  return selected.map((band) => ({
+    baseAltKm: band.baseAltitude / 1000,
+    topAltKm: band.topAltitude / 1000,
+    cover: band.cover,
+  }));
 }
 
 export interface LitUnderside {
@@ -149,11 +149,16 @@ export interface LitUnderside {
  * compared in the sea-level frame. For α < 0 this means near the observer only high clouds clear
  * the boundary, while farther-away lower clouds can be lit. `litFromAltKm` is converted to the
  * tangent-plane frame used by the renderer.
+ *
+ * The boundary is measured from the section's ground: an observer standing on a 3.6 km plateau
+ * sees the earth-shadow boundary 3.6 km higher than the sea-level frame puts it, so low clouds over
+ * high terrain stay dark far longer than a sea-level comparison suggests.
  */
 export function litUndersides(section: CloudSection, alphaDeg: number): LitUnderside[] {
+  const groundAltKm = sectionGroundAltitudeKm(section);
   const result: LitUnderside[] = [];
   section.columns.forEach((col, i) => {
-    const boundary = grazingAltitudeKm(col.distanceKm, alphaDeg);
+    const boundary = groundAltKm + grazingAltitudeKm(col.distanceKm, alphaDeg);
     for (const band of columnCloudBands(col)) {
       if (band.topAltKm <= boundary) continue; // entirely below the grazing ray (in shadow)
       // Return tangent-plane altitude for the renderer, after doing the illumination comparison in
@@ -206,7 +211,8 @@ export interface ParallelRay {
  * and traced toward the sun (increasing d). Every ray follows the same standard-atmosphere
  * curvature; the fan spans the lit altitude range at the observer.
  *
- * Bases at the observer:
+ * Bases at the observer, measured ABOVE THE OBSERVER'S GROUND (the section's terrain, see
+ * `groundAltKm`; the returned `baseAltKm` stays ground-relative because slant extinction is):
  *  - α < 0: the lowest ray is the GRAZING ray (tangent to the earth), base = earth-shadow
  *    boundary (Reff/2)·tan²α. Below it is earth's shadow (no direct light); it descends with d
  *    and touches the surface at −Reff·tanα. Higher rays spread up to maxAlt.
@@ -214,12 +220,15 @@ export interface ParallelRay {
  *
  * Each ray is clipped to its ground-cutoff distance (where it meets the curved earth) so it never
  * enters the ground. The actual Earth and the smaller downward ray curvature are both drawn.
+ * Returned point altitudes are in the tangent-plane frame of the sea-level axis, i.e. shifted by
+ * `groundAltKm` so an observer on a plateau draws the fan around their own terrain.
  */
 export function parallelRays(
   maxDistKm: number,
   alphaDeg: number,
   maxAltKm: number = PLOT_MAX_ALT_KM,
   count: number = 4,
+  groundAltKm = 0,
 ): ParallelRay[] {
   if (count <= 1) return [];
   const boundary = earthShadowBoundaryKm(alphaDeg);
@@ -246,7 +255,7 @@ export function parallelRays(
       const d = (s / steps) * endDist;
       // Tangent-plane altitude of the refracted ray. NOT clamped: the draw layer clips the plot,
       // while preserving the physical curve at the frame edge.
-      const alt = refractedRayAltitudeKm(baseAlt, d, alphaDeg);
+      const alt = groundAltKm + refractedRayAltitudeKm(baseAlt, d, alphaDeg);
       pts.push({ distanceKm: d, altitudeKm: alt });
     }
     if (pts.length >= 2) rays.push({ baseAltKm: baseAlt, cutoffKm: cutoff, points: pts });

@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildSunCloudSectionUrl,
+  buildTerrainProfile,
   parseSunCloudSectionResponse,
   SUN_SECTION_DISTANCES_KM,
+  terrainAltitudeKmAt,
 } from './sunCloudSection';
 import { makeWeatherPoint } from '../test-utils/weather';
 import type { CloudSection, CloudSectionColumn } from './sunCloudSection';
@@ -31,12 +33,14 @@ function makeLocation(
     latitude: number;
     longitude: number;
     utc_offset_seconds: number;
+    elevation: number;
     hourly: Record<string, unknown>;
   }>,
 ): {
   latitude: number;
   longitude: number;
   utc_offset_seconds: number;
+  elevation?: number;
   hourly: Record<string, unknown>;
 } {
   return {
@@ -186,5 +190,85 @@ describe('fetchSunCloudSection (mocked cachedFetch)', () => {
     expect(result!.columns[1]!.distanceKm).toBe(20);
     // 19:00 local bucket picked.
     expect(result!.columns[0]!.cloudLow).toBe(8);
+  });
+
+  it('carries the per-point terrain elevation of the response into the columns', async () => {
+    const { fetchSunCloudSection } = await import('./sunCloudSection');
+    const { cachedFetch } = await import('./cache');
+    const hourly: Record<string, unknown> = {
+      time: TIMES,
+      cloud_cover_low: new Array(24).fill(0),
+      cloud_cover_mid: new Array(24).fill(0),
+      cloud_cover_high: new Array(24).fill(0),
+    };
+    vi.mocked(cachedFetch).mockResolvedValueOnce([
+      makeLocation({ latitude: 30.05, longitude: 101.55, elevation: 3603, hourly }),
+      makeLocation({ latitude: 29.9, longitude: 101.1, elevation: 4209, hourly }),
+      // A location without an elevation must not break the profile.
+      makeLocation({ latitude: 29.7, longitude: 100.75, hourly }),
+    ]);
+
+    const origin = makeWeatherPoint({
+      latitude: 30.05,
+      longitude: 101.55,
+      time: '2026-07-15T00:00',
+      hour: 0,
+    });
+    const result = await fetchSunCloudSection(origin, {
+      eventType: 'sunset',
+      eventTrueMs: SUNSET_TRUE_MS,
+      bearingDeg: 300,
+      altitudeDeg: -0.8,
+    });
+
+    expect(result!.columns.map((c) => c.elevation)).toEqual([3603, 4209, null]);
+  });
+});
+
+describe('terrain profile', () => {
+  const sectionOf = (columns: CloudSectionColumn[]): CloudSection => ({
+    origin: { lat: 30.05, lon: 101.55 },
+    eventType: 'sunset',
+    eventTrueMs: 0,
+    bearingDeg: 300,
+    altitudeDeg: -0.8,
+    columns,
+  });
+
+  const columnOf = (distanceKm: number, elevation: number | null): CloudSectionColumn => ({
+    lat: 30,
+    lon: 101,
+    distanceKm,
+    elevation,
+    cloudByLevel: undefined,
+    cloudLow: null,
+    cloudMid: null,
+    cloudHigh: null,
+  });
+
+  it('samples one point per column that reports an elevation', () => {
+    const profile = buildTerrainProfile(
+      sectionOf([columnOf(0, 3603), columnOf(20, null), columnOf(40, 4209)]),
+    );
+
+    expect(profile).toEqual([
+      { distanceKm: 0, altitudeKm: 3.603 },
+      { distanceKm: 40, altitudeKm: 4.209 },
+    ]);
+  });
+
+  it('interpolates between samples and clamps outside them', () => {
+    const profile = buildTerrainProfile(sectionOf([columnOf(0, 3603), columnOf(40, 4603)]));
+
+    expect(terrainAltitudeKmAt(profile, 20, 0)).toBeCloseTo(4.103, 6);
+    expect(terrainAltitudeKmAt(profile, 0, 0)).toBeCloseTo(3.603, 6);
+    expect(terrainAltitudeKmAt(profile, 300, 0)).toBeCloseTo(4.603, 6);
+  });
+
+  it('falls back to the caller reference when no column has an elevation', () => {
+    const profile = buildTerrainProfile(sectionOf([columnOf(0, null), columnOf(20, null)]));
+
+    expect(profile).toEqual([]);
+    expect(terrainAltitudeKmAt(profile, 40, 3.603)).toBeCloseTo(3.603, 6);
   });
 });
