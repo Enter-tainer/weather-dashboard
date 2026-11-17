@@ -2,13 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reverseGeocode } from '../services/geocoding';
 import { parseRoute } from '../services/urlParser';
+import type * as Geocoding from '../services/geocoding';
 import type * as UrlParser from '../services/urlParser';
 import { clearQWeatherCredentials, loadQWeatherCredentials } from '../services/qweatherCredentials';
 import RouteEditor from './RouteEditor';
 
-vi.mock('../services/geocoding', () => ({
-  reverseGeocode: vi.fn(),
-}));
+vi.mock('../services/geocoding', async () => {
+  const actual = await vi.importActual<typeof Geocoding>('../services/geocoding');
+  return { ...actual, reverseGeocode: vi.fn(), searchCities: vi.fn().mockResolvedValue([]) };
+});
 
 vi.mock('../services/urlParser', async () => {
   const actual = await vi.importActual<typeof UrlParser>('../services/urlParser');
