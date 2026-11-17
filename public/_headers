@@ -1,0 +1,11 @@
+# Cloudflare Workers static assets 的自定义响应头
+# 规则按文件顺序生效；同一 header 出现两次会被逗号拼接（对 Cache-Control 会冲突），
+# 所以这里只给 /assets/* 和 / 各写一条，不要用 /* 覆盖全部。
+
+# 指纹资源：文件名带内容 hash，内容一变 URL 就变，可以永久缓存
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 入口 HTML：每次都必须回源校验，否则会指向旧的 asset hash
+/
+  Cache-Control: public, max-age=0, must-revalidate
